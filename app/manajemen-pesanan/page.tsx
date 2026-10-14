@@ -1,833 +1,1904 @@
+
 "use client";
 
-import Sidebar from "../components/sidebar";
+import { useMemo, useState } from "react";
+import {
+  Search,
+  Plus,
+  CalendarDays,
+  Bell,
+  Download,
+  ShoppingCart,
+  ClipboardList,
+  Truck,
+  Wallet,
+  Eye,
+  MoreVertical,
+  CheckCircle2,
+  Clock3,
+  Package,
+  MapPin,
+  Phone,
+  X,
+  UserRound,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
+  Printer,
+  Check,
+  UserPlus,
+  Droplets,
+  FileSpreadsheet,
+} from "lucide-react";
+import "./manajemen-pesanan.css";
 
-const orders = [
+type OrderStatus =
+  | "Menunggu Konfirmasi"
+  | "Diproses Depo"
+  | "Dalam Pengantaran"
+  | "Selesai"
+  | "Dibatalkan";
+
+type PaymentStatus = "Lunas" | "Menunggu Verifikasi" | "Belum Bayar";
+
+type Order = {
+  id: string;
+  time: string;
+  customer: string;
+  phone: string;
+  address: string;
+  qty: number;
+  item: string;
+  note: string;
+  price: number;
+  payment: string;
+  paymentStatus: PaymentStatus;
+  status: OrderStatus;
+  courier: string;
+  deliveryType: string;
+};
+
+const initialOrders: Order[] = [
   {
-    id: "#ORD-8824",
-    time: "Hari ini, 10:15 WIB",
-    type: "Refill Instan (30m)",
+    id: "ORD-8824",
+    time: "10:15 WIB",
     customer: "Fia Salsa",
     phone: "0812-9844-3211",
     address: "Kost Sakura No. 4, Lt. 2",
-    item: "2x Aqua 19L Refill",
-    detail: "Tukar Galon Kosong",
-    price: "Rp 36.000",
-    payment: "QRIS • Lunas",
+    qty: 2,
+    item: "Aqua 19L Refill",
+    note: "Tukar Galon Kosong",
+    price: 36000,
+    payment: "QRIS",
+    paymentStatus: "Lunas",
     status: "Menunggu Konfirmasi",
-    statusType: "waiting",
-    courier: "Tugaskan Kurir",
+    courier: "-",
+    deliveryType: "Refill Instan (30m)",
   },
   {
-    id: "#ORD-8823",
-    time: "Hari ini, 10:02 WIB",
-    type: "Refill Terjadwal",
+    id: "ORD-8823",
+    time: "10:02 WIB",
     customer: "Agus Setiawan",
     phone: "0857-1120-9943",
     address: "Jl. Ciputat Raya No. 18B",
-    item: "3x Le Minerale 19L",
-    detail: "Galon Baru + 2 Refill",
-    price: "Rp 89.000",
-    payment: "BCA • Lunas",
+    qty: 3,
+    item: "Le Minerale 19L",
+    note: "1 Galon Baru + 2 Refill",
+    price: 89000,
+    payment: "BCA Transfer",
+    paymentStatus: "Lunas",
     status: "Diproses Depo",
-    statusType: "process",
     courier: "Pak Budi K.",
+    deliveryType: "Refill Terjadwal",
   },
   {
-    id: "#ORD-8822",
-    time: "Hari ini, 09:48 WIB",
-    type: "Refill Instan",
+    id: "ORD-8822",
+    time: "09:48 WIB",
     customer: "Dewi Anggraini",
     phone: "0813-8871-0021",
-    address: "Paku Terrace Twr S-1208",
-    item: "1x Aqua 19L",
-    detail: "Tukar Galon Kosong",
-    price: "Rp 18.000",
-    payment: "COD • Tunai",
-    status: "Diantar Kurir",
-    statusType: "delivery",
+    address: "Paku Terrace Tower S-1208",
+    qty: 1,
+    item: "Aqua 19L Refill",
+    note: "Tukar Galon Kosong",
+    price: 18000,
+    payment: "COD (Tunai)",
+    paymentStatus: "Belum Bayar",
+    status: "Dalam Pengantaran",
     courier: "Rian Irawan",
+    deliveryType: "Refill Instan",
   },
   {
-    id: "#ORD-8821",
-    time: "Hari ini, 09:20 WIB",
-    type: "Refill Reguler",
+    id: "ORD-8821",
+    time: "09:20 WIB",
     customer: "Warung Kopi Mas Jon",
     phone: "0878-5544-2201",
-    address: "Jl. Tukuh Nyak Arief No. 51",
-    item: "5x Aqua 19L Refill",
-    detail: "Langganan Bisnis UMKM",
-    price: "Rp 91.000",
-    payment: "QRIS • Lunas",
-    status: "Selesai Diterima",
-    statusType: "success",
+    address: "Jl. Teuku Nyak Arief No. 51",
+    qty: 5,
+    item: "Aqua 19L Refill",
+    note: "Langganan Bisnis UMKM",
+    price: 90000,
+    payment: "QRIS",
+    paymentStatus: "Lunas",
+    status: "Selesai",
     courier: "Pak Budi K.",
+    deliveryType: "Refill Reguler",
   },
   {
-    id: "#ORD-8820",
-    time: "Hari ini, 08:50 WIB",
-    type: "Refill Reguler",
+    id: "ORD-8820",
+    time: "08:50 WIB",
     customer: "Hendro Pratama",
     phone: "0812-7788-3312",
-    address: "Apartemen Kemang Blok B4/12",
-    item: "2x Cleo 19L Eco Refill",
-    detail: "Bebas BPA Galon",
-    price: "Rp 34.000",
-    payment: "GoPay • Lunas",
-    status: "Selesai Diterima",
-    statusType: "success",
+    address: "Komplek Lemigas Blok B4/12",
+    qty: 2,
+    item: "Cleo 19L Eco Refill",
+    note: "Bebas BPA Galon",
+    price: 34000,
+    payment: "GoPay",
+    paymentStatus: "Lunas",
+    status: "Selesai",
     courier: "Deni Setiawan",
+    deliveryType: "Refill Reguler",
   },
   {
-    id: "#ORD-8819",
-    time: "Hari ini, 08:35 WIB",
-    type: "Refill (Siang)",
+    id: "ORD-8819",
+    time: "08:35 WIB",
     customer: "Siti Nurhaliza",
     phone: "0896-1234-9001",
     address: "Jl. Kebayoran Lama No. 44",
-    item: "1x Aqua 19L + Pompa Elektrik",
-    detail: "Beli Unit Pompa Baru",
-    price: "Rp 68.000",
-    payment: "Menunggu Verif",
+    qty: 1,
+    item: "Aqua 19L + Pompa Elektrik",
+    note: "Beli Unit Pompa Baru",
+    price: 68000,
+    payment: "Transfer Bank",
+    paymentStatus: "Menunggu Verifikasi",
     status: "Diproses Depo",
-    statusType: "process",
-    courier: "Jadwalkan",
+    courier: "Belum ditugaskan",
+    deliveryType: "Refill Terjadwal",
   },
   {
-    id: "#ORD-8818",
-    time: "Hari ini, 08:10 WIB",
-    type: "Dibatalkan Pelanggan",
+    id: "ORD-8818",
+    time: "08:10 WIB",
     customer: "Bambang Tri",
-    phone: "0811-9222-3112",
-    address: "Jl. Pijaya Raya No. 10",
-    item: "2x Vit 19L Refill",
-    detail: "Alasan: Salah input alamat",
-    price: "Rp 30.000",
-    payment: "Refund Dana Selesai",
+    phone: "0811-9922-3112",
+    address: "Jl. Praja Raya No. 10",
+    qty: 2,
+    item: "Vit 19L Refill",
+    note: "Alasan: Salah input alamat",
+    price: 30000,
+    payment: "Refund",
+    paymentStatus: "Lunas",
     status: "Dibatalkan",
-    statusType: "cancel",
     courier: "-",
+    deliveryType: "Refill Reguler",
   },
 ];
 
+const BLUE = "#0755d9";
+const BORDER = "#e9eaf4";
+const MUTED = "#697185";
+const PAGE_BG = "#f8f7ff";
+
+const money = (amount: number) =>
+  "Rp " + amount.toLocaleString("id-ID");
+
+const buttonStyle = (
+  background = "#ffffff",
+  color = "#253047",
+  border = BORDER
+): React.CSSProperties => ({
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 7,
+  minHeight: 38,
+  padding: "8px 12px",
+  borderRadius: 10,
+  border: `1px solid ${border}`,
+  background,
+  color,
+  fontSize: 12,
+  fontWeight: 650,
+  cursor: "pointer",
+  whiteSpace: "nowrap",
+});
+
+const statusColors: Record<OrderStatus, { bg: string; color: string }> = {
+  "Menunggu Konfirmasi": { bg: "#ffe0df", color: "#b42318" },
+  "Diproses Depo": { bg: "#e4e8ff", color: "#3448a5" },
+  "Dalam Pengantaran": { bg: "#d8f5ff", color: "#006d8f" },
+  Selesai: { bg: "#bbf7c9", color: "#166534" },
+  Dibatalkan: { bg: "#f3f4f6", color: "#6b7280" },
+};
+
+const paymentColors: Record<PaymentStatus, { bg: string; color: string }> = {
+  Lunas: { bg: "#bbf7c9", color: "#166534" },
+  "Menunggu Verifikasi": { bg: "#e4e8ff", color: "#3448a5" },
+  "Belum Bayar": { bg: "#d8f5ff", color: "#006d8f" },
+};
+
+const tabs: { label: string; status?: OrderStatus }[] = [
+  { label: "Semua" },
+  { label: "Menunggu Konfirmasi", status: "Menunggu Konfirmasi" },
+  { label: "Diproses Depo", status: "Diproses Depo" },
+  { label: "Dalam Pengantaran", status: "Dalam Pengantaran" },
+  { label: "Selesai", status: "Selesai" },
+  { label: "Dibatalkan", status: "Dibatalkan" },
+];
+
 export default function ManajemenPesananPage() {
+  const [orders, setOrders] = useState<Order[]>(initialOrders);
+  const [activeTab, setActiveTab] = useState("Semua");
+  const [search, setSearch] = useState("");
+  const [dateFilter, setDateFilter] = useState("Hari ini");
+  const [productFilter, setProductFilter] = useState("Semua Galon");
+  const [paymentFilter, setPaymentFilter] = useState("Semua Pembayaran");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState("10");
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [showAssign, setShowAssign] = useState<Order | null>(null);
+  const [courier, setCourier] = useState("Pak Budi K.");
+  const [notice, setNotice] = useState("");
+  const [newCustomer, setNewCustomer] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [newAddress, setNewAddress] = useState("");
+  const [newProduct, setNewProduct] = useState("Aqua 19L Refill");
+  const [newQty, setNewQty] = useState("1");
+  const [newPayment, setNewPayment] = useState("QRIS");
+
+  const counts = useMemo(() => {
+    const result: Record<string, number> = { Semua: orders.length };
+    tabs.forEach((tab) => {
+      if (tab.status) {
+        result[tab.label] = orders.filter(
+          (order) => order.status === tab.status
+        ).length;
+      }
+    });
+    return result;
+  }, [orders]);
+
+  const filteredOrders = useMemo(() => {
+    const keyword = search.toLowerCase().trim();
+
+    return orders.filter((order) => {
+      const matchesTab =
+        activeTab === "Semua" ||
+        order.status === activeTab;
+
+      const matchesSearch =
+        !keyword ||
+        [
+          order.id,
+          order.customer,
+          order.phone,
+          order.address,
+          order.item,
+          order.courier,
+        ].some((value) => value.toLowerCase().includes(keyword));
+
+      const matchesProduct =
+        productFilter === "Semua Galon" ||
+        order.item.toLowerCase().includes(productFilter.toLowerCase());
+
+      const matchesPayment =
+        paymentFilter === "Semua Pembayaran" ||
+        order.payment === paymentFilter;
+
+      return (
+        matchesTab &&
+        matchesSearch &&
+        matchesProduct &&
+        matchesPayment
+      );
+    });
+  }, [orders, activeTab, search, productFilter, paymentFilter]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredOrders.length / Number(pageSize))
+  );
+
+  const visibleOrders = filteredOrders.slice(
+    (page - 1) * Number(pageSize),
+    page * Number(pageSize)
+  );
+
+  const omzet = orders
+    .filter((order) => order.status !== "Dibatalkan")
+    .reduce((total, order) => total + order.price, 0);
+
+  function updateStatus(id: string, status: OrderStatus) {
+    setOrders((current) =>
+      current.map((order) =>
+        order.id === id ? { ...order, status } : order
+      )
+    );
+    setNotice(`${id} berhasil diperbarui menjadi ${status}.`);
+    setSelectedOrder(null);
+  }
+
+  function exportCSV() {
+    const header = [
+      "Nomor Pesanan",
+      "Waktu",
+      "Pelanggan",
+      "Telepon",
+      "Alamat",
+      "Produk",
+      "Jumlah",
+      "Total",
+      "Pembayaran",
+      "Status",
+      "Kurir",
+    ];
+
+    const rows = filteredOrders.map((order) => [
+      order.id,
+      order.time,
+      order.customer,
+      order.phone,
+      order.address,
+      order.item,
+      String(order.qty),
+      String(order.price),
+      order.payment,
+      order.status,
+      order.courier,
+    ]);
+
+    const csv = [header, ...rows]
+      .map((row) =>
+        row.map((value) => `"${value.replace(/"/g, '""')}"`).join(",")
+      )
+      .join("\r\n");
+
+    const blob = new Blob(["\uFEFF" + csv], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "laporan-pesanan-galonku.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+    setNotice("Data pesanan berhasil diekspor ke CSV.");
+  }
+
+  function createOrder(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const qty = Math.max(1, Number(newQty));
+    const pricePerUnit = newProduct.includes("Pompa") ? 68000 : 18000;
+
+    const order: Order = {
+      id: `ORD-${Date.now().toString().slice(-6)}`,
+      time: new Date().toLocaleTimeString("id-ID", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }) + " WIB",
+      customer: newCustomer.trim(),
+      phone: newPhone.trim(),
+      address: newAddress.trim(),
+      qty,
+      item: newProduct,
+      note: "Pesanan manual",
+      price: qty * pricePerUnit,
+      payment: newPayment,
+      paymentStatus:
+        newPayment === "COD (Tunai)" ? "Belum Bayar" : "Lunas",
+      status: "Menunggu Konfirmasi",
+      courier: "-",
+      deliveryType: "Refill Reguler",
+    };
+
+    setOrders((current) => [order, ...current]);
+    setActiveTab("Semua");
+    setSearch("");
+    setPage(1);
+    setShowCreate(false);
+    setNewCustomer("");
+    setNewPhone("");
+    setNewAddress("");
+    setNewQty("1");
+    setNotice(`Pesanan ${order.id} berhasil dibuat.`);
+  }
+
+  const cardStyle: React.CSSProperties = {
+    background: "#ffffff",
+    border: `1px solid ${BORDER}`,
+    borderRadius: 14,
+    boxShadow: "0 2px 8px rgba(30, 41, 59, .025)",
+  };
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    minWidth: 0,
+    minHeight: 40,
+    padding: "9px 12px",
+    border: `1px solid ${BORDER}`,
+    borderRadius: 9,
+    background: "#ffffff",
+    color: "#20283b",
+    fontSize: 12,
+    outlineColor: BLUE,
+  };
+
+  const tableGrid =
+    "100px minmax(175px,1.35fr) minmax(150px,1.15fr) 125px 145px 155px 95px";
+
   return (
-    <div className="page">
-      <Sidebar />
+    <main
+      style={{
+        minHeight: "100vh",
+        width: "100%",
+        minWidth: 0,
+        padding: "24px",
+        background: PAGE_BG,
+        color: "#20283b",
+        fontFamily: "Arial, Helvetica, sans-serif",
+        fontSize: 13,
+      }}
+    >
+      {/* HEADER HALAMAN */}
+      <header
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 16,
+          marginBottom: 22,
+        }}
+      >
+        <div style={{ minWidth: 220, flex: "1 1 300px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span
+              style={{
+                display: "grid",
+                placeItems: "center",
+                width: 32,
+                height: 32,
+                borderRadius: 10,
+                background: "#e8edff",
+                color: BLUE,
+              }}
+            >
+              <ClipboardList size={19} />
+            </span>
+            <h1
+              style={{
+                margin: 0,
+                fontSize: 24,
+                fontWeight: 800,
+                letterSpacing: "-0.6px",
+              }}
+            >
+              Manajemen Pesanan
+            </h1>
+          </div>
+          <p
+            style={{
+              margin: "7px 0 0",
+              color: MUTED,
+              fontSize: 13,
+              lineHeight: 1.6,
+            }}
+          >
+            Kelola, verifikasi, dan pantau status transaksi pemesanan
+            galon pelanggan secara real-time.
+          </p>
+        </div>
 
-      <main className="main-content">
-        {/* TOP BAR */}
-        <header className="topbar">
-          <div className="search">
-            <span>⌕</span>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 9,
+          }}
+        >
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "0 12px",
+              minHeight: 38,
+              borderRadius: 20,
+              background: "#f0f1ff",
+              color: MUTED,
+            }}
+          >
+            <Search size={15} />
             <input
-              type="text"
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
               placeholder="Cari pesanan, resi, kurir..."
+              aria-label="Cari pesanan"
+              style={{
+                width: 185,
+                maxWidth: "42vw",
+                border: 0,
+                outline: 0,
+                background: "transparent",
+                fontSize: 12,
+                color: "#20283b",
+              }}
             />
-          </div>
+          </label>
 
-          <div className="date">▣ Hari Ini, 24 Mei</div>
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 7,
+              padding: "9px 12px",
+              borderRadius: 20,
+              background: "#f0f1ff",
+              fontSize: 11,
+              fontWeight: 650,
+              whiteSpace: "nowrap",
+            }}
+          >
+            <CalendarDays size={15} color="#087e9b" />
+            Hari Ini, 24 Mei
+          </span>
 
-          <div className="notification">●</div>
+          <button
+            type="button"
+            onClick={() => setShowCreate(true)}
+            style={buttonStyle(BLUE, "#ffffff", BLUE)}
+          >
+            <Plus size={17} />
+            Buat Pesanan
+          </button>
 
-          <button className="top-button">+ Buat Pesanan</button>
-        </header>
+          <button
+            type="button"
+            title="Notifikasi"
+            onClick={() => setNotice("Tidak ada notifikasi baru.")}
+            style={{
+              ...buttonStyle("#ffffff", BLUE),
+              width: 38,
+              padding: 0,
+              position: "relative",
+            }}
+          >
+            <Bell size={17} />
+            <span
+              style={{
+                position: "absolute",
+                top: 5,
+                right: 6,
+                width: 7,
+                height: 7,
+                borderRadius: "50%",
+                background: "#ef4444",
+              }}
+            />
+          </button>
+        </div>
+      </header>
 
-        {/* CONTENT */}
-        <section className="content">
-          <div className="title-row">
-            <div>
-              <div className="title-with-icon">
-                <span className="title-icon">▣</span>
-                <h1>Manajemen Pesanan</h1>
+      {/* KARTU STATISTIK */}
+      <section
+        aria-label="Ringkasan pesanan"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+          gap: 12,
+          marginBottom: 16,
+        }}
+        className="gk-order-stats"
+      >
+        {[
+          {
+            title: "TOTAL PESANAN HARI INI",
+            value: String(orders.length),
+            subtitle: "↗ Data pesanan tercatat",
+            color: "#15803d",
+            icon: ShoppingCart,
+            iconBg: "#eef0ff",
+            iconColor: BLUE,
+          },
+          {
+            title: "PERLU KONFIRMASI",
+            value: String(counts["Menunggu Konfirmasi"] ?? 0),
+            subtitle: "◷ Periksa pesanan masuk",
+            color: "#dc2626",
+            icon: ClipboardList,
+            iconBg: "#ffe9e7",
+            iconColor: "#dc2626",
+          },
+          {
+            title: "SEDANG DIANTAR",
+            value: String(counts["Dalam Pengantaran"] ?? 0),
+            subtitle: "♧ Pantau kurir aktif",
+            color: "#087e9b",
+            icon: Truck,
+            iconBg: "#dff7ff",
+            iconColor: "#087e9b",
+          },
+          {
+            title: "TOTAL OMZET TERCATAT",
+            value: money(omzet),
+            subtitle: "✓ Nilai pesanan aktif",
+            color: "#15803d",
+            icon: Wallet,
+            iconBg: "#e8edff",
+            iconColor: BLUE,
+          },
+        ].map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <article
+              key={stat.title}
+              style={{
+                ...cardStyle,
+                minWidth: 0,
+                minHeight: 106,
+                padding: "14px 15px",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <p
+                  style={{
+                    margin: 0,
+                    color: "#50576b",
+                    fontSize: 10,
+                    fontWeight: 750,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {stat.title}
+                </p>
+                <div
+                  style={{
+                    marginTop: 5,
+                    fontSize: stat.title.includes("OMZET") ? 21 : 25,
+                    fontWeight: 800,
+                    color: stat.title.includes("OMZET") ? BLUE : "#20283b",
+                    overflowWrap: "anywhere",
+                  }}
+                >
+                  {stat.value}
+                </div>
+                <p
+                  style={{
+                    margin: "5px 0 0",
+                    color: stat.color,
+                    fontSize: 10,
+                  }}
+                >
+                  {stat.subtitle}
+                </p>
               </div>
+              <span
+                style={{
+                  flex: "0 0 38px",
+                  display: "grid",
+                  placeItems: "center",
+                  width: 38,
+                  height: 38,
+                  borderRadius: 12,
+                  background: stat.iconBg,
+                  color: stat.iconColor,
+                }}
+              >
+                <Icon size={20} />
+              </span>
+            </article>
+          );
+        })}
+      </section>
 
-              <p>
-                Kelola, verifikasi, dan pantau status transaksi pemesanan
-                galon pelanggan secara real-time.
-              </p>
-            </div>
+      {/* TAB STATUS */}
+      <section
+        style={{
+          ...cardStyle,
+          display: "flex",
+          gap: 5,
+          alignItems: "center",
+          padding: 7,
+          marginBottom: 11,
+          overflowX: "auto",
+        }}
+        aria-label="Filter status pesanan"
+      >
+        {tabs.map((tab) => {
+          const active = activeTab === tab.label;
+          return (
+            <button
+              type="button"
+              key={tab.label}
+              onClick={() => {
+                setActiveTab(tab.label);
+                setPage(1);
+              }}
+              aria-pressed={active}
+              style={{
+                ...buttonStyle(
+                  active ? BLUE : "#ffffff",
+                  active ? "#ffffff" : "#20283b",
+                  active ? BLUE : "#ffffff"
+                ),
+                minHeight: 36,
+                padding: "7px 11px",
+                borderRadius: 9,
+                flex: "0 0 auto",
+              }}
+            >
+              {tab.label}
+              <span
+                style={{
+                  display: "inline-grid",
+                  placeItems: "center",
+                  minWidth: 21,
+                  height: 19,
+                  padding: "0 5px",
+                  borderRadius: 12,
+                  background: active ? "rgba(255,255,255,.2)" : "#e9eafa",
+                  color: active ? "#ffffff" : "#515a73",
+                  fontSize: 10,
+                  fontWeight: 750,
+                }}
+              >
+                {counts[tab.label] ?? 0}
+              </span>
+            </button>
+          );
+        })}
+      </section>
 
-            <div className="title-actions">
-              <button className="export-button">
-                ↓
-                <span>
-                  Ekspor
-                  <br />
-                  (CSV/Excel)
-                </span>
-              </button>
+      {/* FILTER DAN AKSI */}
+      <section
+        style={{
+          ...cardStyle,
+          padding: 10,
+          marginBottom: 12,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 8,
+          }}
+        >
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 9,
+              flex: "1 1 240px",
+              minWidth: 170,
+              minHeight: 40,
+              padding: "0 12px",
+              border: `1px solid ${BORDER}`,
+              borderRadius: 10,
+              background: "#f5f5ff",
+              color: MUTED,
+            }}
+          >
+            <Search size={17} />
+            <input
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
+              placeholder="Cari berdasarkan No. Order, nama pelanggan..."
+              aria-label="Cari nomor order atau nama pelanggan"
+              style={{
+                minWidth: 0,
+                width: "100%",
+                border: 0,
+                outline: 0,
+                background: "transparent",
+                fontSize: 12,
+              }}
+            />
+          </label>
 
-              <button className="manual-button">
-                +
-                <span>
-                  Buat Pesanan
-                  <br />
-                  Manual
-                </span>
-              </button>
-            </div>
+          <select
+            value={dateFilter}
+            onChange={(event) => setDateFilter(event.target.value)}
+            aria-label="Filter tanggal"
+            style={{ ...inputStyle, width: "auto", background: "#f5f5ff" }}
+          >
+            <option>Hari ini</option>
+            <option>7 hari terakhir</option>
+            <option>30 hari terakhir</option>
+            <option>Semua tanggal</option>
+          </select>
+
+          <select
+            value={productFilter}
+            onChange={(event) => {
+              setProductFilter(event.target.value);
+              setPage(1);
+            }}
+            aria-label="Filter produk"
+            style={{ ...inputStyle, width: "auto", background: "#f5f5ff" }}
+          >
+            <option>Semua Galon</option>
+            <option>Aqua</option>
+            <option>Le Minerale</option>
+            <option>Cleo</option>
+            <option>Vit</option>
+          </select>
+
+          <select
+            value={paymentFilter}
+            onChange={(event) => {
+              setPaymentFilter(event.target.value);
+              setPage(1);
+            }}
+            aria-label="Filter pembayaran"
+            style={{ ...inputStyle, width: "auto", background: "#f5f5ff" }}
+          >
+            <option>Semua Pembayaran</option>
+            <option>QRIS</option>
+            <option>BCA Transfer</option>
+            <option>COD (Tunai)</option>
+            <option>GoPay</option>
+            <option>Transfer Bank</option>
+            <option>Refund</option>
+          </select>
+
+          <button
+            type="button"
+            title="Reset filter"
+            onClick={() => {
+              setSearch("");
+              setActiveTab("Semua");
+              setDateFilter("Hari ini");
+              setProductFilter("Semua Galon");
+              setPaymentFilter("Semua Pembayaran");
+              setPage(1);
+            }}
+            style={{
+              ...buttonStyle("#f0f1ff", "#515a73", "#f0f1ff"),
+              width: 40,
+              padding: 0,
+            }}
+          >
+            <Filter size={17} />
+          </button>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 8,
+            marginTop: 10,
+            paddingTop: 10,
+            borderTop: `1px solid ${BORDER}`,
+          }}
+        >
+          <span style={{ color: MUTED, fontSize: 11, alignSelf: "center" }}>
+            {filteredOrders.length} pesanan ditemukan
+          </span>
+
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={exportCSV}
+              style={buttonStyle("#f0f1ff", "#344054", "#e6e8f5")}
+            >
+              <Download size={15} />
+              Ekspor (CSV/Excel)
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowCreate(true)}
+              style={buttonStyle(BLUE, "#ffffff", BLUE)}
+            >
+              <Plus size={16} />
+              Buat Pesanan Manual
+            </button>
           </div>
+        </div>
+      </section>
 
-          {/* STATISTICS */}
-          <div className="stats">
-            <div className="stat-card">
-              <span className="stat-label">TOTAL PESANAN HARI INI</span>
-              <strong>48</strong>
-              <small>↗ +14% dr kemarin</small>
-              <div className="stat-icon blue">🛒</div>
+      {/* TABEL PESANAN */}
+      <section style={{ ...cardStyle, overflow: "hidden" }}>
+        <div style={{ overflowX: "auto", width: "100%" }}>
+          <div style={{ minWidth: 1050 }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: tableGrid,
+                alignItems: "center",
+                gap: 10,
+                padding: "14px 15px",
+                minHeight: 53,
+                background: "#f0f2ff",
+                color: "#50576b",
+                fontSize: 10,
+                fontWeight: 800,
+                textTransform: "uppercase",
+              }}
+            >
+              <span>No. Order & Waktu</span>
+              <span>Pelanggan & Lokasi</span>
+              <span>Item Pesanan</span>
+              <span>Tagihan & Bayar</span>
+              <span>Status</span>
+              <span>Kurir Pengantar</span>
+              <span style={{ textAlign: "center" }}>Aksi</span>
             </div>
 
-            <div className="stat-card">
-              <span className="stat-label">PERLU KONFIRMASI</span>
-              <strong>4</strong>
-              <small className="red-text">◉ Respon &lt; 5mnt</small>
-              <div className="stat-icon red">▣</div>
-            </div>
+            {visibleOrders.length === 0 ? (
+              <div
+                style={{
+                  padding: 45,
+                  textAlign: "center",
+                  color: MUTED,
+                }}
+              >
+                <Package size={30} style={{ marginBottom: 8 }} />
+                <p style={{ margin: 0, fontWeight: 700 }}>
+                  Pesanan tidak ditemukan
+                </p>
+                <p style={{ fontSize: 12 }}>
+                  Coba ubah kata kunci atau filter yang digunakan.
+                </p>
+              </div>
+            ) : (
+              visibleOrders.map((order) => {
+                const statusColor = statusColors[order.status];
+                const paymentColor = paymentColors[order.paymentStatus];
 
-            <div className="stat-card">
-              <span className="stat-label">SEDANG DIANTAR</span>
-              <strong>5</strong>
-              <small>♧ 4 Armada aktif</small>
-              <div className="stat-icon cyan">▱</div>
-            </div>
-
-            <div className="stat-card">
-              <span className="stat-label">TOTAL OMZET TERCATAT</span>
-              <strong>Rp 864.000</strong>
-              <small>✓ 92% Lunas</small>
-              <div className="stat-icon blue">▣</div>
-            </div>
-          </div>
-
-          {/* TABS */}
-          <div className="tabs-card">
-            <button className="tab active">
-              Semua <span>48</span>
-            </button>
-
-            <button className="tab">
-              Menunggu Konfirmasi <span>4</span>
-            </button>
-
-            <button className="tab">
-              Diproses Depo <span>6</span>
-            </button>
-
-            <button className="tab">
-              Dalam Pengantaran <span>5</span>
-            </button>
-
-            <button className="tab">
-              Selesai <span>31</span>
-            </button>
-
-            <button className="tab">
-              Dibatalkan <span>2</span>
-            </button>
-          </div>
-
-          {/* FILTER */}
-          <div className="filter-card">
-            <div className="filter-search">
-              ⌕
-              <input
-                type="text"
-                placeholder="Cari berdasarkan No. Order (#ORD-...), nama..."
-              />
-            </div>
-
-            <button>▣ Hari Ini (24 Mei)⌄</button>
-            <button>♢ Semua Galon⌄</button>
-            <button>▣ Pembayaran⌄</button>
-            <button>↯</button>
-          </div>
-
-          {/* TABLE */}
-          <div className="table-card">
-            <div className="table-head">
-              <div>NO. ORDER & WAKTU</div>
-              <div>PELANGGAN & LOKASI</div>
-              <div>ITEM PESANAN</div>
-              <div>TAGIHAN & BAYAR</div>
-              <div>STATUS</div>
-              <div>KURIR PENGANTAR</div>
-              <div>AKSI</div>
-            </div>
-
-            {orders.map((order) => (
-              <div className="order-row" key={order.id}>
-                <div>
-                  <strong className="order-id">{order.id}</strong>
-                  <small>{order.time}</small>
-                  <span
-                    className={`order-type ${
-                      order.statusType === "cancel"
-                        ? "cancel-text"
-                        : ""
-                    }`}
+                return (
+                  <div
+                    key={order.id}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: tableGrid,
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "13px 15px",
+                      minHeight: 92,
+                      borderTop: `1px solid ${BORDER}`,
+                      fontSize: 11,
+                    }}
                   >
-                    {order.type}
-                  </span>
-                </div>
+                    <div>
+                      <strong style={{ color: "#064fc5", fontSize: 12 }}>
+                        #{order.id}
+                      </strong>
+                      <div style={{ marginTop: 5, color: MUTED }}>
+                        Hari ini,
+                      </div>
+                      <div style={{ color: MUTED }}>{order.time}</div>
+                      <span
+                        style={{
+                          display: "inline-block",
+                          marginTop: 5,
+                          color:
+                            order.status === "Dibatalkan"
+                              ? "#dc2626"
+                              : order.status === "Selesai"
+                                ? "#15803d"
+                                : "#525fc0",
+                          fontSize: 10,
+                          fontWeight: 700,
+                        }}
+                      >
+                        {order.deliveryType}
+                      </span>
+                    </div>
 
-                <div>
-                  <strong>{order.customer}</strong>
-                  <small>{order.phone}</small>
-                  <small>⌖ {order.address}</small>
-                </div>
+                    <div>
+                      <strong style={{ fontSize: 12 }}>
+                        {order.customer}
+                      </strong>
+                      <div
+                        style={{
+                          marginTop: 4,
+                          color: MUTED,
+                          fontSize: 10,
+                        }}
+                      >
+                        <Phone
+                          size={10}
+                          style={{
+                            display: "inline",
+                            verticalAlign: "middle",
+                            marginRight: 4,
+                          }}
+                        />
+                        {order.phone}
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "flex-start",
+                          gap: 3,
+                          marginTop: 5,
+                          color: MUTED,
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        <MapPin size={12} style={{ flexShrink: 0 }} />
+                        {order.address}
+                      </div>
+                    </div>
 
-                <div className="item-cell">
-                  <span className="bottle">♧</span>
-                  <div>
-                    <strong>{order.item}</strong>
-                    <small>{order.detail}</small>
+                    <div style={{ display: "flex", gap: 8, minWidth: 0 }}>
+                      <span
+                        style={{
+                          flex: "0 0 32px",
+                          width: 32,
+                          height: 34,
+                          display: "grid",
+                          placeItems: "center",
+                          borderRadius: 9,
+                          background: "#edf0ff",
+                          color: BLUE,
+                        }}
+                      >
+                        <Droplets size={18} />
+                      </span>
+                      <div style={{ minWidth: 0 }}>
+                        <strong style={{ fontSize: 11 }}>
+                          {order.qty}x {order.item}
+                        </strong>
+                        <p
+                          style={{
+                            margin: "4px 0 0",
+                            color: MUTED,
+                            lineHeight: 1.4,
+                          }}
+                        >
+                          {order.note}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <strong style={{ fontSize: 13 }}>
+                        {money(order.price)}
+                      </strong>
+                      <div
+                        style={{
+                          marginTop: 5,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                          padding: "4px 6px",
+                          borderRadius: 6,
+                          background: paymentColor.bg,
+                          color: paymentColor.color,
+                          fontSize: 9,
+                          fontWeight: 750,
+                        }}
+                      >
+                        {order.paymentStatus === "Lunas" ? (
+                          <Check size={11} />
+                        ) : (
+                          <Clock3 size={11} />
+                        )}
+                        {order.payment}
+                        {order.paymentStatus === "Lunas" ? " • Lunas" : ""}
+                      </div>
+                      {order.paymentStatus !== "Lunas" && (
+                        <div
+                          style={{
+                            marginTop: 4,
+                            color: paymentColor.color,
+                            fontSize: 9,
+                          }}
+                        >
+                          {order.paymentStatus}
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 5,
+                          padding: "7px 9px",
+                          borderRadius: 20,
+                          background: statusColor.bg,
+                          color: statusColor.color,
+                          fontSize: 10,
+                          lineHeight: 1.25,
+                          fontWeight: 750,
+                        }}
+                      >
+                        <span
+                          style={{
+                            width: 5,
+                            height: 5,
+                            borderRadius: "50%",
+                            background: statusColor.color,
+                          }}
+                        />
+                        {order.status}
+                      </span>
+                    </div>
+
+                    <div>
+                      {order.courier === "-" ||
+                      order.courier === "Belum ditugaskan" ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowAssign(order);
+                            setCourier("Pak Budi K.");
+                          }}
+                          style={{
+                            ...buttonStyle("#e0e7ff", "#183a83", "#e0e7ff"),
+                            minHeight: 33,
+                            padding: "6px 8px",
+                            fontSize: 10,
+                          }}
+                        >
+                          <UserPlus size={13} />
+                          Tugaskan Kurir
+                        </button>
+                      ) : (
+                        <div>
+                          <strong style={{ fontSize: 11 }}>
+                            {order.courier}
+                          </strong>
+                          <p
+                            style={{
+                              margin: "4px 0 0",
+                              color: MUTED,
+                              fontSize: 10,
+                            }}
+                          >
+                            {order.status === "Dalam Pengantaran"
+                              ? "Dalam perjalanan"
+                              : order.status === "Selesai"
+                                ? "Pesanan diterima"
+                                : "Siap angkut"}
+                          </p>
+                          {order.status === "Diproses Depo" && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                updateStatus(order.id, "Dalam Pengantaran")
+                              }
+                              style={{
+                                ...buttonStyle("#e0f7ff", "#006d8f", "#e0f7ff"),
+                                minHeight: 28,
+                                padding: "4px 7px",
+                                marginTop: 5,
+                                fontSize: 10,
+                              }}
+                            >
+                              Mulai antar
+                            </button>
+                          )}
+                          {order.status === "Dalam Pengantaran" && (
+                            <button
+                              type="button"
+                              onClick={() => updateStatus(order.id, "Selesai")}
+                              style={{
+                                ...buttonStyle("#dcfce7", "#166534", "#dcfce7"),
+                                minHeight: 28,
+                                padding: "4px 7px",
+                                marginTop: 5,
+                                fontSize: 10,
+                              }}
+                            >
+                              Tandai selesai
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        gap: 5,
+                      }}
+                    >
+                      {order.status === "Menunggu Konfirmasi" && (
+                        <button
+                          type="button"
+                          title="Konfirmasi pesanan"
+                          onClick={() =>
+                            updateStatus(order.id, "Diproses Depo")
+                          }
+                          style={{
+                            ...buttonStyle("#ffffff", BLUE, "#ffffff"),
+                            width: 28,
+                            minHeight: 30,
+                            padding: 0,
+                          }}
+                        >
+                          <CheckCircle2 size={16} />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        title="Lihat detail pesanan"
+                        onClick={() => setSelectedOrder(order)}
+                        style={{
+                          ...buttonStyle("#ffffff", "#515a73", "#ffffff"),
+                          width: 28,
+                          minHeight: 30,
+                          padding: 0,
+                        }}
+                      >
+                        <Eye size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        title="Pilihan tindakan"
+                        onClick={() => setSelectedOrder(order)}
+                        style={{
+                          ...buttonStyle("#ffffff", "#515a73", "#ffffff"),
+                          width: 25,
+                          minHeight: 30,
+                          padding: 0,
+                        }}
+                      >
+                        <MoreVertical size={16} />
+                      </button>
+                    </div>
                   </div>
-                </div>
+                );
+              })
+            )}
+          </div>
+        </div>
 
-                <div>
-                  <strong>{order.price}</strong>
-                  <span className={`payment ${order.statusType}`}>
-                    {order.payment}
-                  </span>
-                </div>
+        {/* PAGINATION */}
+        <footer
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 10,
+            padding: "13px 15px",
+            borderTop: `1px solid ${BORDER}`,
+            background: "#fafaff",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: 8,
+              color: MUTED,
+              fontSize: 11,
+            }}
+          >
+            Menampilkan{" "}
+            {filteredOrders.length === 0
+              ? 0
+              : (page - 1) * Number(pageSize) + 1}
+            –
+            {Math.min(page * Number(pageSize), filteredOrders.length)} dari{" "}
+            {filteredOrders.length} pesanan
+            <span>•</span>
+            Baris per halaman
+            <select
+              value={pageSize}
+              onChange={(event) => {
+                setPageSize(event.target.value);
+                setPage(1);
+              }}
+              aria-label="Jumlah baris per halaman"
+              style={{
+                ...inputStyle,
+                width: 65,
+                minHeight: 30,
+                padding: "4px 7px",
+                background: "#ffffff",
+              }}
+            >
+              <option value="5">5</option>
+              <option value="10">10</option>
+              <option value="20">20</option>
+            </select>
+          </div>
 
-                <div>
-                  <span className={`status ${order.statusType}`}>
-                    ● {order.status}
-                  </span>
-                </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <button
+              type="button"
+              aria-label="Halaman sebelumnya"
+              disabled={page <= 1}
+              onClick={() => setPage((current) => Math.max(1, current - 1))}
+              style={{
+                ...buttonStyle("#ffffff", MUTED),
+                minHeight: 32,
+                width: 32,
+                padding: 0,
+                opacity: page <= 1 ? 0.4 : 1,
+              }}
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <span
+              style={{
+                display: "grid",
+                placeItems: "center",
+                width: 32,
+                height: 32,
+                borderRadius: 9,
+                background: BLUE,
+                color: "#ffffff",
+                fontSize: 12,
+                fontWeight: 750,
+              }}
+            >
+              {page}
+            </span>
+            <button
+              type="button"
+              aria-label="Halaman berikutnya"
+              disabled={page >= totalPages}
+              onClick={() =>
+                setPage((current) => Math.min(totalPages, current + 1))
+              }
+              style={{
+                ...buttonStyle("#ffffff", MUTED),
+                minHeight: 32,
+                width: 32,
+                padding: 0,
+                opacity: page >= totalPages ? 0.4 : 1,
+              }}
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </footer>
+      </section>
 
-                <div>
-                  <strong>{order.courier}</strong>
-                  {order.courier !== "-" && (
-                    <small>
-                      {order.statusType === "delivery"
-                        ? "ETA: 8 mnt lagi"
-                        : "Siap Angkut"}
-                    </small>
-                  )}
-                </div>
+      {/* NOTIFIKASI AKSI */}
+      {notice && (
+        <div
+          role="status"
+          style={{
+            position: "fixed",
+            right: 22,
+            bottom: 22,
+            zIndex: 100,
+            display: "flex",
+            alignItems: "center",
+            gap: 9,
+            maxWidth: "calc(100vw - 32px)",
+            padding: "13px 16px",
+            borderRadius: 12,
+            background: "#17233b",
+            color: "#ffffff",
+            boxShadow: "0 8px 28px rgba(15,23,42,.2)",
+            fontSize: 12,
+          }}
+        >
+          <CheckCircle2 size={18} color="#86efac" />
+          <span>{notice}</span>
+          <button
+            type="button"
+            aria-label="Tutup notifikasi"
+            onClick={() => setNotice("")}
+            style={{
+              border: 0,
+              background: "transparent",
+              color: "#ffffff",
+              cursor: "pointer",
+            }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
 
-                <div className="actions">
-                  <button>◉</button>
-                  <button>◉</button>
-                  <button>⋮</button>
-                </div>
-              </div>
-            ))}
-
-            <div className="pagination">
-              <span>Menampilkan 1–7 dari 48 pesanan</span>
-
+      {/* MODAL BUAT PESANAN */}
+      {showCreate && (
+        <div
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setShowCreate(false);
+          }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 200,
+            display: "grid",
+            placeItems: "center",
+            padding: 16,
+            background: "rgba(15,23,42,.45)",
+            backdropFilter: "blur(3px)",
+          }}
+        >
+          <form
+            onSubmit={createOrder}
+            style={{
+              width: "min(100%, 520px)",
+              maxHeight: "90vh",
+              overflowY: "auto",
+              padding: 24,
+              borderRadius: 18,
+              background: "#ffffff",
+              boxShadow: "0 20px 60px rgba(15,23,42,.22)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 20,
+              }}
+            >
               <div>
-                <button>‹</button>
-                <button className="page-active">1</button>
-                <button>2</button>
-                <button>3</button>
-                <button>...</button>
-                <button>5</button>
-                <button>›</button>
+                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>
+                  Buat Pesanan Manual
+                </h2>
+                <p style={{ margin: "6px 0 0", color: MUTED, fontSize: 12 }}>
+                  Masukkan informasi pelanggan dan pesanan.
+                </p>
               </div>
+              <button
+                type="button"
+                aria-label="Tutup formulir"
+                onClick={() => setShowCreate(false)}
+                style={{
+                  ...buttonStyle("#f3f4f6", "#344054", "#f3f4f6"),
+                  width: 36,
+                  padding: 0,
+                }}
+              >
+                <X size={17} />
+              </button>
+            </div>
+
+            <div style={{ display: "grid", gap: 14 }}>
+              <label style={{ display: "grid", gap: 6, fontSize: 12 }}>
+                Nama pelanggan
+                <input
+                  required
+                  value={newCustomer}
+                  onChange={(event) => setNewCustomer(event.target.value)}
+                  placeholder="Contoh: Aulia Rahma"
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={{ display: "grid", gap: 6, fontSize: 12 }}>
+                Nomor telepon
+                <input
+                  required
+                  value={newPhone}
+                  onChange={(event) => setNewPhone(event.target.value)}
+                  placeholder="08xxxxxxxxxx"
+                  inputMode="tel"
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={{ display: "grid", gap: 6, fontSize: 12 }}>
+                Alamat pengantaran
+                <textarea
+                  required
+                  value={newAddress}
+                  onChange={(event) => setNewAddress(event.target.value)}
+                  placeholder="Nama jalan, nomor rumah, dan patokan"
+                  rows={3}
+                  style={{ ...inputStyle, resize: "vertical" }}
+                />
+              </label>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "minmax(0, 1fr) 100px",
+                  gap: 12,
+                }}
+              >
+                <label style={{ display: "grid", gap: 6, fontSize: 12 }}>
+                  Produk
+                  <select
+                    value={newProduct}
+                    onChange={(event) => setNewProduct(event.target.value)}
+                    style={inputStyle}
+                  >
+                    <option>Aqua 19L Refill</option>
+                    <option>Le Minerale 19L</option>
+                    <option>Cleo 19L Eco Refill</option>
+                    <option>Vit 19L Refill</option>
+                    <option>Aqua 19L + Pompa Elektrik</option>
+                  </select>
+                </label>
+
+                <label style={{ display: "grid", gap: 6, fontSize: 12 }}>
+                  Jumlah
+                  <input
+                    required
+                    min="1"
+                    max="99"
+                    type="number"
+                    value={newQty}
+                    onChange={(event) => setNewQty(event.target.value)}
+                    style={inputStyle}
+                  />
+                </label>
+              </div>
+
+              <label style={{ display: "grid", gap: 6, fontSize: 12 }}>
+                Metode pembayaran
+                <select
+                  value={newPayment}
+                  onChange={(event) => setNewPayment(event.target.value)}
+                  style={inputStyle}
+                >
+                  <option>QRIS</option>
+                  <option>BCA Transfer</option>
+                  <option>COD (Tunai)</option>
+                  <option>GoPay</option>
+                </select>
+              </label>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                flexWrap: "wrap",
+                gap: 9,
+                marginTop: 22,
+                paddingTop: 16,
+                borderTop: `1px solid ${BORDER}`,
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setShowCreate(false)}
+                style={buttonStyle("#ffffff", "#344054")}
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                style={buttonStyle(BLUE, "#ffffff", BLUE)}
+              >
+                <Plus size={16} />
+                Simpan Pesanan
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* MODAL TUGASKAN KURIR */}
+      {showAssign && (
+        <div
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setShowAssign(null);
+          }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 200,
+            display: "grid",
+            placeItems: "center",
+            padding: 16,
+            background: "rgba(15,23,42,.45)",
+          }}
+        >
+          <div
+            style={{
+              width: "min(100%, 420px)",
+              padding: 24,
+              borderRadius: 18,
+              background: "#ffffff",
+              boxShadow: "0 20px 60px rgba(15,23,42,.22)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 18,
+              }}
+            >
+                <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800 }}>
+                  Tugaskan Kurir
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setShowAssign(null)}
+                  aria-label="Tutup"
+                  style={{
+                    ...buttonStyle("#f3f4f6", "#344054", "#f3f4f6"),
+                    width: 35,
+                    padding: 0,
+                  }}
+                >
+                  <X size={17} />
+                </button>
+            </div>
+
+            <p style={{ color: MUTED, fontSize: 12 }}>
+              Pesanan <strong>#{showAssign.id}</strong> untuk{" "}
+              <strong>{showAssign.customer}</strong>
+            </p>
+
+            <label style={{ display: "grid", gap: 7, fontSize: 12 }}>
+              Pilih kurir pengantar
+              <select
+                value={courier}
+                onChange={(event) => setCourier(event.target.value)}
+                style={inputStyle}
+              >
+                <option>Pak Budi K.</option>
+                <option>Rian Irawan</option>
+                <option>Deni Setiawan</option>
+              </select>
+            </label>
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 8,
+                marginTop: 20,
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setShowAssign(null)}
+                style={buttonStyle("#ffffff", "#344054")}
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setOrders((current) =>
+                    current.map((order) =>
+                      order.id === showAssign.id
+                        ? {
+                            ...order,
+                            courier,
+                            status: "Diproses Depo",
+                          }
+                        : order
+                    )
+                  );
+                  setNotice(
+                    `Kurir ${courier} ditugaskan ke pesanan ${showAssign.id}.`
+                  );
+                  setShowAssign(null);
+                }}
+                style={buttonStyle(BLUE, "#ffffff", BLUE)}
+              >
+                <UserPlus size={15} />
+                Simpan Penugasan
+              </button>
             </div>
           </div>
-        </section>
-      </main>
-
-      <style jsx>{`
-        * {
-          box-sizing: border-box;
-        }
-
-        .page {
-          min-height: 100vh;
-          background: #f7f8fc;
-          color: #182230;
-        }
-
-        .main-content {
-          margin-left: 220px;
-          min-height: 100vh;
-        }
-
-        .topbar {
-          height: 62px;
-          background: #ffffff;
-          border-bottom: 1px solid #e8ebf1;
-          display: flex;
-          align-items: center;
-          justify-content: flex-end;
-          gap: 12px;
-          padding: 0 20px;
-        }
-
-        .search {
-          width: 245px;
-          height: 32px;
-          border-radius: 18px;
-          background: #f3f4fb;
-          display: flex;
-          align-items: center;
-          gap: 7px;
-          padding: 0 12px;
-          color: #9aa1ad;
-          font-size: 12px;
-        }
-
-        .search input {
-          width: 100%;
-          border: none;
-          outline: none;
-          background: transparent;
-          font-size: 10px;
-        }
-
-        .date {
-          height: 32px;
-          padding: 0 13px;
-          display: flex;
-          align-items: center;
-          border-radius: 8px;
-          background: #f3f4fb;
-          font-size: 10px;
-          color: #343b48;
-        }
-
-        .notification {
-          color: #d51f35;
-          font-size: 12px;
-        }
-
-        .top-button,
-        .manual-button {
-          border: none;
-          background: #0052ff;
-          color: #ffffff;
-          border-radius: 8px;
-          cursor: pointer;
-          font-weight: 700;
-        }
-
-        .top-button {
-          height: 34px;
-          padding: 0 17px;
-          font-size: 10px;
-        }
-
-        .content {
-          padding: 22px;
-        }
-
-        .title-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          margin-bottom: 18px;
-        }
-
-        .title-with-icon {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        }
-
-        .title-icon {
-          width: 28px;
-          height: 28px;
-          border-radius: 8px;
-          background: #eaf2ff;
-          color: #0052ff;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        h1 {
-          margin: 0;
-          font-size: 21px;
-          font-weight: 800;
-        }
-
-        .title-row p {
-          margin: 5px 0 0 38px;
-          color: #7c8492;
-          font-size: 10px;
-        }
-
-        .title-actions {
-          display: flex;
-          gap: 8px;
-        }
-
-        .export-button,
-        .manual-button {
-          min-width: 120px;
-          height: 44px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-        }
-
-        .export-button {
-          border: 1px solid #e2e6ee;
-          border-radius: 8px;
-          background: white;
-          color: #3d4654;
-          font-size: 10px;
-          font-weight: 600;
-        }
-
-        .manual-button {
-          font-size: 10px;
-        }
-
-        .stats {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 12px;
-          margin-bottom: 16px;
-        }
-
-        .stat-card {
-          min-height: 90px;
-          padding: 14px;
-          border: 1px solid #edf0f5;
-          border-radius: 10px;
-          background: white;
-          position: relative;
-        }
-
-        .stat-label {
-          display: block;
-          font-size: 8px;
-          color: #737b87;
-          font-weight: 700;
-          margin-bottom: 7px;
-        }
-
-        .stat-card strong {
-          display: block;
-          font-size: 21px;
-          color: #17202c;
-        }
-
-        .stat-card small {
-          display: block;
-          margin-top: 5px;
-          color: #26a35a;
-          font-size: 8px;
-        }
-
-        .red-text {
-          color: #dc3545 !important;
-        }
-
-        .stat-icon {
-          position: absolute;
-          right: 13px;
-          top: 13px;
-          width: 34px;
-          height: 34px;
-          border-radius: 9px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .stat-icon.blue {
-          background: #eaf2ff;
-        }
-
-        .stat-icon.red {
-          background: #ffebed;
-        }
-
-        .stat-icon.cyan {
-          background: #e1f9fc;
-        }
-
-        .tabs-card {
-          background: white;
-          border: 1px solid #edf0f5;
-          border-radius: 10px 10px 0 0;
-          padding: 8px;
-          display: flex;
-          gap: 5px;
-        }
-
-        .tab {
-          border: none;
-          background: transparent;
-          padding: 9px 13px;
-          border-radius: 7px;
-          font-size: 9px;
-          cursor: pointer;
-          color: #4b5563;
-        }
-
-        .tab span {
-          margin-left: 4px;
-          padding: 2px 5px;
-          border-radius: 10px;
-          background: #edf0f5;
-        }
-
-        .tab.active {
-          background: #0052ff;
-          color: white;
-        }
-
-        .tab.active span {
-          background: rgba(255, 255, 255, 0.2);
-          color: white;
-        }
-
-        .filter-card {
-          background: white;
-          border-left: 1px solid #edf0f5;
-          border-right: 1px solid #edf0f5;
-          padding: 9px;
-          display: flex;
-          gap: 7px;
-        }
-
-        .filter-search {
-          flex: 1;
-          height: 34px;
-          border: 1px solid #e7eaf0;
-          border-radius: 7px;
-          display: flex;
-          align-items: center;
-          padding: 0 10px;
-          gap: 7px;
-          color: #9aa1ad;
-        }
-
-        .filter-search input {
-          width: 100%;
-          border: none;
-          outline: none;
-          font-size: 9px;
-        }
-
-        .filter-card button {
-          border: 1px solid #e7eaf0;
-          background: white;
-          border-radius: 7px;
-          padding: 0 12px;
-          font-size: 9px;
-          color: #4b5563;
-        }
-
-        .table-card {
-          background: white;
-          border: 1px solid #edf0f5;
-          border-radius: 0 0 10px 10px;
-          overflow: hidden;
-        }
-
-        .table-head,
-        .order-row {
-          display: grid;
-          grid-template-columns:
-            0.9fr
-            1.45fr
-            1.45fr
-            1.1fr
-            1.15fr
-            1.3fr
-            0.65fr;
-        }
-
-        .table-head {
-          padding: 12px;
-          background: #f4f5fc;
-          color: #667085;
-          font-size: 8px;
-          font-weight: 800;
-        }
-
-        .order-row {
-          min-height: 102px;
-          padding: 12px;
-          border-top: 1px solid #edf0f5;
-          align-items: center;
-          font-size: 9px;
-        }
-
-        .order-row > div {
-          padding-right: 10px;
-        }
-
-        .order-row strong {
-          display: block;
-          color: #1d2735;
-          font-size: 9px;
-        }
-
-        .order-row small {
-          display: block;
-          margin-top: 4px;
-          color: #7c8492;
-          font-size: 8px;
-        }
-
-        .order-id {
-          color: #0052ff !important;
-          font-size: 10px !important;
-        }
-
-        .order-type {
-          display: block;
-          margin-top: 6px;
-          color: #db3143;
-          font-size: 8px;
-          font-weight: 600;
-        }
-
-        .cancel-text {
-          color: #d63031 !important;
-        }
-
-        .item-cell {
-          display: flex;
-          gap: 7px;
-          align-items: center;
-        }
-
-        .bottle {
-          width: 28px;
-          height: 28px;
-          border-radius: 7px;
-          background: #eef2ff;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #4169e1;
-        }
-
-        .payment {
-          display: inline-block;
-          margin-top: 5px;
-          padding: 4px 6px;
-          border-radius: 5px;
-          background: #d5f7df;
-          color: #087d34;
-          font-size: 7px;
-          font-weight: 700;
-        }
-
-        .payment.process {
-          background: #e4e7ff;
-          color: #4c52a5;
-        }
-
-        .payment.delivery {
-          background: #d9f6fb;
-          color: #16788b;
-        }
-
-        .payment.cancel {
-          background: #ffe1df;
-          color: #d63131;
-        }
-
-        .status {
-          display: inline-block;
-          padding: 6px 8px;
-          border-radius: 12px;
-          font-size: 7px;
-          font-weight: 700;
-        }
-
-        .status.waiting {
-          color: #c72f3c;
-          background: #ffe6e8;
-        }
-
-        .status.process {
-          color: #5553a6;
-          background: #e5e6ff;
-        }
-
-        .status.delivery {
-          color: #168096;
-          background: #d9f7fb;
-        }
-
-        .status.success {
-          color: #13883e;
-          background: #d9f8e2;
-        }
-
-        .status.cancel {
-          color: #d33a37;
-          background: #ffe1df;
-        }
-
-        .actions {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-        }
-
-        .actions button {
-          border: none;
-          background: transparent;
-          cursor: pointer;
-          color: #687385;
-        }
-
-        .pagination {
-          min-height: 46px;
-          padding: 0 14px;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          color: #727b88;
-          font-size: 8px;
-        }
-
-        .pagination div {
-          display: flex;
-          gap: 4px;
-        }
-
-        .pagination button {
-          width: 26px;
-          height: 25px;
-          border: none;
-          border-radius: 5px;
-          background: transparent;
-          cursor: pointer;
-          font-size: 8px;
-        }
-
-        .pagination .page-active {
-          background: #0052ff;
-          color: white;
-        }
-
-        @media (max-width: 1000px) {
-          .stats {
-            grid-template-columns: repeat(2, 1fr);
-          }
-
-          .main-content {
-            margin-left: 200px;
-          }
-
-          .table-card {
-            overflow-x: auto;
-          }
-
-          .table-head,
-          .order-row {
-            min-width: 1100px;
-          }
-        }
-      `}</style>
-    </div>
+        </div>
+      )}
+
+      {/* MODAL DETAIL PESANAN */}
+      {selectedOrder && (
+        <div
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setSelectedOrder(null);
+            }
+          }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 200,
+            display: "grid",
+            placeItems: "center",
+            padding: 16,
+            background: "rgba(15,23,42,.45)",
+          }}
+        >
+          <div
+            style={{
+              width: "min(100%, 500px)",
+              maxHeight: "90vh",
+              overflowY: "auto",
+              padding: 24,
+              borderRadius: 18,
+              background: "#ffffff",
+              boxShadow: "0 20px 60px rgba(15,23,42,.22)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 10,
+              }}
+            >
+              <div>
+                <p
+                  style={{
+                    margin: 0,
+                    color: MUTED,
+                    fontSize: 11,
+                    fontWeight: 700,
+                  }}
+                >
+                  DETAIL PESANAN
+                </p>
+                <h2 style={{ margin: "5px 0 0", fontSize: 21 }}>
+                  #{selectedOrder.id}
+                </h2>
+              </div>
+              <button
+                type="button"
+                aria-label="Tutup detail"
+                onClick={() => setSelectedOrder(null)}
+                style={{
+                  ...buttonStyle("#f3f4f6", "#344054", "#f3f4f6"),
+                  width: 36,
+                  padding: 0,
+                }}
+              >
+                <X size={17} />
+              </button>
+            </div>
+
+            <div
+              style={{
+                marginTop: 20,
+                padding: 15,
+                borderRadius: 12,
+                background: "#f5f5ff",
+              }}
+            >
+              <p style={{ margin: "0 0 6px", color: MUTED, fontSize: 11 }}>
+                Status pesanan
+              </p>
+              <span
+                style={{
+                  display: "inline-block",
+                  padding: "6px 10px",
+                  borderRadius: 20,
+                  background: statusColors[selectedOrder.status].bg,
+                  color: statusColors[selectedOrder.status].color,
+                  fontSize: 11,
+                  fontWeight: 750,
+                }}
+              >
+                {selectedOrder.status}
+              </span>
+            </div>
+
+            <div style={{ display: "grid", gap: 13, marginTop: 18 }}>
+              {[
+                ["Pelanggan", selectedOrder.customer],
+                ["Nomor telepon", selectedOrder.phone],
+                ["Alamat", selectedOrder.address],
+                ["Produk", `${selectedOrder.qty}x ${selectedOrder.item}`],
+                ["Catatan", selectedOrder.note],
+                ["Pembayaran", selectedOrder.payment],
+                ["Kurir", selectedOrder.courier],
+                ["Waktu", selectedOrder.time],
+              ].map(([label, value]) => (
+                <div
+                  key={label}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "125px minmax(0, 1fr)",
+                    gap: 10,
+                    fontSize: 12,
+                  }}
+                >
+                  <span style={{ color: MUTED }}>{label}</span>
+                  <strong style={{ overflowWrap: "anywhere" }}>
+                    {value}
+                  </strong>
+                </div>
+              ))}
+
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  paddingTop: 15,
+                  borderTop: `1px solid ${BORDER}`,
+                }}
+              >
+                <strong>Total tagihan</strong>
+                <strong style={{ color: BLUE, fontSize: 19 }}>
+                  {money(selectedOrder.price)}
+                </strong>
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                flexWrap: "wrap",
+                gap: 8,
+                marginTop: 22,
+              }}
+            >
+              {selectedOrder.status === "Menunggu Konfirmasi" && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateStatus(selectedOrder.id, "Diproses Depo")
+                  }
+                  style={buttonStyle(BLUE, "#ffffff", BLUE)}
+                >
+                  <CheckCircle2 size={15} />
+                  Konfirmasi Pesanan
+                </button>
+              )}
+
+              {selectedOrder.status !== "Selesai" &&
+                selectedOrder.status !== "Dibatalkan" && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateStatus(selectedOrder.id, "Dibatalkan")
+                    }
+                    style={buttonStyle("#fff1f0", "#b42318", "#ffd8d5")}
+                  >
+                    Batalkan Pesanan
+                  </button>
+                )}
+
+              <button
+                type="button"
+                onClick={() => {
+                  const printable = [
+                    "GALONKU ADMIN",
+                    `Pesanan: ${selectedOrder.id}`,
+                    `Pelanggan: ${selectedOrder.customer}`,
+                    `Telepon: ${selectedOrder.phone}`,
+                    `Alamat: ${selectedOrder.address}`,
+                    `Produk: ${selectedOrder.qty}x ${selectedOrder.item}`,
+                    `Total: ${money(selectedOrder.price)}`,
+                    `Status: ${selectedOrder.status}`,
+                  ].join("\n");
+                  const printWindow = window.open("", "_blank", "width=600,height=700");
+                  if (printWindow) {
+                    printWindow.document.write(
+                      `<html><head><title>Detail Pesanan</title></head><body><pre style="font:14px Arial;white-space:pre-wrap">${printable.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre><script>window.onload=()=>window.print()<\/script></body></html>`
+                    );
+                    printWindow.document.close();
+                  } else {
+                    setNotice("Izinkan pop-up browser untuk mencetak pesanan.");
+                  }
+                }}
+                style={buttonStyle("#ffffff", "#344054")}
+              >
+                <Printer size={15} />
+                Cetak
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </main>
   );
 }

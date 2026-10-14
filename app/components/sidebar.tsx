@@ -4,11 +4,31 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const menuItems = [
-  { name: "Dashboard", href: "/", icon: "▦" },
-  { name: "Manajemen Pesanan", href: "/manajemen-pesanan", icon: "▣" },
-  { name: "Produk & Stok", href: "/produk-stok", icon: "▤" },
-  { name: "Monitoring Pengantaran", href: "/orders", icon: "▱" },
-  { name: "Laporan Keuangan", href: "/laporan-keuangan", icon: "▥" },
+  {
+    name: "Dashboard",
+    href: "/",
+    icon: "▦",
+  },
+  {
+    name: "Manajemen Pesanan",
+    href: "/manajemen-pesanan",
+    icon: "▣",
+  },
+  {
+    name: "Produk & Stok",
+    href: "/produk-stok",
+    icon: "▤",
+  },
+  {
+    name: "Monitoring Pengantaran",
+    href: "/monitoring-pengantaran",
+    icon: "▱",
+  },
+  {
+    name: "Laporan Keuangan",
+    href: "/laporan-keuangan",
+    icon: "▥",
+  },
 ];
 
 export default function Sidebar() {
@@ -19,14 +39,16 @@ export default function Sidebar() {
       {/* BRAND */}
       <div className="sidebar-brand">
         <div className="brand-title">GalonKu Admin</div>
-        <div className="brand-subtitle">Portal Manajemen & Operasional</div>
+        <div className="brand-subtitle">
+          Portal Manajemen & Operasional
+        </div>
       </div>
 
       {/* MENU */}
       <div className="sidebar-menu">
         <div className="menu-title">MENU UTAMA</div>
 
-        <nav className="menu-list">
+        <nav>
           {menuItems.map((item) => {
             const isActive =
               item.href === "/"
@@ -37,9 +59,12 @@ export default function Sidebar() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`sidebar-link ${isActive ? "sidebar-link-active" : ""}`}
+                className={`sidebar-link ${
+                  isActive ? "sidebar-link-active" : ""
+                }`}
               >
                 <span className="sidebar-icon">{item.icon}</span>
+
                 <span>{item.name}</span>
               </Link>
             );
@@ -50,10 +75,12 @@ export default function Sidebar() {
       {/* USER */}
       <div className="sidebar-user">
         <div className="user-avatar">B</div>
+
         <div className="user-info">
           <div className="user-name">Budi Santoso</div>
           <div className="user-role">Super Admin</div>
         </div>
+
         <div className="logout-icon">↪</div>
       </div>
 
@@ -68,7 +95,7 @@ export default function Sidebar() {
           border-right: 1px solid #e5e7eb;
           display: flex;
           flex-direction: column;
-          z-index: 9999;
+          z-index: 1000;
         }
 
         .sidebar-brand {
@@ -101,36 +128,40 @@ export default function Sidebar() {
           font-weight: 700;
         }
 
-        .menu-list {
+        nav {
           display: flex;
           flex-direction: column;
           gap: 5px;
         }
 
-        :global(.sidebar-link) {
+        .sidebar-link {
           height: 38px;
           padding: 0 12px;
           border-radius: 8px;
           display: flex;
           align-items: center;
           gap: 10px;
-          color: #4b5563 !important;
-          text-decoration: none !important;
+          color: #4b5563;
+          text-decoration: none;
           font-size: 11px;
           font-weight: 500;
           transition: 0.2s ease;
-          cursor: pointer;
         }
 
-        :global(.sidebar-link:hover) {
+        .sidebar-link:hover {
           background: #eef4ff;
-          color: #0052ff !important;
+          color: #0052ff;
         }
 
-        :global(.sidebar-link-active) {
-          background: #0052ff !important;
-          color: #ffffff !important;
+        .sidebar-link-active {
+          background: #0052ff;
+          color: #ffffff;
           font-weight: 600;
+        }
+
+        .sidebar-link-active:hover {
+          background: #0052ff;
+          color: #ffffff;
         }
 
         .sidebar-icon {

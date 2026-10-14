@@ -1,7 +1,4 @@
-<<<<<<< HEAD
-=======
 @import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap");
- feature/fira
 
 @import "tailwindcss";
 
@@ -9,7 +6,6 @@
    RESET
  */
 
->>>>>>> cbbca8ab3dde6531fbebabc74c613ba0cefe6cb8
 * {
   box-sizing: border-box;
 }
@@ -18,28 +14,20 @@ html,
 body {
   margin: 0;
   padding: 0;
-<<<<<<< HEAD
-=======
   width: 100%;
->>>>>>> cbbca8ab3dde6531fbebabc74c613ba0cefe6cb8
   min-height: 100%;
 }
 
 body {
-<<<<<<< HEAD
   font-family: Arial, Helvetica, sans-serif;
   background: #f7f8fc;
-=======
   font-family: "Plus Jakarta Sans", sans-serif;
   background: #ffffff;
->>>>>>> cbbca8ab3dde6531fbebabc74c613ba0cefe6cb8
   color: #131b2e;
 }
 
 button,
-<<<<<<< HEAD
 input,
-=======
 input {
   font-family: inherit;
 }
@@ -782,11 +770,10 @@ input {
 @media (max-width: 1100px) {
   .login-card {
     width: 620px;
-
     padding-left: 52px;
     padding-right: 52px;
   }
-
+}
 
 :root {
   --text: #434654;
@@ -818,7 +805,7 @@ body {
   margin: 0;
   padding: 0;
   min-height: 100%;
- main
+
 }
 
 @media (max-width: 768px) {
@@ -882,7 +869,6 @@ body {
 
   .login-page {
     flex-direction: column;
-
     overflow-y: auto;
   }
 }
@@ -950,7 +936,7 @@ body {
 }
 html,
 body {
- feature/fira
+
   margin: 0;
   padding: 0;
 }
@@ -972,7 +958,6 @@ body {
 button,
 input,
 textarea,
->>>>>>> cbbca8ab3dde6531fbebabc74c613ba0cefe6cb8
 select {
   font-family: inherit;
 }
@@ -982,17 +967,13 @@ button {
 }
 
 a {
-<<<<<<< HEAD
   color: inherit;
+  text-decoration: none;
 }
 
 /* =========================
    SIDEBAR
-========================= */
-=======
-  text-decoration: none;
-  color: inherit;
-}
+*/
 
 /* 
    MAIN APP
@@ -1007,14 +988,12 @@ a {
 /* 
    SIDEBAR
  */
->>>>>>> cbbca8ab3dde6531fbebabc74c613ba0cefe6cb8
 
 .sidebar {
   position: fixed;
   left: 0;
   top: 0;
   bottom: 0;
-<<<<<<< HEAD
   width: 218px;
   background: #ffffff;
   border-right: 1px solid #e7eaf0;
@@ -1107,7 +1086,6 @@ a {
   justify-content: center;
   font-size: 11px;
   font-weight: 700;
-=======
   width: 245px;
   background: var(--white);
   border-right: 1px solid #e7e8f0;
@@ -1199,12 +1177,10 @@ a {
   justify-content: center;
   font-size: 10px;
   font-weight: 800;
->>>>>>> cbbca8ab3dde6531fbebabc74c613ba0cefe6cb8
 }
 
 .user-info {
   flex: 1;
-<<<<<<< HEAD
 }
 
 .user-name {
@@ -1224,8 +1200,8 @@ a {
 
 /* =========================
    MAIN
-========================= */
 
+*/
 .admin-page {
   min-height: 100vh;
   background: #f7f8fc;
@@ -1233,7 +1209,6 @@ a {
 
 .main-content {
   margin-left: 218px;
-=======
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -1261,12 +1236,10 @@ a {
 .main-content {
   width: calc(100% - 245px);
   margin-left: 245px;
->>>>>>> cbbca8ab3dde6531fbebabc74c613ba0cefe6cb8
   min-height: 100vh;
 }
 
 .topbar {
-<<<<<<< HEAD
   height: 56px;
   padding: 0 24px;
   background: #ffffff;
@@ -1274,7 +1247,6 @@ a {
   display: flex;
   align-items: center;
   justify-content: space-between;
-=======
   height: 62px;
   padding: 0 27px;
   background: var(--white);
@@ -1282,13 +1254,11 @@ a {
   display: flex;
   justify-content: space-between;
   align-items: center;
->>>>>>> cbbca8ab3dde6531fbebabc74c613ba0cefe6cb8
 }
 
 .topbar-right {
   display: flex;
   align-items: center;
-<<<<<<< HEAD
   gap: 16px;
 }
 
@@ -1344,7 +1314,6 @@ a {
   align-items: center;
   justify-content: center;
   font-size: 12px;
-=======
   gap: 10px;
 }
 
@@ -1447,12 +1416,10 @@ a {
 
 .breadcrumb b {
   color: var(--blue);
->>>>>>> cbbca8ab3dde6531fbebabc74c613ba0cefe6cb8
 }
 
 .page-heading h1 {
   margin: 0;
-<<<<<<< HEAD
   font-size: 20px;
   font-weight: 800;
   color: #131b2e;
@@ -1510,8 +1477,8 @@ a {
 
 /* =========================
    STATS
-========================= */
 
+*/
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -1598,8 +1565,8 @@ a {
 
 /* =========================
    ORDER TABS
-========================= */
 
+*/
 .tabs-card {
   min-height: 52px;
   padding: 7px;
@@ -1640,8 +1607,8 @@ a {
 
 /* =========================
    FILTER
-========================= */
 
+*/
 .filter-card {
   padding: 9px;
   background: white;
@@ -1679,8 +1646,8 @@ a {
 
 /* =========================
    ORDERS TABLE
-========================= */
 
+*/
 .orders-card {
   background: white;
   border: 1px solid #e8ebf0;
@@ -1762,7 +1729,6 @@ a {
   border-radius: 7px;
   background: #edf2ff;
   color: #0052ff;
-=======
   color: var(--blue);
   font-size: 24px;
   line-height: 1.2;
@@ -2413,13 +2379,11 @@ a {
   height: 31px;
   flex-shrink: 0;
   border-radius: 8px;
->>>>>>> cbbca8ab3dde6531fbebabc74c613ba0cefe6cb8
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-<<<<<<< HEAD
 .billing span {
   display: inline-block;
   margin-top: 5px;
@@ -2538,8 +2502,8 @@ a {
 
 /* =========================
    FINANCE
-========================= */
 
+*/
 .finance-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.75fr) minmax(260px, 0.9fr);
@@ -2775,8 +2739,8 @@ a {
 
 /* =========================
    SIDE PANELS
-========================= */
 
+*/
 .side-panel,
 .courier-panel {
   padding: 15px;
@@ -2929,8 +2893,8 @@ a {
 
 /* =========================
    LATEST ORDERS
-========================= */
 
+*/
 .latest-panel {
   margin-top: 16px;
   padding: 16px;
@@ -3069,8 +3033,8 @@ a {
 
 /* =========================
    RESPONSIVE
-========================= */
 
+*/
 @media (max-width: 1100px) {
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -3117,7 +3081,9 @@ a {
   .category-grid,
   .chart-summary {
     grid-template-columns: 1fr;
-=======
+  }
+}
+
 .restock-icon.cyan {
   background: var(--cyan-light);
   color: var(--cyan);
@@ -3203,7 +3169,7 @@ a {
 
 .empty-status-card {
   padding-bottom: 10px;
- main
+
 }
 
 .blue-dot {
@@ -3439,7 +3405,6 @@ a {
 
   .date-button {
     display: none;
->>>>>>> cbbca8ab3dde6531fbebabc74c613ba0cefe6cb8
   }
 
   .page-heading {
@@ -3447,7 +3412,6 @@ a {
     gap: 15px;
   }
 
-<<<<<<< HEAD
   .orders-card,
   .latest-panel {
     overflow-x: auto;
@@ -3458,7 +3422,8 @@ a {
   .latest-head,
   .latest-row {
     min-width: 1000px;
-=======
+  }
+
   .stat-grid {
     grid-template-columns: 1fr;
   }
@@ -3490,6 +3455,105 @@ a {
     align-items: flex-start;
     gap: 5px;
     padding: 9px 13px;
->>>>>>> cbbca8ab3dde6531fbebabc74c613ba0cefe6cb8
+
   }
 }
+/* GALONKU TAILWIND UTILITY FALLBACK
+   Fallback styling for environments where Tailwind utilities are not generated.
+   Safe to keep alongside the existing GalonKu styles. */
+[class~="min-h-screen"] { min-height: 100vh; }
+[class~="bg-[#f8fafc]"] { background-color: #f8fafc; }
+[class~="bg-white"] { background-color: #fff; }
+[class~="bg-slate-50"] { background-color: #f8fafc; }
+[class~="bg-slate-50/50"] { background-color: rgba(248,250,252,.5); }
+[class~="bg-blue-600"] { background-color: #2563eb; }
+[class~="text-white"] { color: #fff; }
+[class~="text-slate-900"] { color: #0f172a; }
+[class~="text-slate-800"] { color: #1e293b; }
+[class~="text-slate-700"] { color: #334155; }
+[class~="text-slate-600"] { color: #475569; }
+[class~="text-slate-500"] { color: #64748b; }
+[class~="text-slate-400"] { color: #94a3b8; }
+[class~="text-blue-600"] { color: #2563eb; }
+[class~="text-xs"] { font-size: .75rem; line-height: 1rem; }
+[class~="text-base"] { font-size: 1rem; line-height: 1.5rem; }
+[class~="text-2xl"] { font-size: 1.5rem; line-height: 2rem; }
+[class~="text-[10px]"] { font-size: 10px; line-height: 1.4; }
+[class~="font-semibold"] { font-weight: 600; }
+[class~="font-bold"] { font-weight: 700; }
+[class~="font-extrabold"] { font-weight: 800; }
+[class~="tracking-wider"] { letter-spacing: .05em; }
+[class~="flex"] { display: flex; }
+[class~="grid"] { display: grid; }
+[class~="relative"] { position: relative; }
+[class~="absolute"] { position: absolute; }
+[class~="items-center"] { align-items: center; }
+[class~="items-baseline"] { align-items: baseline; }
+[class~="justify-between"] { justify-content: space-between; }
+[class~="justify-center"] { justify-content: center; }
+[class~="gap-1"] { gap: .25rem; }
+[class~="gap-2"] { gap: .5rem; }
+[class~="gap-3"] { gap: .75rem; }
+[class~="gap-4"] { gap: 1rem; }
+[class~="grid-cols-1"] { grid-template-columns: repeat(1,minmax(0,1fr)); }
+[class~="w-full"] { width: 100%; }
+[class~="w-64"] { width: 16rem; }
+[class~="w-3"] { width: .75rem; }
+[class~="w-3.5"] { width: .875rem; }
+[class~="w-4"] { width: 1rem; }
+[class~="w-5"] { width: 1.25rem; }
+[class~="w-6"] { width: 1.5rem; }
+[class~="h-3"] { height: .75rem; }
+[class~="h-3.5"] { height: .875rem; }
+[class~="h-4"] { height: 1rem; }
+[class~="h-5"] { height: 1.25rem; }
+[class~="h-6"] { height: 1.5rem; }
+[class~="p-1"] { padding: .25rem; }
+[class~="p-3"] { padding: .75rem; }
+[class~="p-4"] { padding: 1rem; }
+[class~="p-6"] { padding: 1.5rem; }
+[class~="px-3"] { padding-left: .75rem; padding-right: .75rem; }
+[class~="px-4"] { padding-left: 1rem; padding-right: 1rem; }
+[class~="py-1"] { padding-top: .25rem; padding-bottom: .25rem; }
+[class~="py-1.5"] { padding-top: .375rem; padding-bottom: .375rem; }
+[class~="py-2"] { padding-top: .5rem; padding-bottom: .5rem; }
+[class~="py-3"] { padding-top: .75rem; padding-bottom: .75rem; }
+[class~="pl-9"] { padding-left: 2.25rem; }
+[class~="pr-4"] { padding-right: 1rem; }
+[class~="mb-1"] { margin-bottom: .25rem; }
+[class~="mb-6"] { margin-bottom: 1.5rem; }
+[class~="left-3"] { left: .75rem; }
+[class~="top-1/2"] { top: 50%; }
+[class~="-translate-y-1/2"] { transform: translateY(-50%); }
+[class~="border"] { border-width: 1px; border-style: solid; }
+[class~="border-b"] { border-bottom-width: 1px; border-bottom-style: solid; }
+[class~="border-slate-100"] { border-color: #f1f5f9; }
+[class~="border-slate-200"] { border-color: #e2e8f0; }
+[class~="border-collapse"] { border-collapse: collapse; }
+[class~="divide-y"] > :not([hidden]) ~ :not([hidden]) { border-top: 1px solid #f1f5f9; }
+[class~="divide-slate-100"] > :not([hidden]) ~ :not([hidden]) { border-color: #f1f5f9; }
+[class~="rounded-lg"] { border-radius: .5rem; }
+[class~="rounded-xl"] { border-radius: .75rem; }
+[class~="shadow-sm"] { box-shadow: 0 1px 2px rgba(15,23,42,.06),0 1px 3px rgba(15,23,42,.08); }
+[class~="overflow-hidden"] { overflow: hidden; }
+[class~="overflow-x-auto"] { overflow-x: auto; }
+[class~="truncate"] { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+[class~="max-w-[150px]"] { max-width: 150px; }
+[class~="text-center"] { text-align: center; }
+[class~="text-left"] { text-align: left; }
+[class~="transition"] { transition: all .15s ease; }
+[class~="hover:bg-blue-700"]:hover { background-color: #1d4ed8; }
+[class~="hover:bg-slate-50/80"]:hover { background-color: rgba(248,250,252,.8); }
+[class~="hover:text-slate-600"]:hover { color: #475569; }
+[class~="focus:outline-none"]:focus { outline: 2px solid transparent; outline-offset: 2px; }
+[class~="focus:ring-2"]:focus { box-shadow: 0 0 0 2px rgba(59,130,246,.35); }
+[class~="focus:ring-blue-500"]:focus { --tw-ring-color: #3b82f6; }
+
+@media (min-width: 768px) {
+  [class~="md:grid-cols-4"] { grid-template-columns: repeat(4,minmax(0,1fr)); }
+}
+
+/* Finishing styles for the Manajemen Pesanan page */
+body { font-family: "Plus Jakarta Sans", Arial, sans-serif; color: #1e293b; background: #f8fafc; }
+button { cursor: pointer; }
+input, button { font: inherit; }
