@@ -1,1003 +1,802 @@
 "use client";
 
-import "./monitoring.css";
+import { useMemo, useState, useRef } from "react";
+import {
+  Bell,
+  CalendarDays,
+  ClipboardList,
+  CreditCard,
+  LayoutDashboard,
+  Menu,
+  Package,
+  Plus,
+  Search,
+  Truck,
+  UserRound,
+  X,
+  LogOut,
+  Clock,
+  Store,
+  Compass,
+  ListFilter,
+  Map,
+  Phone,
+  RotateCw,
+  Users,
+} from "lucide-react";
 
-type IconProps = {
-  size?: number;
-};
-
-const DashboardIcon = ({ size = 18 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <rect x="4" y="4" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.8" />
-    <rect x="14" y="4" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.8" />
-    <rect x="4" y="14" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.8" />
-    <rect x="14" y="14" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.8" />
-  </svg>
-);
-
-const ClipboardIcon = ({ size = 18 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <rect x="5" y="4" width="14" height="17" rx="2" stroke="currentColor" strokeWidth="1.8" />
-    <path
-      d="M9 4V3.5C9 2.95 9.45 2.5 10 2.5H14C14.55 2.5 15 2.95 15 3.5V4"
-      stroke="currentColor"
-      strokeWidth="1.8"
-    />
-    <path
-      d="M9 10H15M9 14H15M9 18H13"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-    />
-  </svg>
-);
-
-const BoxIcon = ({ size = 18 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <path
-      d="M4 7.5L12 3L20 7.5V17L12 21L4 17V7.5Z"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M4 7.5L12 12L20 7.5M12 12V21"
-      stroke="currentColor"
-      strokeWidth="1.8"
-    />
-  </svg>
-);
-
-const TruckIcon = ({ size = 18 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <path
-      d="M3 6H14V17H3V6Z"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M14 10H18L21 13V17H14V10Z"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinejoin="round"
-    />
-    <circle cx="7" cy="18" r="2" stroke="currentColor" strokeWidth="1.8" />
-    <circle cx="17" cy="18" r="2" stroke="currentColor" strokeWidth="1.8" />
-  </svg>
-);
-
-const WalletIcon = ({ size = 18 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <path
-      d="M4 6.5C4 5.4 4.9 4.5 6 4.5H19C20.1 4.5 21 5.4 21 6.5V18C21 19.1 20.1 20 19 20H6C4.9 20 4 19.1 4 18V6.5Z"
-      stroke="currentColor"
-      strokeWidth="1.8"
-    />
-    <path d="M4 8H21" stroke="currentColor" strokeWidth="1.8" />
-    <path
-      d="M16 14H19"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-    />
-  </svg>
-);
-
-const SearchIcon = ({ size = 17 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="1.8" />
-    <path
-      d="M16 16L21 21"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-    />
-  </svg>
-);
-
-const BellIcon = ({ size = 19 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <path
-      d="M18 9C18 5.7 15.8 3.5 12 3.5C8.2 3.5 6 5.7 6 9C6 15 4 16 4 17H20C20 16 18 15 18 9Z"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M10 20C10.5 20.7 11.2 21 12 21C12.8 21 13.5 20.7 14 20"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-    />
-  </svg>
-);
-
-const PlusIcon = ({ size = 17 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <path
-      d="M12 5V19M5 12H19"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-    />
-  </svg>
-);
-
-const UsersIcon = ({ size = 22 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <circle cx="9" cy="8" r="3" stroke="currentColor" strokeWidth="1.8" />
-    <path
-      d="M3.5 19C3.5 15.9 5.8 14 9 14C12.2 14 14.5 15.9 14.5 19"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-    />
-    <circle cx="17" cy="9" r="2.3" stroke="currentColor" strokeWidth="1.7" />
-    <path
-      d="M16 14C18.6 14.1 20.5 15.7 20.5 18"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-    />
-  </svg>
-);
-
-const BikeIcon = ({ size = 22 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <circle cx="6" cy="17" r="3" stroke="currentColor" strokeWidth="1.8" />
-    <circle cx="18" cy="17" r="3" stroke="currentColor" strokeWidth="1.8" />
-    <path
-      d="M6 17L9 10H13L18 17M9 10L7.5 7H5M13 10L15 7H18"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const StoreIcon = ({ size = 22 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <path d="M4 10V20H20V10" stroke="currentColor" strokeWidth="1.8" />
-    <path
-      d="M3 10L5 4H19L21 10"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M4 10C4.8 11.3 6 12 7.5 12C9 12 10.2 11.3 11 10C11.8 11.3 13 12 14.5 12C16 12 17.2 11.3 18 10C18.8 11.3 20 12 21 10"
-      stroke="currentColor"
-      strokeWidth="1.8"
-    />
-    <path d="M9 20V15H15V20" stroke="currentColor" strokeWidth="1.8" />
-  </svg>
-);
-
-const ClockIcon = ({ size = 22 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.8" />
-    <path
-      d="M12 7V12L15.5 14"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-    />
-  </svg>
-);
-
-const MapIcon = ({ size = 16 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <path
-      d="M9 18L3.5 20V6L9 4L15 6L20.5 4V18L15 20L9 18Z"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M9 4V18M15 6V20"
-      stroke="currentColor"
-      strokeWidth="1.8"
-    />
-  </svg>
-);
-
-const PhoneIcon = ({ size = 15 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <path
-      d="M7 3.5L10 5L8.5 8.5C9.5 10.5 11 12 13 13L16.5 11.5L18 14.5C18.5 15.5 18.1 16.7 17.1 17.3L15.8 18.1C14.9 18.7 13.7 18.7 12.8 18.2C8.4 15.8 5.2 12.6 2.8 8.2C2.3 7.3 2.3 6.1 2.9 5.2L3.7 3.9C4.3 2.9 5.5 2.5 6.5 3L7 3.5Z"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const UserPlusIcon = ({ size = 18 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <circle cx="9" cy="8" r="3" stroke="currentColor" strokeWidth="1.8" />
-    <path
-      d="M3.5 19C3.5 15.9 5.8 14 9 14C12.2 14 14.5 15.9 14.5 19"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-    />
-    <path
-      d="M18 8V14M15 11H21"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-    />
-  </svg>
-);
-
-const LogoutIcon = ({ size = 18 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <path
-      d="M10 4H5C4.4 4 4 4.4 4 5V19C4 19.6 4.4 20 5 20H10"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-    />
-    <path
-      d="M14 8L18 12L14 16M18 12H8"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const RouteIcon = ({ size = 18 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <circle cx="6" cy="18" r="2" stroke="currentColor" strokeWidth="1.8" />
-    <circle cx="18" cy="6" r="2" stroke="currentColor" strokeWidth="1.8" />
-    <path
-      d="M8 18C13 18 10 11 15 8"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-    />
-  </svg>
-);
-
-const PackageIcon = ({ size = 15 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <path
-      d="M4 7L12 3L20 7V17L12 21L4 17V7Z"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M4 7L12 11L20 7M12 11V21"
-      stroke="currentColor"
-      strokeWidth="1.7"
-    />
-  </svg>
-);
-
-const MenuIcon = ({ size = 18 }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <path
-      d="M5 7H19M5 12H19M5 17H19"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-    />
-  </svg>
-);
-
-type Driver = {
+type Courier = {
+  id: string;
   name: string;
   vehicle: string;
   plate: string;
-  status: "Jalan" | "Standby";
-  order?: string;
-  task?: string;
-  departure?: string;
-  estimate?: string;
+  status: "Di Jalan" | "Standby Depo";
+  orderId?: string;
+  taskDesc?: string;
+  depoNote?: string;
+  departureTime?: string;
+  eta?: string;
 };
 
-const drivers: Driver[] = [
+type Delivery = {
+  id: string;
+  time: string;
+  courierName: string;
+  courierPlate: string;
+  avatarInitial: string;
+  address: string;
+  recipient: string;
+  note?: string;
+  items: string;
+  progressPercent: number;
+  progressText: string;
+  distanceText: string;
+  status: "Diantar" | "Diproses";
+};
+
+const menuItems = [
+  { label: "Dashboard", icon: LayoutDashboard, active: false },
+  { label: "Manajemen Pesanan", icon: ClipboardList, active: false },
+  { label: "Produk & Stok", icon: Package, active: false },
+  { label: "Monitoring Pengantaran", icon: Truck, active: true },
+  { label: "Laporan Keuangan", icon: CreditCard, active: false },
+];
+
+const initialCouriers: Courier[] = [
   {
+    id: "c1",
     name: "Pak Budi Santoso",
     vehicle: "Honda Beat",
     plate: "B 4120 SZX",
-    status: "Jalan",
-    order: "#ORD-8821",
-    task: "Membawa 3 Galon Aqua ke Jl. Mawar No. 12, Kebayoran Gambir",
-    departure: "Berangkat 10:45",
-    estimate: "Est. 6 menit lagi",
+    status: "Di Jalan",
+    orderId: "#ORD-8821",
+    taskDesc: "Membawa 3 Galon Aqua ke Jl. Mawar No. 12, Kebayoran Lama",
+    departureTime: "10:45",
+    eta: "Est. 6 menit lagi",
   },
   {
+    id: "c2",
     name: "Mas Doni Wijaya",
     vehicle: "Honda Vario",
-    plate: "B 6891 PQR",
-    status: "Jalan",
-    order: "#ORD-8822",
-    task: "Membawa 2 Galon Le Minerale ke Gandaria Heights",
-    departure: "Berangkat 10:55",
-    estimate: "Est. 12 menit lagi",
+    plate: "B 6891 FQR",
+    status: "Di Jalan",
+    orderId: "#ORD-8822",
+    taskDesc: "Membawa 2 Galon Le Minerale ke Gandaria Heights Lt. 08",
+    departureTime: "10:55",
+    eta: "Est. 12 menit lagi",
   },
   {
+    id: "c3",
     name: "Pak Agus Prasetyo",
     vehicle: "Honda Scoopy",
     plate: "B 3310 KLM",
-    status: "Standby",
+    status: "Standby Depo",
+    depoNote:
+      "Telah menyelesaikan 7 pengantaran pagi. Siap menerima penugasan kloter berikutnya.",
   },
   {
+    id: "c4",
     name: "Hendra Kurnia",
     vehicle: "Honda Revo",
     plate: "B 5502 TYA",
-    status: "Jalan",
-    order: "#ORD-8824",
-    task: "Membawa 4 Galon (2 Aqua + 2 Club) ke Apartemen Gandaria Lt. 14",
-    departure: "Berangkat 11:05",
-    estimate: "Est. 15 menit lagi",
+    status: "Di Jalan",
+    orderId: "#ORD-8824",
+    taskDesc:
+      "Membawa 4 Galon (2 Aqua + 2 Cleo) ke Apartemen Gandaria Lt. 14",
+    departureTime: "11:05",
+    eta: "Est. 15 menit lagi",
   },
 ];
 
-const orders = [
+const initialDeliveries: Delivery[] = [
   {
     id: "#ORD-8821",
     time: "10:42 WIB",
-    driver: "Pak Budi",
-    plate: "B 4120 SZX",
+    courierName: "Pak Budi",
+    courierPlate: "B 4120 SZX",
+    avatarInitial: "P",
     address: "Jl. Mawar No. 12",
-    phone: "Feli Utriani (0812–9988–xxx)",
+    recipient: "Ibu Fitriani (0812-9958-xxx)",
     note: "Patokan: Sebelah Pos RW 03",
-    amount: "3 Galon Aqua",
-    progress: 75,
-    estimate: "6 mnt lagi",
-    distance: "Jarak: 600m ke titik kirim",
+    items: "3 Galon Aqua",
+    progressPercent: 75,
+    progressText: "75% Selesai 6 mnt lagi",
+    distanceText: "Jarak: 600m ke titik kirim",
     status: "Diantar",
   },
   {
     id: "#ORD-8822",
     time: "10:51 WIB",
-    driver: "Mas Doni",
-    plate: "B 6891 PQR",
+    courierName: "Mas Doni",
+    courierPlate: "B 6891 FQR",
+    avatarInitial: "M",
     address: "Gandaria Heights Lt. 08 #8B",
-    phone: "Bpk. Ronald (0817–2345–xxxx)",
+    recipient: "Bpk. Ronald (0817-2345-xxx)",
     note: "Titip di Lobby Resepsionis",
-    amount: "2 Galon Le Minerale",
-    progress: 45,
-    estimate: "12 mnt lagi",
-    distance: "Jarak: 1,8 KM (Lampu Merah Kyi Maja)",
+    items: "2 Galon Le Minerale",
+    progressPercent: 45,
+    progressText: "45% Selesai 12 mnt lagi",
+    distanceText: "Jarak: 1.8 KM (Lampu Merah Kyai Maja)",
     status: "Diantar",
   },
   {
     id: "#ORD-8824",
     time: "11:02 WIB",
-    driver: "Hendra K.",
-    plate: "B 5502 TYA",
-    address: "Apartemen Ipan Residences Lt. 14",
-    phone: "Sdr. Kevin Hadi (0852–1100–xxxx)",
+    courierName: "Hendra K.",
+    courierPlate: "B 5502 TYA",
+    avatarInitial: "H",
+    address: "Apartemen 1Park Residences Lt. 14",
+    recipient: "Sdr. Kevin Hadi (0852-1100-xxx)",
     note: "Bawa Troli Depo",
-    amount: "4 Galon Campur",
-    progress: 25,
-    estimate: "15 mnt lagi",
-    distance: "Jarak: 2,7 KM (Baru keluar Depo)",
+    items: "4 Galon Campur",
+    progressPercent: 25,
+    progressText: "25% Selesai 15 mnt lagi",
+    distanceText: "Jarak: 2.7 KM (Baru keluar Depo)",
     status: "Diantar",
   },
   {
     id: "#ORD-8825",
     time: "11:15 WIB",
-    driver: "Rian Pratama",
-    plate: "B 3912 BKN",
+    courierName: "Rian Pratama",
+    courierPlate: "B 3912 BKN",
+    avatarInitial: "R",
     address: "Komp. Lemigas Blok B4",
-    phone: "Ibu Maya (0811–9441–xxxx)",
+    recipient: "Ibu Maya (0811-9481-xxx)",
     note: "Bayar COD Rp 54.000",
-    amount: "3 Galon Aqua",
-    progress: 0,
-    estimate: "Depo JKT-04",
-    distance: "Persiapan berangkat",
+    items: "3 Galon Aqua",
+    progressPercent: 10,
+    progressText: "Sedang Muat Depo JKT-04",
+    distanceText: "Persiapan berangkat",
     status: "Diproses",
   },
 ];
 
 export default function MonitoringPage() {
+  const [mobileSidebar, setMobileSidebar] = useState(false);
+  const [search, setSearch] = useState("");
+  const [selectedDate, setSelectedDate] = useState("2026-05-24");
+  const [activeFilter, setActiveFilter] = useState<
+    "Semua" | "Di Jalan" | "Standby Depo" | "Riwayat"
+  >("Semua");
+
+  const dateInputRef = useRef<HTMLInputElement>(null);
+
+  const formattedDateText = useMemo(() => {
+    if (!selectedDate) return "Hari ini, 24 Mei";
+    const d = new Date(selectedDate);
+    if (isNaN(d.getTime())) return "Hari ini, 24 Mei";
+
+    const months = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "Mei",
+      "Jun",
+      "Jul",
+      "Agu",
+      "Sep",
+      "Okt",
+      "Nov",
+      "Des",
+    ];
+    return `Hari ini, ${d.getDate()} ${months[d.getMonth()]}`;
+  }, [selectedDate]);
+
+  const handleOpenCalendar = () => {
+  const input = dateInputRef.current;
+  if (!input) return;
+
+  if (typeof (input as any).showPicker === "function") {
+    (input as any).showPicker();
+  } else {
+    input.click();
+  }
+};
+
+  const filteredCouriers = useMemo(() => {
+    return initialCouriers.filter((c) => {
+      const matchFilter =
+        activeFilter === "Semua" ||
+        (activeFilter === "Di Jalan" && c.status === "Di Jalan") ||
+        (activeFilter === "Standby Depo" && c.status === "Standby Depo") ||
+        activeFilter === "Riwayat";
+
+      const query = search.toLowerCase().trim();
+      const matchSearch =
+        !query ||
+        c.name.toLowerCase().includes(query) ||
+        c.plate.toLowerCase().includes(query) ||
+        (c.orderId && c.orderId.toLowerCase().includes(query));
+
+      return matchFilter && matchSearch;
+    });
+  }, [activeFilter, search]);
+
+  const filteredDeliveries = useMemo(() => {
+    return initialDeliveries.filter((d) => {
+      const matchFilter =
+        activeFilter === "Semua" ||
+        (activeFilter === "Di Jalan" && d.status === "Diantar") ||
+        (activeFilter === "Standby Depo" && d.status === "Diproses") ||
+        activeFilter === "Riwayat";
+
+      const query = search.toLowerCase().trim();
+      const matchSearch =
+        !query ||
+        d.id.toLowerCase().includes(query) ||
+        d.courierName.toLowerCase().includes(query) ||
+        d.address.toLowerCase().includes(query);
+
+      return matchFilter && matchSearch;
+    });
+  }, [activeFilter, search]);
+
   return (
-    <main className="monitoring-page">
+    <div className="min-h-screen bg-[#F7F8FC] text-[#131B2E]">
+      {/* MOBILE OVERLAY */}
+      {mobileSidebar && (
+        <button
+          type="button"
+          aria-label="Tutup menu"
+          className="fixed inset-0 z-40 bg-black/20 lg:hidden"
+          onClick={() => setMobileSidebar(false)}
+        />
+      )}
 
-      {/* ================= SIDEBAR ================= */}
-      <aside className="sidebar">
-
-        <div className="brand">
-          <div className="brand-title">
-            GalonKu<span>Admin</span>
+      {/* SIDEBAR */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex w-[248px] flex-col border-r border-[#E9ECF4] bg-white transition-transform duration-300 lg:translate-x-0 ${
+          mobileSidebar ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="flex h-[72px] items-center border-b border-[#EEF0F5] px-6">
+          <div>
+            <div className="text-[18px] font-extrabold tracking-[-0.04em] text-[#0052FF]">
+              GalonKu Admin
+            </div>
+            <div className="mt-0.5 text-[10px] font-medium text-[#6F7890]">
+              Portal Manajemen &amp; Operasional
+            </div>
           </div>
 
-          <div className="brand-subtitle">
-            Portal Manajemen &amp; Operasional
-          </div>
+          <button
+            type="button"
+            aria-label="Tutup menu"
+            className="ml-auto rounded-lg p-2 text-[#6F7890] hover:bg-[#F3F5FA] lg:hidden"
+            onClick={() => setMobileSidebar(false)}
+          >
+            <X size={18} />
+          </button>
         </div>
 
-        <div className="menu-heading">
-          MENU UTAMA
+        <div className="flex-1 overflow-y-auto px-4 py-6">
+          <p className="px-3 text-[10px] font-extrabold uppercase tracking-[0.08em] text-[#737C91]">
+            Menu Utama
+          </p>
+
+          <nav className="mt-4 space-y-1.5">
+            {menuItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.label}
+                  type="button"
+                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[14px] font-semibold transition ${
+                    item.active
+                      ? "bg-[#0052FF] text-white shadow-[0_8px_18px_rgba(0,82,255,0.18)]"
+                      : "text-[#293246] hover:bg-[#F1F4FB]"
+                  }`}
+                >
+                  <Icon size={18} strokeWidth={1.8} />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
         </div>
 
-        <nav className="navigation">
+        <div className="border-t border-[#EEF0F5] p-4">
+          <div className="flex items-center gap-3 rounded-xl bg-[#F1F3FF] px-3 py-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#0052FF] text-white">
+              <UserRound size={18} />
+            </div>
 
-          <button className="nav-item">
-            <DashboardIcon />
-            <span>Dashboard</span>
-          </button>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[12px] font-bold text-[#131B2E]">
+                Budi Santoso
+              </p>
+              <p className="text-[10px] text-[#687289]">Super Admin</p>
+            </div>
 
-          <button className="nav-item">
-            <ClipboardIcon />
-            <span>Manajemen Pesanan</span>
-          </button>
-
-          <button className="nav-item">
-            <BoxIcon />
-            <span>Produk &amp; Stok</span>
-          </button>
-
-          <button className="nav-item active">
-            <TruckIcon />
-            <span>Monitoring Pengantaran</span>
-          </button>
-
-          <button className="nav-item">
-            <WalletIcon />
-            <span>Laporan Keuangan</span>
-          </button>
-
-        </nav>
-
-        <div className="admin-profile">
-
-          <div className="profile-avatar">
-            BS
-            <span />
+            <button
+              type="button"
+              aria-label="Keluar"
+              className="rounded-lg p-1.5 text-[#536079] hover:bg-white"
+            >
+              <LogOut size={17} />
+            </button>
           </div>
-
-          <div className="profile-text">
-            <strong>Budi Santoso</strong>
-            <small>Super Admin</small>
-          </div>
-
-          <button className="logout-button">
-            <LogoutIcon />
-          </button>
-
         </div>
-
       </aside>
 
-      {/* ================= CONTENT ================= */}
-      <section className="content-area">
+      {/* MAIN CONTAINER */}
+      <div className="lg:pl-[248px]">
+        {/* TOP HEADER */}
+        <header className="sticky top-0 z-30 flex h-[72px] items-center justify-between border-b border-[#ECEEF4] bg-white/95 px-4 backdrop-blur md:px-6">
+          <button
+            type="button"
+            aria-label="Buka menu"
+            className="rounded-xl p-2 text-[#374258] hover:bg-[#F3F5FA] lg:hidden"
+            onClick={() => setMobileSidebar(true)}
+          >
+            <Menu size={22} />
+          </button>
 
-        {/* HEADER */}
-        <header className="topbar">
+          <div className="ml-auto flex items-center gap-2 md:gap-3">
+            <div className="relative hidden w-[270px] md:block">
+              <Search
+                size={17}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7A849A]"
+              />
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Cari pesanan, resi, kurir..."
+                className="h-11 w-full rounded-xl border border-transparent bg-[#F2F1FC] pl-10 pr-4 text-[12px] text-[#131B2E] outline-none transition placeholder:text-[#8A91A3] focus:border-[#0052FF] focus:bg-white"
+              />
+            </div>
 
-          <div className="topbar-space" />
+            {/* TOMBOL KALENDER BISA DIKLIK */}
+            <button
+              type="button"
+              onClick={handleOpenCalendar}
+              className="hidden h-11 items-center gap-2 rounded-xl bg-[#F2F1FC] px-4 text-[12px] font-bold text-[#293246] transition hover:bg-[#E8EBFA] sm:flex relative cursor-pointer"
+            >
+              <CalendarDays size={16} className="text-[#0052FF]" />
+              <span>{formattedDateText}</span>
+              <input
+                ref={dateInputRef}
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="sr-only"
+              />
+            </button>
 
-          <div className="global-search">
-            <SearchIcon size={16} />
-            <input
-              type="text"
-              placeholder="Cari pesanan, resi, kurir..."
-            />
+            <button
+              type="button"
+              aria-label="Notifikasi"
+              className="relative flex h-11 w-11 items-center justify-center rounded-xl hover:bg-[#F3F5FA]"
+            >
+              <Bell size={20} />
+              <span className="absolute right-2.5 top-2 h-2 w-2 rounded-full bg-[#D93636]" />
+            </button>
+
+            <button
+              type="button"
+              className="hidden h-11 items-center gap-2 rounded-xl bg-[#0052FF] px-4 text-[12px] font-bold text-white shadow-[0_6px_14px_rgba(0,82,255,0.16)] transition hover:bg-[#0047DE] sm:flex"
+            >
+              <Plus size={17} />
+              Buat Pesanan
+            </button>
           </div>
-
-          <button className="date-button">
-            <span className="calendar-symbol">▣</span>
-            Hari ini, 24 Mei
-          </button>
-
-          <button className="notification">
-            <BellIcon />
-            <i />
-          </button>
-
-          <button className="create-order">
-            <PlusIcon />
-            Buat Pesanan
-          </button>
-
         </header>
 
-        {/* PAGE INTRO */}
-        <section className="page-intro">
-
-          <div className="intro-left">
-
-            <div className="eyebrow">
-              <TruckIcon size={14} />
-              FLEET LOGISTICS &amp; LIVE DISPATCH
-            </div>
-
-            <h1>
-              Monitoring Pengantaran
-            </h1>
-
-            <p>
-              Pelacakan armada kurir motor, status pengiriman
-              pesanan, dan efisiensi rute depo secara langsung.
-            </p>
-
-          </div>
-
-          <div className="intro-actions">
-
-            <div className="view-controls">
-
-              <button className="view-control active">
-                <ClipboardIcon size={14} />
-                Daftar
-              </button>
-
-              <button className="view-control">
-                <MapIcon size={14} />
-                Live Peta
-              </button>
-
-              <button className="refresh">
-                ↻
-              </button>
-
-            </div>
-
-            <button className="add-driver">
-              <UserPlusIcon />
-              Tambah Armada Kurir
-            </button>
-
-          </div>
-
-        </section>
-
-        {/* ================= STATISTICS ================= */}
-        <section className="statistics">
-
-          <div className="stat-card">
-
-            <div className="stat-content">
-              <span className="stat-label">
-                Total Armada
-              </span>
-
-              <div className="stat-number">
-                6
-                <small>Kurir Motor</small>
-              </div>
-
-              <div className="stat-description blue">
-                <span>✣</span>
-                Kapasitas 100% Siaga
-              </div>
-            </div>
-
-            <div className="stat-icon blue">
-              <UsersIcon />
-            </div>
-
-          </div>
-
-          <div className="stat-card">
-
-            <div className="stat-content">
-              <span className="stat-label">
-                Sedang Mengantar
-              </span>
-
-              <div className="stat-number">
-                4
-                <small>Kurir di Jalan</small>
-              </div>
-
-              <div className="stat-description cyan">
-                <span>●</span>
-                11 Galon Sedang Dikirim
-              </div>
-            </div>
-
-            <div className="stat-icon cyan">
-              <BikeIcon />
-            </div>
-
-          </div>
-
-          <div className="stat-card">
-
-            <div className="stat-content">
-              <span className="stat-label">
-                Standby Depo
-              </span>
-
-              <div className="stat-number">
-                2
-                <small>Siap Muat Kirim</small>
-              </div>
-
-              <div className="stat-description green">
-                <span>◷</span>
-                Idle &lt; 8 Menit
-              </div>
-            </div>
-
-            <div className="stat-icon green">
-              <StoreIcon />
-            </div>
-
-          </div>
-
-          <div className="stat-card">
-
-            <div className="stat-content">
-              <span className="stat-label">
-                Rata-rata Waktu
-              </span>
-
-              <div className="stat-number">
-                18
-                <small>Menit / Pesanan</small>
-              </div>
-
-              <div className="stat-description blue">
-                <span>↗</span>
-                3.2 mnt lebih cepat dr SLA
-              </div>
-            </div>
-
-            <div className="stat-icon purple">
-              <ClockIcon />
-            </div>
-
-          </div>
-
-        </section>
-
-        {/* ================= FILTER ================= */}
-        <section className="filter-bar">
-
-          <div className="tabs">
-
-            <button className="tab active">
-              Semua Armada (6)
-            </button>
-
-            <button className="tab">
-              Sedang Jalan (4)
-            </button>
-
-            <button className="tab">
-              Standby Depo (2)
-            </button>
-
-            <button className="tab">
-              Riwayat Hari Ini
-            </button>
-
-          </div>
-
-          <div className="driver-search">
-            <SearchIcon size={15} />
-
-            <input
-              type="text"
-              placeholder="Cari kurir, plat, order..."
-            />
-          </div>
-
-        </section>
-
-        {/* ================= LOWER CONTENT ================= */}
-        <section className="dashboard-grid">
-
-          {/* KURIR */}
-          <div className="driver-column">
-
-            <div className="column-heading">
-
-              <div className="column-title">
-                <ClipboardIcon size={17} />
-                Kurir Lapangan
-              </div>
-
-              <span className="moving-badge">
-                4 / 6 Bergerak
-              </span>
-
-            </div>
-
-            <div className="driver-list">
-
-              {drivers.map((driver) => (
-                <div
-                  className="driver-card"
-                  key={driver.name}
-                >
-
-                  <div className="driver-header">
-
-                    <div>
-                      <h3>{driver.name}</h3>
-
-                      <div className="vehicle">
-                        <span className="vehicle-dot" />
-                        {driver.vehicle} • {driver.plate}
-                      </div>
-                    </div>
-
-                    <span
-                      className={
-                        driver.status === "Jalan"
-                          ? "driver-status jalan"
-                          : "driver-status standby"
-                      }
-                    >
-                      <span>●</span>
-
-                      {driver.status === "Jalan"
-                        ? "Di Jalan"
-                        : "Standby Depo"}
-                    </span>
-
-                  </div>
-
-                  {driver.status === "Jalan" ? (
-                    <>
-                      <div className="task-card">
-
-                        <div className="task-top">
-                          <span>Tugas Saat Ini</span>
-                          <strong>{driver.order}</strong>
-                        </div>
-
-                        <p>
-                          {driver.task}
-                        </p>
-
-                        <div className="task-progress">
-                          <div />
-                        </div>
-
-                        <div className="task-time">
-                          <span>{driver.departure}</span>
-                          <strong>{driver.estimate}</strong>
-                        </div>
-
-                      </div>
-
-                      <div className="driver-buttons">
-
-                        <button className="contact">
-                          <PhoneIcon />
-                          Hubungi
-                        </button>
-
-                        <button className="track">
-                          <MapIcon />
-                          Pantau Rute
-                        </button>
-
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="standby-card">
-
-                        <span>
-                          Status Depo
-                        </span>
-
-                        <strong>
-                          Siap Antar Kloter Baru
-                        </strong>
-
-                        <p>
-                          Telah menyelesaikan 7 pengantaran pagi.
-                          Siap menerima penugasan kloter berikutnya.
-                        </p>
-
-                      </div>
-
-                      <button className="assign">
-                        <ClipboardIcon size={14} />
-                        Tugaskan Pesanan Antre
-                      </button>
-                    </>
-                  )}
-
-                </div>
-              ))}
-
-            </div>
-
-          </div>
-
-          {/* TABLE */}
-          <div className="delivery-panel">
-
-            <div className="panel-heading">
-
+        {/* CONTENT AREA */}
+        <main className="mx-auto max-w-[1500px] p-4 md:p-6 space-y-4">
+          {/* SECTION HEADER */}
+          <section className="rounded-2xl border border-[#EEF0F5] bg-white p-5 shadow-[0_2px_10px_rgba(19,27,46,0.02)] md:p-6">
+            <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
               <div>
-                <h2>
-                  <RouteIcon />
-                  Tabel Pengantaran Aktif
-                </h2>
-
-                <p>
-                  Pesanan yang sedang dalam proses pengiriman
-                  oleh kurir depo
+                <div className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.04em] text-[#087D86]">
+                  <Truck size={15} />
+                  Fleet Logistics &amp; Live Dispatch
+                </div>
+                <h1 className="mt-1 text-[22px] font-extrabold tracking-[-0.035em] text-[#131B2E] md:text-[24px]">
+                  Monitoring Pengantaran
+                </h1>
+                <p className="mt-1 text-[11px] text-[#6D768A]">
+                  Pelacakan armada kurir motor, status pengiriman pesanan, dan efisiensi rute depo secara langsung.
                 </p>
               </div>
 
-              <button className="sort">
-                Diurutkan:
-                <strong>
-                  Estimasi SLA Terdekat
-                </strong>
+              {/* ACTION BUTTON GROUP */}
+              <div className="flex flex-col items-end gap-2 shrink-0">
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    className="flex h-9 items-center gap-1.5 rounded-xl bg-[#F0F3FF] px-3 text-[11px] font-bold text-[#0052FF]"
+                  >
+                    <ListFilter size={14} /> Daftar
+                  </button>
+                  <button
+                    type="button"
+                    className="flex h-9 items-center gap-1.5 rounded-xl bg-[#F0F3FF] px-3 text-[11px] font-bold text-[#5A6478] hover:text-[#131B2E]"
+                  >
+
+<Map size={14} />
+Live Peta
+                  </button>
+                  <button
+                    type="button"
+                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F0F3FF] text-[#5A6478] hover:text-[#131B2E]"
+                  >
+                    <RotateCw size={14} />
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  className="flex h-10 items-center gap-2 rounded-xl bg-[#0052FF] px-4 text-[11px] font-bold text-white shadow-[0_4px_12px_rgba(0,82,255,0.18)] transition hover:bg-[#0047DE]"
+                >
+                  <Plus size={15} /> Tambah Armada Kurir
+                </button>
+              </div>
+            </div>
+          </section>
+
+          {/* STAT CARDS */}
+          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-2xl border border-[#EEF0F5] bg-white p-5 flex items-center justify-between">
+              <div>
+                <p className="text-[12px] font-medium text-[#596378]">Total Armada</p>
+                <div className="mt-1 flex items-end gap-1.5">
+                  <span className="text-[22px] font-extrabold text-[#131B2E]">6</span>
+                  <span className="mb-0.5 text-[11px] font-semibold text-[#6C7588]">Kurir Motor</span>
+                </div>
+                <p className="mt-2 text-[10px] font-bold text-[#0052FF]">+ Kapasitas 100% Siaga</p>
+              </div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#EBF2FF] text-[#0052FF]">
+                <Users size={20} />
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-[#EEF0F5] bg-white p-5 flex items-center justify-between">
+              <div>
+                <p className="text-[12px] font-medium text-[#596378]">Sedang Mengantar</p>
+                <div className="mt-1 flex items-end gap-1.5">
+                  <span className="text-[22px] font-extrabold text-[#131B2E]">4</span>
+                  <span className="mb-0.5 text-[11px] font-semibold text-[#6C7588]">Kurir di Jalan</span>
+                </div>
+                <p className="mt-2 text-[10px] font-bold text-[#087D86]">• 11 Galon Sedang Dikirim</p>
+              </div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#DCF8F6] text-[#087D86]">
+                <Truck size={20} />
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-[#EEF0F5] bg-white p-5 flex items-center justify-between">
+              <div>
+                <p className="text-[12px] font-medium text-[#596378]">Standby Depo</p>
+                <div className="mt-1 flex items-end gap-1.5">
+                  <span className="text-[22px] font-extrabold text-[#131B2E]">2</span>
+                  <span className="mb-0.5 text-[11px] font-semibold text-[#6C7588]">Siap Muat Kirim</span>
+                </div>
+                <p className="mt-2 text-[10px] font-bold text-[#16752C]">• Idle &lt; 8 Menit</p>
+              </div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#E2F9E5] text-[#16752C]">
+                <Store size={20} />
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-[#EEF0F5] bg-white p-5 flex items-center justify-between">
+              <div>
+                <p className="text-[12px] font-medium text-[#596378]">Rata-rata Waktu</p>
+                <div className="mt-1 flex items-end gap-1.5">
+                  <span className="text-[22px] font-extrabold text-[#131B2E]">18</span>
+                  <span className="mb-0.5 text-[11px] font-semibold text-[#6C7588]">Menit / Pesanan</span>
+                </div>
+                <p className="mt-2 text-[10px] font-bold text-[#0052FF]">✓ 3.2 mnt lebih cepat dr SLA</p>
+              </div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#EBF2FF] text-[#0052FF]">
+                <Clock size={20} />
+              </div>
+            </div>
+          </section>
+
+          {/* FILTER TAB */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex rounded-xl bg-[#ECEFF8] p-1 text-[11px] font-bold text-[#556075]">
+              <button
+                type="button"
+                onClick={() => setActiveFilter("Semua")}
+                className={`rounded-lg px-4 py-2 transition ${
+                  activeFilter === "Semua"
+                    ? "bg-[#0052FF] text-white shadow-sm"
+                    : "hover:text-[#131B2E]"
+                }`}
+              >
+                Semua Armada (6)
               </button>
-
+              <button
+                type="button"
+                onClick={() => setActiveFilter("Di Jalan")}
+                className={`rounded-lg px-4 py-2 transition ${
+                  activeFilter === "Di Jalan"
+                    ? "bg-[#0052FF] text-white shadow-sm"
+                    : "hover:text-[#131B2E]"
+                }`}
+              >
+                Sedang Jalan (4)
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveFilter("Standby Depo")}
+                className={`rounded-lg px-4 py-2 transition ${
+                  activeFilter === "Standby Depo"
+                    ? "bg-[#0052FF] text-white shadow-sm"
+                    : "hover:text-[#131B2E]"
+                }`}
+              >
+                Standby Depo (2)
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveFilter("Riwayat")}
+                className={`rounded-lg px-4 py-2 transition ${
+                  activeFilter === "Riwayat"
+                    ? "bg-[#0052FF] text-white shadow-sm"
+                    : "hover:text-[#131B2E]"
+                }`}
+              >
+                Riwayat Hari Ini
+              </button>
             </div>
 
-            <div className="table-container">
-
-              <table>
-
-                <thead>
-                  <tr>
-                    <th>NO.<br />ORDER</th>
-                    <th>KURIR &amp;<br />ARMADA</th>
-                    <th>ALAMAT TUJUAN</th>
-                    <th>MUATAN</th>
-                    <th>PROGRESS /<br />ESTIMASI</th>
-                    <th>STATUS</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-
-                  {orders.map((order) => (
-                    <tr key={order.id}>
-
-                      <td>
-                        <div className="order-id">
-                          {order.id}
-                        </div>
-
-                        <div className="order-time">
-                          {order.time}
-                        </div>
-                      </td>
-
-                      <td>
-
-                        <div className="courier-cell">
-
-                          <div className="mini-avatar">
-                            {order.driver.charAt(0)}
-                          </div>
-
-                          <div>
-                            <strong>
-                              {order.driver}
-                            </strong>
-
-                            <span>
-                              {order.plate}
-                            </span>
-                          </div>
-
-                        </div>
-
-                      </td>
-
-                      <td>
-
-                        <div className="address">
-
-                          <strong>
-                            {order.address}
-                          </strong>
-
-                          <span>
-                            {order.phone}
-                          </span>
-
-                          <small>
-                            {order.note}
-                          </small>
-
-                        </div>
-
-                      </td>
-
-                      <td>
-
-                        <span className="package">
-                          <PackageIcon />
-                          {order.amount}
-                        </span>
-
-                      </td>
-
-                      <td>
-
-                        {order.progress > 0 ? (
-                          <div className="progress-cell">
-
-                            <div className="progress-info">
-
-                              <strong>
-                                {order.progress}% Selesai
-                              </strong>
-
-                              <span>
-                                {order.estimate}
-                              </span>
-
-                            </div>
-
-                            <div className="progress-track">
-                              <div
-                                style={{
-                                  width: `${order.progress}%`,
-                                }}
-                              />
-                            </div>
-
-                            <small>
-                              {order.distance}
-                            </small>
-
-                          </div>
-                        ) : (
-                          <div className="loading-cell">
-
-                            <strong>
-                              Sedang Muat
-                            </strong>
-
-                            <div className="loading-track">
-                              <div />
-                            </div>
-
-                            <small>
-                              {order.distance}
-                            </small>
-
-                          </div>
-                        )}
-
-                      </td>
-
-                      <td>
-
-                        <span
-                          className={
-                            order.status === "Diantar"
-                              ? "status delivered"
-                              : "status processing"
-                          }
-                        >
-                          ● {order.status}
-                        </span>
-
-                      </td>
-
-                    </tr>
-                  ))}
-
-                </tbody>
-
-              </table>
-
+            <div className="relative w-full max-w-[260px]">
+              <Search
+                size={15}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7A849A]"
+              />
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Cari kurir, plat, order..."
+                className="h-10 w-full rounded-xl border border-[#E1E5F0] bg-white pl-9 pr-3 text-[11px] outline-none focus:border-[#0052FF]"
+              />
             </div>
-
           </div>
 
-        </section>
+          {/* MAIN CONTENT GRID */}
+          <section className="grid gap-4 xl:grid-cols-12">
+            {/* LEFT: KURIR LAPANGAN */}
+            <div className="xl:col-span-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Truck size={18} className="text-[#0052FF]" />
+                  <h2 className="text-[16px] font-extrabold">
+                    Kurir Lapangan
+                  </h2>
+                </div>
+                <span className="rounded-md bg-[#EBF2FF] px-2 py-0.5 text-[10px] font-bold text-[#0052FF]">
+                  {filteredCouriers.length} Terpilih
+                </span>
+              </div>
 
-      </section>
+              <div className="space-y-3">
+                {filteredCouriers.map((courier) => (
+                  <div
+                    key={courier.id}
+                    className="rounded-2xl border border-[#EEF0F5] bg-white p-4 space-y-3 shadow-sm"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h3 className="text-[14px] font-bold">{courier.name}</h3>
+                        <p className="text-[10px] font-medium text-[#687289]">
+                          {courier.vehicle} • {courier.plate}
+                        </p>
+                      </div>
 
-    </main>
+                      {courier.status === "Di Jalan" ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#DCF8F6] px-2.5 py-1 text-[9px] font-bold text-[#087D86]">
+                          <span className="h-1.5 w-1.5 rounded-full bg-[#087D86]" />
+                          Di Jalan
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#E2F9E5] px-2.5 py-1 text-[9px] font-bold text-[#16752C]">
+                          <span className="h-1.5 w-1.5 rounded-full bg-[#16752C]" />
+                          Standby Depo
+                        </span>
+                      )}
+                    </div>
+
+                    {courier.status === "Di Jalan" ? (
+                      <div className="rounded-xl bg-[#F4F6FD] p-3 text-[10px] space-y-1">
+                        <div className="flex justify-between font-bold text-[#556075]">
+                          <span>Tugas Saat Ini</span>
+                          <span className="text-[#0052FF]">{courier.orderId}</span>
+                        </div>
+                        <p className="text-[#131B2E] font-medium">
+                          {courier.taskDesc}
+                        </p>
+                        <div className="flex justify-between text-[#687289] pt-1">
+                          <span>Berangkat {courier.departureTime}</span>
+                          <span className="font-bold text-[#131B2E]">
+                            {courier.eta}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="rounded-xl bg-[#F4F6FD] p-3 text-[10px] space-y-1">
+                        <div className="flex justify-between font-bold text-[#16752C]">
+                          <span>Status Depo</span>
+                          <span>Siap Antar Kloter Baru</span>
+                        </div>
+                        <p className="text-[#556075]">{courier.depoNote}</p>
+                      </div>
+                    )}
+
+                    {courier.status === "Di Jalan" ? (
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-[#E1E5F0] bg-white py-2 text-[10px] font-bold text-[#333E56] hover:bg-[#F5F7FC]"
+                        >
+                          <Phone size={13} /> Hubungi
+                        </button>
+                        <button
+                          type="button"
+                          className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-[#EBF2FF] py-2 text-[10px] font-bold text-[#0052FF] hover:bg-[#DCE7FF]"
+                        >
+                          <Compass size={13} /> Pantau Rute
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-[#0052FF] py-2.5 text-[10px] font-bold text-white shadow-sm hover:bg-[#0047DE]"
+                      >
+                        <Plus size={14} /> Tugaskan Pesanan Antre
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* RIGHT: TABEL PENGANTARAN AKTIF (TETAP RAPI + KANAN DIBERI PADDING) */}
+            <div className="xl:col-span-8 rounded-2xl border border-[#EEF0F5] bg-white p-5 md:p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Compass size={18} className="text-[#0052FF]" />
+                    <h2 className="text-[16px] font-extrabold">
+                      Tabel Pengantaran Aktif
+                    </h2>
+                  </div>
+                  <p className="text-[10px] text-[#687289] mt-0.5">
+                    Pesanan yang sedang dalam proses pengiriman oleh kurir depo
+                  </p>
+                </div>
+
+                <span className="text-[10px] font-bold text-[#556075]">
+                  Diurutkan:{" "}
+                  <span className="text-[#0052FF]">Estimasi SLA Terdekat</span>
+                </span>
+              </div>
+
+              {/* TABLE CONTAINER */}
+              <div className="w-full">
+                <table className="w-full text-left text-[11px]">
+                  <thead>
+                    <tr className="border-b border-[#EEF0F5] text-[10px] font-bold uppercase tracking-wider text-[#737C91]">
+                      <th className="pb-3">No. Order</th>
+                      <th className="pb-3">Kurir &amp; Armada</th>
+                      <th className="pb-3">Alamat Tujuan</th>
+                      <th className="pb-3">Muatan</th>
+                      <th className="pb-3">Progress / Estimasi</th>
+                      <th className="pb-3 text-right pr-4 w-[110px]">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#EEF0F5]">
+                    {filteredDeliveries.map((delivery) => (
+                      <tr key={delivery.id} className="hover:bg-[#F9FAFD]">
+                        <td className="py-3.5 font-extrabold text-[#0052FF]">
+                          {delivery.id}
+                          <div className="text-[9px] font-normal text-[#80899C]">
+                            {delivery.time}
+                          </div>
+                        </td>
+                        <td className="py-3.5">
+                          <div className="flex items-center gap-2">
+                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#EBF2FF] font-bold text-[#0052FF] text-[10px]">
+                              {delivery.avatarInitial}
+                            </div>
+                            <div>
+                              <div className="font-bold">
+                                {delivery.courierName}
+                              </div>
+                              <div className="text-[9px] text-[#80899C]">
+                                {delivery.courierPlate}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3.5 max-w-[200px]">
+                          <div className="font-semibold text-[#131B2E]">
+                            {delivery.address}
+                          </div>
+                          <div className="text-[9px] text-[#80899C]">
+                            {delivery.recipient}
+                          </div>
+                          {delivery.note && (
+                            <div className="text-[9px] font-medium text-[#087D86]">
+                              {delivery.note}
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-3.5">
+                          <span className="rounded-md bg-[#F0F3FF] px-2 py-1 font-bold text-[#0052FF] text-[10px] inline-block">
+                            {delivery.items}
+                          </span>
+                        </td>
+                        <td className="py-3.5">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <div className="h-1.5 w-16 overflow-hidden rounded-full bg-[#E1E5F0]">
+                                <div
+                                  className="h-full bg-[#0052FF]"
+                                  style={{
+                                    width: `${delivery.progressPercent}%`,
+                                  }}
+                                />
+                              </div>
+                              <span className="font-bold text-[#087D86]">
+                                {delivery.progressText}
+                              </span>
+                            </div>
+                            <div className="text-[9px] text-[#80899C]">
+                              {delivery.distanceText}
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* FITUR BADGE STATUS RAPI + PR-4 SUPAYA TIDAK KEPOTONG */}
+                        <td className="py-3.5 text-right pr-4">
+                          {delivery.status === "Diantar" ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-[#DCF8F6] px-2.5 py-1 text-[9px] font-bold text-[#087D86] whitespace-nowrap">
+                              <span className="h-1.5 w-1.5 rounded-full bg-[#087D86]" />
+                              Diantar
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-[#DCE7FF] px-2.5 py-1 text-[9px] font-bold text-[#164FC1] whitespace-nowrap">
+                              <span className="h-1.5 w-1.5 rounded-full bg-[#164FC1]" />
+                              Diproses
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
   );
 }

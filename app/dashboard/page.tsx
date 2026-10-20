@@ -5,9 +5,7 @@ import {
   Bell,
   CalendarDays,
   CheckCircle2,
-  ChevronDown,
   ClipboardList,
-  Clock3,
   CreditCard,
   LayoutDashboard,
   Menu,
@@ -15,7 +13,6 @@ import {
   Plus,
   RefreshCw,
   Search,
-  Settings2,
   ShoppingCart,
   Truck,
   UserRound,
@@ -24,10 +21,7 @@ import {
   ArrowUpRight,
   AlertTriangle,
   Boxes,
-  MapPinned,
   LogOut,
-  ChevronRight,
-  CircleDollarSign,
   Activity,
 } from "lucide-react";
 
@@ -116,31 +110,11 @@ const orders = [
 ];
 
 const menuItems = [
-  {
-    label: "Dashboard",
-    icon: LayoutDashboard,
-    active: true,
-  },
-  {
-    label: "Manajemen Pesanan",
-    icon: ClipboardList,
-    active: false,
-  },
-  {
-    label: "Produk & Stok",
-    icon: Package,
-    active: false,
-  },
-  {
-    label: "Monitoring Pengantaran",
-    icon: Truck,
-    active: false,
-  },
-  {
-    label: "Laporan Keuangan",
-    icon: CreditCard,
-    active: false,
-  },
+  { label: "Dashboard", icon: LayoutDashboard, active: true },
+  { label: "Manajemen Pesanan", icon: ClipboardList, active: false },
+  { label: "Produk & Stok", icon: Package, active: false },
+  { label: "Monitoring Pengantaran", icon: Truck, active: false },
+  { label: "Laporan Keuangan", icon: CreditCard, active: false },
 ];
 
 function formatToday() {
@@ -150,9 +124,8 @@ function formatToday() {
 function ProductCard({ product }: { product: Product }) {
   const percentage = Math.max(
     5,
-    Math.min(100, (product.stock / product.maxStock) * 100),
+    Math.min(100, (product.stock / product.maxStock) * 100)
   );
-
   const isAvailable = product.status === "Tersedia";
 
   return (
@@ -186,17 +159,13 @@ function ProductCard({ product }: { product: Product }) {
         <h3 className="text-[16px] font-bold tracking-[-0.02em] text-[#131B2E]">
           {product.name}
         </h3>
-
         <p className="mt-1 text-[11px] leading-4 text-[#69738A]">
           {product.description}
         </p>
       </div>
 
       <div className="mt-5 flex items-center justify-between">
-        <span className="text-[11px] text-[#69738A]">
-          Harga Refill
-        </span>
-
+        <span className="text-[11px] text-[#69738A]">Harga Refill</span>
         <span className="text-[13px] font-bold text-[#131B2E]">
           {product.price}
         </span>
@@ -236,8 +205,8 @@ function OrderStatus({ status }: { status: string }) {
     status === "Diantar"
       ? "bg-[#C9F4F7] text-[#087D86]"
       : status === "Diproses"
-        ? "bg-[#DCE7FF] text-[#164FC1]"
-        : "bg-[#BDF6C9] text-[#16752C]";
+      ? "bg-[#DCE7FF] text-[#164FC1]"
+      : "bg-[#BDF6C9] text-[#16752C]";
 
   return (
     <span className={`rounded-full px-2.5 py-1 text-[9px] font-bold ${styles}`}>
@@ -253,22 +222,18 @@ export default function DashboardPage() {
 
   const filteredOrders = useMemo(() => {
     const query = search.trim().toLowerCase();
-
-    if (!query) {
-      return orders;
-    }
+    if (!query) return orders;
 
     return orders.filter(
       (order) =>
         order.id.toLowerCase().includes(query) ||
         order.customer.toLowerCase().includes(query) ||
-        order.product.toLowerCase().includes(query),
+        order.product.toLowerCase().includes(query)
     );
   }, [search]);
 
   const handleRefresh = () => {
     setRefreshing(true);
-
     window.setTimeout(() => {
       setRefreshing(false);
     }, 900);
@@ -292,13 +257,11 @@ export default function DashboardPage() {
           mobileSidebar ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        {/* BRAND */}
         <div className="flex h-[72px] items-center border-b border-[#EEF0F5] px-6">
           <div>
             <div className="text-[18px] font-extrabold tracking-[-0.04em] text-[#0052FF]">
               GalonKu Admin
             </div>
-
             <div className="mt-0.5 text-[10px] font-medium text-[#6F7890]">
               Portal Manajemen &amp; Operasional
             </div>
@@ -314,7 +277,6 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        {/* MENU */}
         <div className="flex-1 overflow-y-auto px-4 py-6">
           <p className="px-3 text-[10px] font-extrabold uppercase tracking-[0.08em] text-[#737C91]">
             Menu Utama
@@ -323,7 +285,6 @@ export default function DashboardPage() {
           <nav className="mt-4 space-y-1.5">
             {menuItems.map((item) => {
               const Icon = item.icon;
-
               return (
                 <button
                   key={item.label}
@@ -342,7 +303,6 @@ export default function DashboardPage() {
           </nav>
         </div>
 
-        {/* USER */}
         <div className="border-t border-[#EEF0F5] p-4">
           <div className="flex items-center gap-3 rounded-xl bg-[#F1F3FF] px-3 py-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#0052FF] text-white">
@@ -353,10 +313,7 @@ export default function DashboardPage() {
               <p className="truncate text-[12px] font-bold text-[#131B2E]">
                 Budi Santoso
               </p>
-
-              <p className="text-[10px] text-[#687289]">
-                Super Admin
-              </p>
+              <p className="text-[10px] text-[#687289]">Super Admin</p>
             </div>
 
             <button
@@ -370,7 +327,7 @@ export default function DashboardPage() {
         </div>
       </aside>
 
-      {/* MAIN */}
+      {/* MAIN CONTENT AREA */}
       <div className="lg:pl-[248px]">
         {/* HEADER */}
         <header className="sticky top-0 z-30 flex h-[72px] items-center justify-between border-b border-[#ECEEF4] bg-white/95 px-4 backdrop-blur md:px-6">
@@ -384,13 +341,11 @@ export default function DashboardPage() {
           </button>
 
           <div className="ml-auto flex items-center gap-2 md:gap-3">
-            {/* SEARCH */}
             <div className="relative hidden w-[270px] md:block">
               <Search
                 size={17}
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7A849A]"
               />
-
               <input
                 type="search"
                 value={search}
@@ -400,7 +355,6 @@ export default function DashboardPage() {
               />
             </div>
 
-            {/* DATE */}
             <button
               type="button"
               className="hidden h-11 items-center gap-2 rounded-xl bg-[#F2F1FC] px-4 text-[12px] font-bold text-[#293246] sm:flex"
@@ -409,7 +363,6 @@ export default function DashboardPage() {
               {formatToday()}
             </button>
 
-            {/* NOTIFICATION */}
             <button
               type="button"
               aria-label="Notifikasi"
@@ -419,7 +372,6 @@ export default function DashboardPage() {
               <span className="absolute right-2.5 top-2 h-2 w-2 rounded-full bg-[#D93636]" />
             </button>
 
-            {/* CREATE */}
             <button
               type="button"
               className="hidden h-11 items-center gap-2 rounded-xl bg-[#0052FF] px-4 text-[12px] font-bold text-white shadow-[0_6px_14px_rgba(0,82,255,0.16)] transition hover:bg-[#0047DE] sm:flex"
@@ -431,15 +383,14 @@ export default function DashboardPage() {
         </header>
 
         {/* CONTENT */}
-        <main className="mx-auto max-w-[1500px] p-4 md:p-6">
+        <main className="mx-auto max-w-[1500px] p-4 md:p-6 space-y-4">
           {/* SEARCH MOBILE */}
-          <div className="mb-4 md:hidden">
+          <div className="md:hidden">
             <div className="relative">
               <Search
                 size={17}
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7A849A]"
               />
-
               <input
                 type="search"
                 value={search}
@@ -458,14 +409,11 @@ export default function DashboardPage() {
                   <Activity size={15} />
                   Monitoring Operasional Realtime
                 </div>
-
                 <h1 className="mt-1 text-[22px] font-extrabold tracking-[-0.035em] text-[#131B2E] md:text-[24px]">
                   Ringkasan Operasional Hari Ini
                 </h1>
-
                 <p className="mt-1 text-[11px] text-[#6D768A]">
-                  Update terkini aktivitas refill dan inventaris Depo
-                  Kebayoran Lama (JKT-04)
+                  Update terkini aktivitas refill dan inventaris Depo Kebayoran Lama (JKT-04)
                 </p>
               </div>
 
@@ -499,7 +447,7 @@ export default function DashboardPage() {
           </section>
 
           {/* STAT CARDS */}
-          <section className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {/* TOTAL ORDER */}
             <div className="overflow-hidden rounded-2xl border border-[#EEF0F5] bg-white">
               <div className="flex items-start justify-between p-5">
@@ -507,23 +455,19 @@ export default function DashboardPage() {
                   <p className="text-[12px] font-medium text-[#596378]">
                     Total Pesanan
                   </p>
-
                   <div className="mt-1 flex items-end gap-2">
                     <span className="text-[23px] font-extrabold text-[#0052FF]">
                       48
                     </span>
-
                     <span className="mb-1 text-[10px] text-[#6C7588]">
                       transaksi
                     </span>
                   </div>
                 </div>
-
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#DDE7FF] text-[#0052FF]">
                   <ShoppingCart size={20} />
                 </div>
               </div>
-
               <div className="flex items-center justify-between bg-[#F2F1FF] px-5 py-2.5">
                 <span className="flex items-center gap-1 text-[10px] font-semibold text-[#257143]">
                   <ArrowUpRight size={13} />
@@ -532,7 +476,6 @@ export default function DashboardPage() {
                     vs kemarin (42 pesanan)
                   </span>
                 </span>
-
                 <button className="text-[10px] font-bold text-[#087D86]">
                   Detail →
                 </button>
@@ -546,19 +489,16 @@ export default function DashboardPage() {
                   <p className="text-[12px] font-medium text-[#596378]">
                     Pendapatan Bersih
                   </p>
-
                   <div className="mt-1">
                     <span className="text-[23px] font-extrabold text-[#131B2E]">
                       Rp 864.000
                     </span>
                   </div>
                 </div>
-
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#BCECF6] text-[#087D86]">
                   <WalletCards size={20} />
                 </div>
               </div>
-
               <div className="flex items-center justify-between bg-[#F1FBF4] px-5 py-2.5">
                 <span className="flex items-center gap-1 text-[10px] font-semibold text-[#257143]">
                   <CheckCircle2 size={13} />
@@ -567,7 +507,6 @@ export default function DashboardPage() {
                     melampaui target harian
                   </span>
                 </span>
-
                 <button className="text-[10px] font-bold text-[#087D86]">
                   Laporan →
                 </button>
@@ -581,23 +520,19 @@ export default function DashboardPage() {
                   <p className="text-[12px] font-medium text-[#596378]">
                     Status Stock Galon
                   </p>
-
                   <div className="mt-1 flex items-end gap-2">
                     <span className="text-[23px] font-extrabold text-[#D93636]">
                       12
                     </span>
-
                     <span className="mb-1 text-[10px] text-[#6C7588]">
                       galon terisi
                     </span>
                   </div>
                 </div>
-
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FFE0E0] text-[#D93636]">
                   <AlertTriangle size={20} />
                 </div>
               </div>
-
               <div className="flex items-center justify-between bg-[#FFF0F0] px-5 py-2.5">
                 <span className="flex items-center gap-1 text-[10px] font-semibold text-[#D93636]">
                   <Boxes size={13} />
@@ -606,7 +541,6 @@ export default function DashboardPage() {
                     (&lt; 20 unit)
                   </span>
                 </span>
-
                 <button className="text-[10px] font-bold text-[#D93636]">
                   Restok →
                 </button>
@@ -615,7 +549,7 @@ export default function DashboardPage() {
           </section>
 
           {/* CHART + ORDERS */}
-          <section className="mt-4 grid gap-4 xl:grid-cols-[1.55fr_0.85fr]">
+          <section className="grid gap-4 xl:grid-cols-[1.55fr_0.85fr]">
             {/* CHART */}
             <div className="rounded-2xl border border-[#EEF0F5] bg-white p-5 md:p-6">
               <div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
@@ -624,15 +558,12 @@ export default function DashboardPage() {
                     <h2 className="text-[18px] font-extrabold tracking-[-0.03em]">
                       Grafik Pesanan
                     </h2>
-
                     <span className="rounded-md bg-[#EEF0FF] px-2 py-1 text-[9px] font-bold text-[#0052FF]">
                       Realtime
                     </span>
                   </div>
-
                   <p className="mt-1 text-[10px] text-[#6C7588]">
-                    Fluktuasi lonjakan pesanan jam kerja per 2 jam (08:00
-                    - 18:00)
+                    Fluktuasi lonjakan pesanan jam kerja per 2 jam (08:00 - 18:00)
                   </p>
                 </div>
 
@@ -656,9 +587,7 @@ export default function DashboardPage() {
               {/* CHART SUMMARY */}
               <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl bg-[#F1F1FF] p-3">
                 <div>
-                  <p className="text-[9px] text-[#687289]">
-                    Jam Puncak (Peak)
-                  </p>
+                  <p className="text-[9px] text-[#687289]">Jam Puncak (Peak)</p>
                   <p className="mt-1 text-[11px] font-extrabold text-[#131B2E]">
                     11:00 - 13:00
                   </p>
@@ -668,25 +597,21 @@ export default function DashboardPage() {
                 </div>
 
                 <div>
-                  <p className="text-[9px] text-[#687289]">
-                    Rata-rata Pengiriman
-                  </p>
+                  <p className="text-[9px] text-[#687289]">Rata-rata Pengiriman</p>
                   <p className="mt-1 text-[11px] font-extrabold text-[#087D86]">
                     22.4 Menit
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-[9px] text-[#687289]">
-                    Tingkat Penyelesaian
-                  </p>
+                  <p className="text-[9px] text-[#687289]">Tingkat Penyelesaian</p>
                   <p className="mt-1 text-[11px] font-extrabold text-[#16752C]">
                     96.8% Sukses
                   </p>
                 </div>
               </div>
 
-              {/* CHART */}
+              {/* CHART SVG */}
               <div className="relative mt-5 h-[260px] w-full overflow-hidden">
                 <div className="absolute left-0 right-0 top-[40px] border-t border-dashed border-[#DDE1EA]" />
                 <div className="absolute left-0 right-0 top-[90px] border-t border-dashed border-[#DDE1EA]" />
@@ -707,16 +632,8 @@ export default function DashboardPage() {
                       x2="0"
                       y2="1"
                     >
-                      <stop
-                        offset="0%"
-                        stopColor="#0052FF"
-                        stopOpacity="0.28"
-                      />
-                      <stop
-                        offset="100%"
-                        stopColor="#0052FF"
-                        stopOpacity="0.03"
-                      />
+                      <stop offset="0%" stopColor="#0052FF" stopOpacity="0.28" />
+                      <stop offset="100%" stopColor="#0052FF" stopOpacity="0.03" />
                     </linearGradient>
                   </defs>
 
@@ -724,7 +641,6 @@ export default function DashboardPage() {
                     d="M0 185 C70 170 95 135 160 125 C230 115 280 42 360 36 C420 31 455 94 510 76 C590 50 650 70 800 42 L800 215 L0 215 Z"
                     fill="url(#chartArea)"
                   />
-
                   <path
                     d="M0 185 C70 170 95 135 160 125 C230 115 280 42 360 36 C420 31 455 94 510 76 C590 50 650 70 800 42"
                     fill="none"
@@ -732,7 +648,6 @@ export default function DashboardPage() {
                     strokeWidth="4"
                     strokeLinecap="round"
                   />
-
                   <path
                     d="M0 174 C70 162 100 144 160 150 C225 158 275 118 360 112 C430 106 470 123 520 116 C620 104 680 76 800 70"
                     fill="none"
@@ -741,41 +656,10 @@ export default function DashboardPage() {
                     strokeDasharray="6 6"
                   />
 
-                  <circle
-                    cx="160"
-                    cy="125"
-                    r="5"
-                    fill="#FFFFFF"
-                    stroke="#0052FF"
-                    strokeWidth="3"
-                  />
-
-                  <circle
-                    cx="360"
-                    cy="36"
-                    r="5"
-                    fill="#FFFFFF"
-                    stroke="#0052FF"
-                    strokeWidth="3"
-                  />
-
-                  <circle
-                    cx="510"
-                    cy="76"
-                    r="5"
-                    fill="#FFFFFF"
-                    stroke="#0052FF"
-                    strokeWidth="3"
-                  />
-
-                  <circle
-                    cx="800"
-                    cy="42"
-                    r="5"
-                    fill="#FFFFFF"
-                    stroke="#0052FF"
-                    strokeWidth="3"
-                  />
+                  <circle cx="160" cy="125" r="5" fill="#FFFFFF" stroke="#0052FF" strokeWidth="3" />
+                  <circle cx="360" cy="36" r="5" fill="#FFFFFF" stroke="#0052FF" strokeWidth="3" />
+                  <circle cx="510" cy="76" r="5" fill="#FFFFFF" stroke="#0052FF" strokeWidth="3" />
+                  <circle cx="800" cy="42" r="5" fill="#FFFFFF" stroke="#0052FF" strokeWidth="3" />
                 </svg>
 
                 <div className="absolute left-0 right-0 bottom-3 flex justify-between px-2 text-[9px] text-[#69738A]">
@@ -794,13 +678,11 @@ export default function DashboardPage() {
                     <span className="h-2.5 w-2.5 rounded-full bg-[#0052FF]" />
                     Hari Ini (Aktual)
                   </span>
-
                   <span className="flex items-center gap-1.5">
                     <span className="h-0.5 w-4 border-t-2 border-dashed border-[#087D86]" />
                     Rata-rata 7 Hari
                   </span>
                 </div>
-
                 <span className="font-bold text-[#40495C]">
                   Estimasi Tutup Buka: 21:00
                 </span>
@@ -815,12 +697,10 @@ export default function DashboardPage() {
                     <h2 className="text-[18px] font-extrabold tracking-[-0.03em]">
                       Pesanan Terbaru
                     </h2>
-
                     <span className="rounded-md bg-[#DDF0FF] px-2 py-1 text-[9px] font-bold text-[#0052FF]">
                       Live Feed
                     </span>
                   </div>
-
                   <p className="mt-1 text-[10px] text-[#6C7588]">
                     5 antrean pesanan terakhir masuk dari aplikasi konsumen
                   </p>
@@ -849,16 +729,13 @@ export default function DashboardPage() {
                         <span className="text-[11px] font-extrabold text-[#131B2E]">
                           {order.id}
                         </span>
-
                         <span className="text-[9px] text-[#7A8498]">
                           • {order.time}
                         </span>
                       </div>
-
                       <p className="truncate text-[9px] text-[#313A4E]">
                         {order.customer}
                       </p>
-
                       <p className="truncate text-[9px] font-semibold text-[#087D86]">
                         {order.product}
                       </p>
@@ -866,7 +743,6 @@ export default function DashboardPage() {
 
                     <div className="text-right">
                       <OrderStatus status={order.status} />
-
                       <p className="mt-1 text-[10px] font-extrabold text-[#131B2E]">
                         {order.price}
                       </p>
@@ -880,9 +756,7 @@ export default function DashboardPage() {
                   <p className="text-[9px] font-semibold text-[#354057]">
                     Masuk antrean baru? Segera
                   </p>
-                  <p className="text-[9px] text-[#657087]">
-                    tugaskan kurir
-                  </p>
+                  <p className="text-[9px] text-[#657087]">tugaskan kurir</p>
                 </div>
 
                 <button
@@ -896,21 +770,18 @@ export default function DashboardPage() {
             </div>
           </section>
 
-          {/* STOCK */}
-          <section className="mt-4 rounded-2xl border border-[#EEF0F5] bg-white p-5 md:p-6">
+          {/* STOCK GALON FISIK */}
+          <section className="rounded-2xl border border-[#EEF0F5] bg-white p-5 md:p-6">
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
               <div>
                 <div className="flex items-center gap-2">
                   <Boxes size={20} className="text-[#0052FF]" />
-
                   <h2 className="text-[18px] font-extrabold tracking-[-0.03em]">
                     Status Stok Galon Fisik di Depo
                   </h2>
                 </div>
-
                 <p className="mt-1 text-[10px] text-[#69738A]">
-                  Ketersediaan galon isi siap dikirim berdasarkan inventaris
-                  fisik Depo JKT-04
+                  Ketersediaan galon isi siap dikirim berdasarkan inventaris fisik Depo JKT-04
                 </p>
               </div>
 
@@ -930,68 +801,44 @@ export default function DashboardPage() {
             </div>
           </section>
 
-          {/* DELIVERY FLEET */}
-          <section className="mt-4 rounded-2xl border border-[#EEF0F5] bg-white p-3 md:p-4">
+          {/* FLEET / ARMADA PENGANTARAN */}
+          <section className="rounded-2xl border border-[#EEF0F5] bg-white p-3 md:p-4">
             <div className="flex flex-col gap-4 rounded-2xl bg-[#EEF1FF] p-4 md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-[#0052FF]">
                   <Truck size={21} />
                 </div>
-
                 <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-[16px] font-extrabold">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-[14px] font-bold text-[#131B2E]">
                       Armada Pengantaran Aktif
-                    </h2>
-
-                    <span className="rounded-full bg-[#BDF6C9] px-2.5 py-1 text-[9px] font-bold text-[#16752C]">
+                    </h3>
+                    <span className="rounded-md bg-[#C5F8D0] px-2 py-0.5 text-[9px] font-bold text-[#16752C]">
                       4 Kurir Beroperasi
                     </span>
                   </div>
-
-                  <p className="mt-1 text-[10px] text-[#687289]">
-                    Budi Pratama (8 galon), Joko Susilo (6 galon), Ahmad D.
-                    (4 galon), Indra (Standby di Depo)
+                  <p className="mt-0.5 text-[10px] text-[#5A6478]">
+                    Budi Pratama (8 galon), Joko Susilo (6 galon), Ahmad D. (4 galon), Indra (Standby di Depo)
                   </p>
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-2">
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  className="flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-[10px] font-bold text-[#293246] shadow-sm transition hover:bg-[#F8F9FD]"
+                  className="rounded-xl border border-[#DCE2F0] bg-white px-3 py-2 text-[10px] font-bold text-[#2A344A] transition hover:bg-[#F5F7FC]"
                 >
-                  <MapPinned size={15} className="text-[#0052FF]" />
                   Live Map GPS
                 </button>
-
                 <button
                   type="button"
-                  className="flex items-center gap-2 rounded-xl bg-[#0052FF] px-4 py-2.5 text-[10px] font-bold text-white transition hover:bg-[#0047DE]"
+                  className="rounded-xl bg-[#0052FF] px-3 py-2 text-[10px] font-bold text-white shadow-sm transition hover:bg-[#0047DE]"
                 >
-                  <Truck size={15} />
                   Panggil Kurir Standby
                 </button>
               </div>
             </div>
           </section>
-
-          {/* FOOTER */}
-          <footer className="flex flex-col items-center justify-between gap-2 px-1 py-6 text-[9px] text-[#8A91A3] md:flex-row">
-            <span>© 2026 GalonKu. All Rights Reserved.</span>
-
-            <div className="flex items-center gap-3">
-              <button type="button" className="hover:text-[#0052FF]">
-                Pusat Bantuan
-              </button>
-
-              <span>•</span>
-
-              <button type="button" className="hover:text-[#0052FF]">
-                Privasi &amp; Kebijakan Internal
-              </button>
-            </div>
-          </footer>
         </main>
       </div>
     </div>
