@@ -1,802 +1,672 @@
-"use client";
+'use client';
 
-import { useMemo, useState, useRef } from "react";
-import {
-  Bell,
-  CalendarDays,
-  ClipboardList,
-  CreditCard,
-  LayoutDashboard,
-  Menu,
-  Package,
-  Plus,
-  Search,
-  Truck,
-  UserRound,
-  X,
-  LogOut,
-  Clock,
-  Store,
-  Compass,
-  ListFilter,
-  Map,
-  Phone,
-  RotateCw,
-  Users,
-} from "lucide-react";
+import React, { useState } from 'react';
+import Link from 'next/link';
 
-type Courier = {
-  id: string;
-  name: string;
-  vehicle: string;
-  plate: string;
-  status: "Di Jalan" | "Standby Depo";
-  orderId?: string;
-  taskDesc?: string;
-  depoNote?: string;
-  departureTime?: string;
-  eta?: string;
-};
-
-type Delivery = {
-  id: string;
-  time: string;
-  courierName: string;
-  courierPlate: string;
-  avatarInitial: string;
-  address: string;
-  recipient: string;
-  note?: string;
-  items: string;
-  progressPercent: number;
-  progressText: string;
-  distanceText: string;
-  status: "Diantar" | "Diproses";
-};
-
-const menuItems = [
-  { label: "Dashboard", icon: LayoutDashboard, active: false },
-  { label: "Manajemen Pesanan", icon: ClipboardList, active: false },
-  { label: "Produk & Stok", icon: Package, active: false },
-  { label: "Monitoring Pengantaran", icon: Truck, active: true },
-  { label: "Laporan Keuangan", icon: CreditCard, active: false },
-];
-
-const initialCouriers: Courier[] = [
+// Data Kurir Lapangan
+const kurirData = [
   {
-    id: "c1",
-    name: "Pak Budi Santoso",
-    vehicle: "Honda Beat",
-    plate: "B 4120 SZX",
-    status: "Di Jalan",
-    orderId: "#ORD-8821",
-    taskDesc: "Membawa 3 Galon Aqua ke Jl. Mawar No. 12, Kebayoran Lama",
-    departureTime: "10:45",
-    eta: "Est. 6 menit lagi",
+    id: 'k1',
+    nama: 'Pak Budi Santoso',
+    motor: 'Honda Beat • B 4120 SZX',
+    initial: 'BS',
+    status: 'jalan', // 'jalan' | 'standby'
+    tugas: '#ORD-8821',
+    deskripsi: 'Membawa 3 Galon Aqua ke Jl. Mawar No. 12, Kebayoran Lama',
+    progress: 75,
+    berangkat: '10:45',
+    estimasi: 'Est. 6 menit lagi',
   },
   {
-    id: "c2",
-    name: "Mas Doni Wijaya",
-    vehicle: "Honda Vario",
-    plate: "B 6891 FQR",
-    status: "Di Jalan",
-    orderId: "#ORD-8822",
-    taskDesc: "Membawa 2 Galon Le Minerale ke Gandaria Heights Lt. 08",
-    departureTime: "10:55",
-    eta: "Est. 12 menit lagi",
+    id: 'k2',
+    nama: 'Mas Doni Wijaya',
+    motor: 'Honda Vario • B 6891 PQR',
+    initial: 'DW',
+    status: 'jalan',
+    tugas: '#ORD-8822',
+    deskripsi: 'Membawa 2 Galon Le Minerale ke Gandaria Heights Lt. 08',
+    progress: 45,
+    berangkat: '10:55',
+    estimasi: 'Est. 12 menit lagi',
   },
   {
-    id: "c3",
-    name: "Pak Agus Prasetyo",
-    vehicle: "Honda Scoopy",
-    plate: "B 3310 KLM",
-    status: "Standby Depo",
-    depoNote:
-      "Telah menyelesaikan 7 pengantaran pagi. Siap menerima penugasan kloter berikutnya.",
+    id: 'k3',
+    nama: 'Pak Agus Prasetyo',
+    motor: 'Honda Scoopy • B 3310 KLM',
+    initial: 'AP',
+    status: 'standby',
+    statusDepoTitle: 'Siap Antar Kloter Baru',
+    deskripsi: 'Telah menyelesaikan 7 pengantaran pagi. Siap menerima penugasan kloter berikutnya.',
   },
   {
-    id: "c4",
-    name: "Hendra Kurnia",
-    vehicle: "Honda Revo",
-    plate: "B 5502 TYA",
-    status: "Di Jalan",
-    orderId: "#ORD-8824",
-    taskDesc:
-      "Membawa 4 Galon (2 Aqua + 2 Cleo) ke Apartemen Gandaria Lt. 14",
-    departureTime: "11:05",
-    eta: "Est. 15 menit lagi",
+    id: 'k4',
+    nama: 'Hendra Kurnia',
+    motor: 'Honda Revo • B 5502 TYA',
+    initial: 'HK',
+    status: 'jalan',
+    tugas: '#ORD-8824',
+    deskripsi: 'Membawa 4 Galon (2 Aqua + 2 Club) ke Apartemen Gandaria Lt. 14',
+    progress: 25,
+    berangkat: '11:05',
+    estimasi: 'Est. 15 menit lagi',
   },
 ];
 
-const initialDeliveries: Delivery[] = [
+// Data Tabel Pengantaran Aktif
+const pengantaranData = [
   {
-    id: "#ORD-8821",
-    time: "10:42 WIB",
-    courierName: "Pak Budi",
-    courierPlate: "B 4120 SZX",
-    avatarInitial: "P",
-    address: "Jl. Mawar No. 12",
-    recipient: "Ibu Fitriani (0812-9958-xxx)",
-    note: "Patokan: Sebelah Pos RW 03",
-    items: "3 Galon Aqua",
-    progressPercent: 75,
-    progressText: "75% Selesai 6 mnt lagi",
-    distanceText: "Jarak: 600m ke titik kirim",
-    status: "Diantar",
+    id: 'p1',
+    noOrder: '#ORD-8821',
+    jam: '10:42 WIB',
+    kurirNama: 'Pak Budi',
+    kurirPlat: 'B 4120 SZX',
+    alamatUtama: 'Jl. Mawar No. 12',
+    alamatDetail: 'Ibu Fitriani (0812-9988-xxxx)',
+    patokan: 'Patokan: Sebelah Pos RW 03',
+    muatan: '3 Galon Aqua',
+    progressPct: 75,
+    estimasiText: '75% Selesai 6 mnt lagi',
+    jarakText: 'Jarak: 600m ke titik kirim',
+    status: 'Diantar', // 'Diantar' | 'Diproses' | 'Selesai'
+    typeStatus: 'diantar',
   },
   {
-    id: "#ORD-8822",
-    time: "10:51 WIB",
-    courierName: "Mas Doni",
-    courierPlate: "B 6891 FQR",
-    avatarInitial: "M",
-    address: "Gandaria Heights Lt. 08 #8B",
-    recipient: "Bpk. Ronald (0817-2345-xxx)",
-    note: "Titip di Lobby Resepsionis",
-    items: "2 Galon Le Minerale",
-    progressPercent: 45,
-    progressText: "45% Selesai 12 mnt lagi",
-    distanceText: "Jarak: 1.8 KM (Lampu Merah Kyai Maja)",
-    status: "Diantar",
+    id: 'p2',
+    noOrder: '#ORD-8822',
+    jam: '10:51 WIB',
+    kurirNama: 'Mas Doni',
+    kurirPlat: 'B 6891 PQR',
+    alamatUtama: 'Gandaria Heights Lt. 08 #8B',
+    alamatDetail: 'Bpk. Ronald (0817-2345-xxxx)',
+    patokan: 'Titip di Lobby Resepsionis',
+    muatan: '2 Galon Le Minerale',
+    progressPct: 45,
+    estimasiText: '45% Selesai 12 mnt lagi',
+    jarakText: 'Jarak: 1.8 KM (Lampu Merah Kyai Maja)',
+    status: 'Diantar',
+    typeStatus: 'diantar',
   },
   {
-    id: "#ORD-8824",
-    time: "11:02 WIB",
-    courierName: "Hendra K.",
-    courierPlate: "B 5502 TYA",
-    avatarInitial: "H",
-    address: "Apartemen 1Park Residences Lt. 14",
-    recipient: "Sdr. Kevin Hadi (0852-1100-xxx)",
-    note: "Bawa Troli Depo",
-    items: "4 Galon Campur",
-    progressPercent: 25,
-    progressText: "25% Selesai 15 mnt lagi",
-    distanceText: "Jarak: 2.7 KM (Baru keluar Depo)",
-    status: "Diantar",
+    id: 'p3',
+    noOrder: '#ORD-8824',
+    jam: '11:02 WIB',
+    kurirNama: 'Hendra K.',
+    kurirPlat: 'B 5502 TYA',
+    alamatUtama: 'Apartemen 1Park Residences Lt. 14',
+    alamatDetail: 'Sdr. Kevin Hadi (0852-1100-xxxx)',
+    patokan: 'Bawa Troli Depo',
+    isHighlightPatokan: true,
+    muatan: '4 Galon Campur',
+    progressPct: 25,
+    estimasiText: '25% Selesai 15 mnt lagi',
+    jarakText: 'Jarak: 2.7 KM (Baru keluar Depo)',
+    status: 'Diantar',
+    typeStatus: 'diantar',
   },
   {
-    id: "#ORD-8825",
-    time: "11:15 WIB",
-    courierName: "Rian Pratama",
-    courierPlate: "B 3912 BKN",
-    avatarInitial: "R",
-    address: "Komp. Lemigas Blok B4",
-    recipient: "Ibu Maya (0811-9481-xxx)",
-    note: "Bayar COD Rp 54.000",
-    items: "3 Galon Aqua",
-    progressPercent: 10,
-    progressText: "Sedang Muat Depo JKT-04",
-    distanceText: "Persiapan berangkat",
-    status: "Diproses",
+    id: 'p4',
+    noOrder: '#ORD-8825',
+    jam: '11:15 WIB',
+    kurirNama: 'Rian Pratama',
+    kurirPlat: 'B 3912 BKN',
+    alamatUtama: 'Komp. Lemigas Blok B4',
+    alamatDetail: 'Ibu Maya (0811-9481-xxxx)',
+    patokan: 'Bayar COD Rp 54.000',
+    muatan: '3 Galon Aqua',
+    progressPct: 10,
+    estimasiText: 'Sedang Muat Depo JKT-04',
+    jarakText: 'Persiapan berangkat',
+    status: 'Diproses',
+    typeStatus: 'diproses',
   },
 ];
 
 export default function MonitoringPage() {
-  const [mobileSidebar, setMobileSidebar] = useState(false);
-  const [search, setSearch] = useState("");
-  const [selectedDate, setSelectedDate] = useState("2026-05-24");
-  const [activeFilter, setActiveFilter] = useState<
-    "Semua" | "Di Jalan" | "Standby Depo" | "Riwayat"
-  >("Semua");
+  const [activeTab, setActiveTab] = useState<'semua' | 'jalan' | 'standby' | 'riwayat'>('semua');
+  const [activeView, setActiveView] = useState<'daftar' | 'peta'>('daftar');
 
-  const dateInputRef = useRef<HTMLInputElement>(null);
+  // Filter Kurir Lapangan
+  const filteredKurir = kurirData.filter((k) => {
+    if (activeTab === 'jalan') return k.status === 'jalan';
+    if (activeTab === 'standby') return k.status === 'standby';
+    if (activeTab === 'riwayat') return false; // Riwayat khusus daftar selesai
+    return true; // 'semua'
+  });
 
-  const formattedDateText = useMemo(() => {
-    if (!selectedDate) return "Hari ini, 24 Mei";
-    const d = new Date(selectedDate);
-    if (isNaN(d.getTime())) return "Hari ini, 24 Mei";
-
-    const months = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "Mei",
-      "Jun",
-      "Jul",
-      "Agu",
-      "Sep",
-      "Okt",
-      "Nov",
-      "Des",
-    ];
-    return `Hari ini, ${d.getDate()} ${months[d.getMonth()]}`;
-  }, [selectedDate]);
-
-  const handleOpenCalendar = () => {
-  const input = dateInputRef.current;
-  if (!input) return;
-
-  if (typeof (input as any).showPicker === "function") {
-    (input as any).showPicker();
-  } else {
-    input.click();
-  }
-};
-
-  const filteredCouriers = useMemo(() => {
-    return initialCouriers.filter((c) => {
-      const matchFilter =
-        activeFilter === "Semua" ||
-        (activeFilter === "Di Jalan" && c.status === "Di Jalan") ||
-        (activeFilter === "Standby Depo" && c.status === "Standby Depo") ||
-        activeFilter === "Riwayat";
-
-      const query = search.toLowerCase().trim();
-      const matchSearch =
-        !query ||
-        c.name.toLowerCase().includes(query) ||
-        c.plate.toLowerCase().includes(query) ||
-        (c.orderId && c.orderId.toLowerCase().includes(query));
-
-      return matchFilter && matchSearch;
-    });
-  }, [activeFilter, search]);
-
-  const filteredDeliveries = useMemo(() => {
-    return initialDeliveries.filter((d) => {
-      const matchFilter =
-        activeFilter === "Semua" ||
-        (activeFilter === "Di Jalan" && d.status === "Diantar") ||
-        (activeFilter === "Standby Depo" && d.status === "Diproses") ||
-        activeFilter === "Riwayat";
-
-      const query = search.toLowerCase().trim();
-      const matchSearch =
-        !query ||
-        d.id.toLowerCase().includes(query) ||
-        d.courierName.toLowerCase().includes(query) ||
-        d.address.toLowerCase().includes(query);
-
-      return matchFilter && matchSearch;
-    });
-  }, [activeFilter, search]);
+  // Filter Tabel Pengantaran Aktif
+  const filteredPengantaran = pengantaranData.filter((p) => {
+    if (activeTab === 'jalan') return p.typeStatus === 'diantar';
+    if (activeTab === 'standby') return p.typeStatus === 'diproses';
+    if (activeTab === 'riwayat') return false;
+    return true; // 'semua'
+  });
 
   return (
-    <div className="min-h-screen bg-[#F7F8FC] text-[#131B2E]">
-      {/* MOBILE OVERLAY */}
-      {mobileSidebar && (
-        <button
-          type="button"
-          aria-label="Tutup menu"
-          className="fixed inset-0 z-40 bg-black/20 lg:hidden"
-          onClick={() => setMobileSidebar(false)}
-        />
-      )}
-
-      {/* SIDEBAR */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-[248px] flex-col border-r border-[#E9ECF4] bg-white transition-transform duration-300 lg:translate-x-0 ${
-          mobileSidebar ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <div className="flex h-[72px] items-center border-b border-[#EEF0F5] px-6">
-          <div>
-            <div className="text-[18px] font-extrabold tracking-[-0.04em] text-[#0052FF]">
-              GalonKu Admin
-            </div>
-            <div className="mt-0.5 text-[10px] font-medium text-[#6F7890]">
-              Portal Manajemen &amp; Operasional
-            </div>
+    <div className="flex min-h-screen bg-[#F8FAFC] text-slate-800 font-sans antialiased">
+      {/* ==================== SIDEBAR ==================== */}
+      <aside className="w-64 bg-white border-r border-slate-100 flex flex-col justify-between shrink-0 sticky top-0 h-screen p-5 z-20">
+        <div>
+          {/* Logo Brand */}
+          <div className="mb-8">
+            <h1 className="text-xl font-bold text-blue-600 tracking-tight">GalonKu Admin</h1>
+            <p className="text-xs text-slate-400 mt-0.5">Portal Manajemen & Operasional</p>
           </div>
 
-          <button
-            type="button"
-            aria-label="Tutup menu"
-            className="ml-auto rounded-lg p-2 text-[#6F7890] hover:bg-[#F3F5FA] lg:hidden"
-            onClick={() => setMobileSidebar(false)}
-          >
-            <X size={18} />
-          </button>
-        </div>
+          {/* Navigasi Menu Utama */}
+          <div className="space-y-1">
+            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3 px-3">
+              MENU UTAMA
+            </p>
 
-        <div className="flex-1 overflow-y-auto px-4 py-6">
-          <p className="px-3 text-[10px] font-extrabold uppercase tracking-[0.08em] text-[#737C91]">
-            Menu Utama
-          </p>
-
-          <nav className="mt-4 space-y-1.5">
-            {menuItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.label}
-                  type="button"
-                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[14px] font-semibold transition ${
-                    item.active
-                      ? "bg-[#0052FF] text-white shadow-[0_8px_18px_rgba(0,82,255,0.18)]"
-                      : "text-[#293246] hover:bg-[#F1F4FB]"
-                  }`}
-                >
-                  <Icon size={18} strokeWidth={1.8} />
-                  <span>{item.label}</span>
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-
-        <div className="border-t border-[#EEF0F5] p-4">
-          <div className="flex items-center gap-3 rounded-xl bg-[#F1F3FF] px-3 py-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#0052FF] text-white">
-              <UserRound size={18} />
-            </div>
-
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[12px] font-bold text-[#131B2E]">
-                Budi Santoso
-              </p>
-              <p className="text-[10px] text-[#687289]">Super Admin</p>
-            </div>
-
-            <button
-              type="button"
-              aria-label="Keluar"
-              className="rounded-lg p-1.5 text-[#536079] hover:bg-white"
+            {/* 1. Dashboard */}
+            <Link
+              href="/dashboard"
+              className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 transition-all font-medium text-sm"
             >
-              <LogOut size={17} />
-            </button>
+              <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+              </svg>
+              Dashboard
+            </Link>
+
+            {/* 2. Manajemen Pesanan */}
+            <Link
+              href="/pesanan"
+              className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 transition-all font-medium text-sm"
+            >
+              <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Manajemen Pesanan
+            </Link>
+
+            {/* 3. Produk & Stok */}
+            <Link
+              href="/produk"
+              className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 transition-all font-medium text-sm"
+            >
+              <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+              Produk & Stok
+            </Link>
+
+            {/* 4. Monitoring Pengantaran (AKTIF - TRUK LOGISTIK) */}
+            <Link
+              href="/monitoring"
+              className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-blue-600 text-white shadow-md shadow-blue-500/20 font-medium text-sm transition-all"
+            >
+              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 17a2 2 0 100 4 2 2 0 000-4zm10 0a2 2 0 100 4 2 2 0 000-4zm-12-3h10a2 2 0 002-2V7a2 2 0 00-2-2H4a2 2 0 00-2 2v8a2 2 0 002 2zm12 0h2a2 2 0 002-2v-3l-2-3h-2v8z" />
+              </svg>
+              Monitoring Pengantaran
+            </Link>
+
+            {/* 5. Laporan Keuangan */}
+            <Link
+              href="/laporan"
+              className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 transition-all font-medium text-sm"
+            >
+              <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Laporan Keuangan
+            </Link>
           </div>
+        </div>
+
+        {/* User Card */}
+        <div className="bg-slate-50 border border-slate-100 rounded-2xl p-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-slate-900 text-white font-semibold flex items-center justify-center text-sm shadow-sm">
+              BS
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-800 leading-tight">Budi Santoso</p>
+              <p className="text-[11px] text-slate-400">Super Admin</p>
+            </div>
+          </div>
+          <button className="text-slate-400 hover:text-slate-600 p-1.5 transition-colors">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+          </button>
         </div>
       </aside>
 
-      {/* MAIN CONTAINER */}
-      <div className="lg:pl-[248px]">
-        {/* TOP HEADER */}
-        <header className="sticky top-0 z-30 flex h-[72px] items-center justify-between border-b border-[#ECEEF4] bg-white/95 px-4 backdrop-blur md:px-6">
-          <button
-            type="button"
-            aria-label="Buka menu"
-            className="rounded-xl p-2 text-[#374258] hover:bg-[#F3F5FA] lg:hidden"
-            onClick={() => setMobileSidebar(true)}
-          >
-            <Menu size={22} />
-          </button>
+      {/* ==================== MAIN CONTENT ==================== */}
+      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+        {/* Header Bar */}
+        <header className="h-16 bg-white border-b border-slate-100 px-8 flex items-center justify-between sticky top-0 z-10">
+          <div className="relative w-96">
+            <svg className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Cari pesanan, resi, kurir..."
+              className="w-full bg-slate-50 border-none rounded-xl pl-10 pr-4 py-2 text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            />
+          </div>
 
-          <div className="ml-auto flex items-center gap-2 md:gap-3">
-            <div className="relative hidden w-[270px] md:block">
-              <Search
-                size={17}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7A849A]"
-              />
-              <input
-                type="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Cari pesanan, resi, kurir..."
-                className="h-11 w-full rounded-xl border border-transparent bg-[#F2F1FC] pl-10 pr-4 text-[12px] text-[#131B2E] outline-none transition placeholder:text-[#8A91A3] focus:border-[#0052FF] focus:bg-white"
-              />
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-xl px-3 py-1.5 text-xs text-slate-600 font-medium">
+              <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span>Hari ini, 24 Mei</span>
             </div>
 
-            {/* TOMBOL KALENDER BISA DIKLIK */}
-            <button
-              type="button"
-              onClick={handleOpenCalendar}
-              className="hidden h-11 items-center gap-2 rounded-xl bg-[#F2F1FC] px-4 text-[12px] font-bold text-[#293246] transition hover:bg-[#E8EBFA] sm:flex relative cursor-pointer"
-            >
-              <CalendarDays size={16} className="text-[#0052FF]" />
-              <span>{formattedDateText}</span>
-              <input
-                ref={dateInputRef}
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="sr-only"
-              />
+            <button className="relative p-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-100 transition-colors">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v1.341C7.67 7.165 6 9.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 01-6 0v-1m6 0H9" />
+              </svg>
+              <span className="w-2 h-2 bg-red-500 rounded-full absolute top-2 right-2 ring-2 ring-white"></span>
             </button>
 
-            <button
-              type="button"
-              aria-label="Notifikasi"
-              className="relative flex h-11 w-11 items-center justify-center rounded-xl hover:bg-[#F3F5FA]"
-            >
-              <Bell size={20} />
-              <span className="absolute right-2.5 top-2 h-2 w-2 rounded-full bg-[#D93636]" />
-            </button>
-
-            <button
-              type="button"
-              className="hidden h-11 items-center gap-2 rounded-xl bg-[#0052FF] px-4 text-[12px] font-bold text-white shadow-[0_6px_14px_rgba(0,82,255,0.16)] transition hover:bg-[#0047DE] sm:flex"
-            >
-              <Plus size={17} />
-              Buat Pesanan
+            <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-md shadow-blue-500/20 flex items-center gap-1.5 transition-all">
+              <span className="text-sm font-bold">+</span> Buat Pesanan
             </button>
           </div>
         </header>
 
-        {/* CONTENT AREA */}
-        <main className="mx-auto max-w-[1500px] p-4 md:p-6 space-y-4">
-          {/* SECTION HEADER */}
-          <section className="rounded-2xl border border-[#EEF0F5] bg-white p-5 shadow-[0_2px_10px_rgba(19,27,46,0.02)] md:p-6">
-            <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
-              <div>
-                <div className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.04em] text-[#087D86]">
-                  <Truck size={15} />
-                  Fleet Logistics &amp; Live Dispatch
-                </div>
-                <h1 className="mt-1 text-[22px] font-extrabold tracking-[-0.035em] text-[#131B2E] md:text-[24px]">
-                  Monitoring Pengantaran
-                </h1>
-                <p className="mt-1 text-[11px] text-[#6D768A]">
-                  Pelacakan armada kurir motor, status pengiriman pesanan, dan efisiensi rute depo secara langsung.
-                </p>
+        {/* Page Content */}
+        <div className="p-8 space-y-6">
+          {/* Header Title */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 text-teal-600 font-semibold text-[11px] uppercase tracking-wider mb-1">
+                <svg className="w-4 h-4 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 17a2 2 0 100 4 2 2 0 000-4zm10 0a2 2 0 100 4 2 2 0 000-4zm-12-3h10a2 2 0 002-2V7a2 2 0 00-2-2H4a2 2 0 00-2 2v8a2 2 0 002 2zm12 0h2a2 2 0 002-2v-3l-2-3h-2v8z" />
+                </svg>
+                FLEET LOGISTICS & LIVE DISPATCH
               </div>
+              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Monitoring Pengantaran</h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Pelacak armada kurir motor, status pengiriman pesanan, dan efisiensi rute depo secara langsung.
+              </p>
+            </div>
 
-              {/* ACTION BUTTON GROUP */}
-              <div className="flex flex-col items-end gap-2 shrink-0">
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    className="flex h-9 items-center gap-1.5 rounded-xl bg-[#F0F3FF] px-3 text-[11px] font-bold text-[#0052FF]"
-                  >
-                    <ListFilter size={14} /> Daftar
-                  </button>
-                  <button
-                    type="button"
-                    className="flex h-9 items-center gap-1.5 rounded-xl bg-[#F0F3FF] px-3 text-[11px] font-bold text-[#5A6478] hover:text-[#131B2E]"
-                  >
-
-<Map size={14} />
-Live Peta
-                  </button>
-                  <button
-                    type="button"
-                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F0F3FF] text-[#5A6478] hover:text-[#131B2E]"
-                  >
-                    <RotateCw size={14} />
-                  </button>
-                </div>
-
+            <div className="flex items-center gap-3">
+              <div className="bg-slate-100 p-1 rounded-xl flex items-center text-xs font-medium border border-slate-200/60">
                 <button
-                  type="button"
-                  className="flex h-10 items-center gap-2 rounded-xl bg-[#0052FF] px-4 text-[11px] font-bold text-white shadow-[0_4px_12px_rgba(0,82,255,0.18)] transition hover:bg-[#0047DE]"
+                  onClick={() => setActiveView('daftar')}
+                  className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all ${
+                    activeView === 'daftar' ? 'bg-white text-slate-800 shadow-sm font-semibold' : 'text-slate-500 hover:text-slate-700'
+                  }`}
                 >
-                  <Plus size={15} /> Tambah Armada Kurir
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                  </svg>
+                  Daftar
+                </button>
+                <button
+                  onClick={() => setActiveView('peta')}
+                  className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all ${
+                    activeView === 'peta' ? 'bg-white text-slate-800 shadow-sm font-semibold' : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                  </svg>
+                  Live Peta
                 </button>
               </div>
-            </div>
-          </section>
 
-          {/* STAT CARDS */}
-          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-2xl border border-[#EEF0F5] bg-white p-5 flex items-center justify-between">
+              <button className="bg-blue-900 hover:bg-slate-900 text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow-sm flex items-center gap-2 transition-all">
+                <span>+</span> Tambah Armada Kurir
+              </button>
+            </div>
+          </div>
+
+          {/* ==================== STATS CARDS ROW ==================== */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Card 1 */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-start justify-between">
               <div>
-                <p className="text-[12px] font-medium text-[#596378]">Total Armada</p>
-                <div className="mt-1 flex items-end gap-1.5">
-                  <span className="text-[22px] font-extrabold text-[#131B2E]">6</span>
-                  <span className="mb-0.5 text-[11px] font-semibold text-[#6C7588]">Kurir Motor</span>
+                <p className="text-xs font-medium text-slate-400">Total Armada</p>
+                <div className="flex items-baseline gap-1.5 mt-2">
+                  <span className="text-2xl font-bold text-slate-900">6</span>
+                  <span className="text-xs font-medium text-slate-500">Kurir Motor</span>
                 </div>
-                <p className="mt-2 text-[10px] font-bold text-[#0052FF]">+ Kapasitas 100% Siaga</p>
+                <p className="text-[11px] text-teal-600 font-medium mt-2 flex items-center gap-1">
+                  <span>⚡</span> Kapasitas 100% Siaga
+                </p>
               </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#EBF2FF] text-[#0052FF]">
-                <Users size={20} />
+              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-[#EEF0F5] bg-white p-5 flex items-center justify-between">
+            {/* Card 2 */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-start justify-between">
               <div>
-                <p className="text-[12px] font-medium text-[#596378]">Sedang Mengantar</p>
-                <div className="mt-1 flex items-end gap-1.5">
-                  <span className="text-[22px] font-extrabold text-[#131B2E]">4</span>
-                  <span className="mb-0.5 text-[11px] font-semibold text-[#6C7588]">Kurir di Jalan</span>
+                <p className="text-xs font-medium text-slate-400">Sedang Mengantar</p>
+                <div className="flex items-baseline gap-1.5 mt-2">
+                  <span className="text-2xl font-bold text-slate-900">4</span>
+                  <span className="text-xs font-medium text-slate-500">Kurir di Jalan</span>
                 </div>
-                <p className="mt-2 text-[10px] font-bold text-[#087D86]">• 11 Galon Sedang Dikirim</p>
+                <p className="text-[11px] text-blue-600 font-medium mt-2 flex items-center gap-1">
+                  <span>📦</span> 11 Galon Sedang Dikirim
+                </p>
               </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#DCF8F6] text-[#087D86]">
-                <Truck size={20} />
+              <div className="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-[#EEF0F5] bg-white p-5 flex items-center justify-between">
+            {/* Card 3 */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-start justify-between">
               <div>
-                <p className="text-[12px] font-medium text-[#596378]">Standby Depo</p>
-                <div className="mt-1 flex items-end gap-1.5">
-                  <span className="text-[22px] font-extrabold text-[#131B2E]">2</span>
-                  <span className="mb-0.5 text-[11px] font-semibold text-[#6C7588]">Siap Muat Kirim</span>
+                <p className="text-xs font-medium text-slate-400">Standby Depo</p>
+                <div className="flex items-baseline gap-1.5 mt-2">
+                  <span className="text-2xl font-bold text-slate-900">2</span>
+                  <span className="text-xs font-medium text-slate-500">Siap Muat Kirim</span>
                 </div>
-                <p className="mt-2 text-[10px] font-bold text-[#16752C]">• Idle &lt; 8 Menit</p>
+                <p className="text-[11px] text-emerald-600 font-medium mt-2 flex items-center gap-1">
+                  <span>✔</span> Idle &lt; 8 Menit
+                </p>
               </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#E2F9E5] text-[#16752C]">
-                <Store size={20} />
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5m0 0h4m-4 0V11m0 0h4m-4 0v-4" />
+                </svg>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-[#EEF0F5] bg-white p-5 flex items-center justify-between">
+            {/* Card 4: Rata-rata Waktu */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-start justify-between">
               <div>
-                <p className="text-[12px] font-medium text-[#596378]">Rata-rata Waktu</p>
-                <div className="mt-1 flex items-end gap-1.5">
-                  <span className="text-[22px] font-extrabold text-[#131B2E]">18</span>
-                  <span className="mb-0.5 text-[11px] font-semibold text-[#6C7588]">Menit / Pesanan</span>
+                <p className="text-xs font-medium text-slate-400">Rata-rata Waktu</p>
+                <div className="flex items-baseline gap-1.5 mt-2">
+                  <span className="text-2xl font-bold text-slate-900">18</span>
+                  <span className="text-xs font-medium text-slate-500">Menit / Pesanan</span>
                 </div>
-                <p className="mt-2 text-[10px] font-bold text-[#0052FF]">✓ 3.2 mnt lebih cepat dr SLA</p>
+                <p className="text-[11px] text-emerald-600 font-medium mt-2 flex items-center gap-1">
+                  <span>📉</span> 3.2 mnt lebih cepat dr SLA
+                </p>
               </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#EBF2FF] text-[#0052FF]">
-                <Clock size={20} />
+              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
               </div>
             </div>
-          </section>
+          </div>
 
-          {/* FILTER TAB */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex rounded-xl bg-[#ECEFF8] p-1 text-[11px] font-bold text-[#556075]">
+          {/* ==================== FILTER TABS & SEARCH ==================== */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+            {/* Filter Tabs */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
               <button
-                type="button"
-                onClick={() => setActiveFilter("Semua")}
-                className={`rounded-lg px-4 py-2 transition ${
-                  activeFilter === "Semua"
-                    ? "bg-[#0052FF] text-white shadow-sm"
-                    : "hover:text-[#131B2E]"
+                onClick={() => setActiveTab('semua')}
+                className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                  activeTab === 'semua'
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                    : 'bg-white border border-slate-100 text-slate-600 hover:bg-slate-50'
                 }`}
               >
-                Semua Armada (6)
+                Semua Armada (4)
               </button>
               <button
-                type="button"
-                onClick={() => setActiveFilter("Di Jalan")}
-                className={`rounded-lg px-4 py-2 transition ${
-                  activeFilter === "Di Jalan"
-                    ? "bg-[#0052FF] text-white shadow-sm"
-                    : "hover:text-[#131B2E]"
+                onClick={() => setActiveTab('jalan')}
+                className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                  activeTab === 'jalan'
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                    : 'bg-white border border-slate-100 text-slate-600 hover:bg-slate-50'
                 }`}
               >
-                Sedang Jalan (4)
+                Sedang Jalan (3)
               </button>
               <button
-                type="button"
-                onClick={() => setActiveFilter("Standby Depo")}
-                className={`rounded-lg px-4 py-2 transition ${
-                  activeFilter === "Standby Depo"
-                    ? "bg-[#0052FF] text-white shadow-sm"
-                    : "hover:text-[#131B2E]"
+                onClick={() => setActiveTab('standby')}
+                className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                  activeTab === 'standby'
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                    : 'bg-white border border-slate-100 text-slate-600 hover:bg-slate-50'
                 }`}
               >
-                Standby Depo (2)
+                Standby Depo (1)
               </button>
               <button
-                type="button"
-                onClick={() => setActiveFilter("Riwayat")}
-                className={`rounded-lg px-4 py-2 transition ${
-                  activeFilter === "Riwayat"
-                    ? "bg-[#0052FF] text-white shadow-sm"
-                    : "hover:text-[#131B2E]"
+                onClick={() => setActiveTab('riwayat')}
+                className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                  activeTab === 'riwayat'
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                    : 'bg-white border border-slate-100 text-slate-600 hover:bg-slate-50'
                 }`}
               >
                 Riwayat Hari Ini
               </button>
             </div>
 
-            <div className="relative w-full max-w-[260px]">
-              <Search
-                size={15}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7A849A]"
-              />
+            {/* Search Input */}
+            <div className="relative w-full sm:w-64">
+              <svg className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
               <input
-                type="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                type="text"
                 placeholder="Cari kurir, plat, order..."
-                className="h-10 w-full rounded-xl border border-[#E1E5F0] bg-white pl-9 pr-3 text-[11px] outline-none focus:border-[#0052FF]"
+                className="w-full bg-white border border-slate-200/80 rounded-xl pl-10 pr-4 py-2 text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
           </div>
 
-          {/* MAIN CONTENT GRID */}
-          <section className="grid gap-4 xl:grid-cols-12">
-            {/* LEFT: KURIR LAPANGAN */}
-            <div className="xl:col-span-4 space-y-4">
-              <div className="flex items-center justify-between">
+          {/* ==================== 2 COLUMNS CONTENT ==================== */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            
+            {/* LEFT: KURIR LAPANGAN (4/12) */}
+            <div className="lg:col-span-5 space-y-4">
+              <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-2">
-                  <Truck size={18} className="text-[#0052FF]" />
-                  <h2 className="text-[16px] font-extrabold">
-                    Kurir Lapangan
-                  </h2>
+                  <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  <h3 className="font-bold text-slate-800 text-sm">Kurir Lapangan</h3>
                 </div>
-                <span className="rounded-md bg-[#EBF2FF] px-2 py-0.5 text-[10px] font-bold text-[#0052FF]">
-                  {filteredCouriers.length} Terpilih
+                <span className="text-[11px] font-semibold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full">
+                  {filteredKurir.filter((k) => k.status === 'jalan').length} / {filteredKurir.length} Bergerak
                 </span>
               </div>
 
-              <div className="space-y-3">
-                {filteredCouriers.map((courier) => (
-                  <div
-                    key={courier.id}
-                    className="rounded-2xl border border-[#EEF0F5] bg-white p-4 space-y-3 shadow-sm"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="text-[14px] font-bold">{courier.name}</h3>
-                        <p className="text-[10px] font-medium text-[#687289]">
-                          {courier.vehicle} • {courier.plate}
-                        </p>
+              {filteredKurir.length === 0 ? (
+                <div className="bg-white p-8 text-center rounded-2xl border border-slate-100 text-slate-400 text-xs">
+                  Tidak ada data kurir untuk kategori ini.
+                </div>
+              ) : (
+                filteredKurir.map((kurir) => (
+                  <div key={kurir.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-sky-100 text-sky-700 font-bold flex items-center justify-center text-xs">
+                          {kurir.initial}
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-slate-800 text-sm">{kurir.nama}</h4>
+                          <p className="text-[11px] text-slate-400">{kurir.motor}</p>
+                        </div>
                       </div>
 
-                      {courier.status === "Di Jalan" ? (
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#DCF8F6] px-2.5 py-1 text-[9px] font-bold text-[#087D86]">
-                          <span className="h-1.5 w-1.5 rounded-full bg-[#087D86]" />
-                          Di Jalan
+                      {kurir.status === 'jalan' ? (
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-sky-50 text-sky-600 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-sky-600"></span> Di Jalan
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#E2F9E5] px-2.5 py-1 text-[9px] font-bold text-[#16752C]">
-                          <span className="h-1.5 w-1.5 rounded-full bg-[#16752C]" />
-                          Standby Depo
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span> Standby Depo
                         </span>
                       )}
                     </div>
 
-                    {courier.status === "Di Jalan" ? (
-                      <div className="rounded-xl bg-[#F4F6FD] p-3 text-[10px] space-y-1">
-                        <div className="flex justify-between font-bold text-[#556075]">
-                          <span>Tugas Saat Ini</span>
-                          <span className="text-[#0052FF]">{courier.orderId}</span>
-                        </div>
-                        <p className="text-[#131B2E] font-medium">
-                          {courier.taskDesc}
-                        </p>
-                        <div className="flex justify-between text-[#687289] pt-1">
-                          <span>Berangkat {courier.departureTime}</span>
-                          <span className="font-bold text-[#131B2E]">
-                            {courier.eta}
-                          </span>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="rounded-xl bg-[#F4F6FD] p-3 text-[10px] space-y-1">
-                        <div className="flex justify-between font-bold text-[#16752C]">
-                          <span>Status Depo</span>
-                          <span>Siap Antar Kloter Baru</span>
-                        </div>
-                        <p className="text-[#556075]">{courier.depoNote}</p>
-                      </div>
-                    )}
+                    {kurir.status === 'jalan' ? (
+                      <>
+                        <div className="bg-slate-50 p-3 rounded-xl space-y-2 text-xs">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] text-slate-400">Tugas Saat Ini</span>
+                            <span className="font-bold text-blue-600">{kurir.tugas}</span>
+                          </div>
 
-                    {courier.status === "Di Jalan" ? (
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-[#E1E5F0] bg-white py-2 text-[10px] font-bold text-[#333E56] hover:bg-[#F5F7FC]"
-                        >
-                          <Phone size={13} /> Hubungi
-                        </button>
-                        <button
-                          type="button"
-                          className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-[#EBF2FF] py-2 text-[10px] font-bold text-[#0052FF] hover:bg-[#DCE7FF]"
-                        >
-                          <Compass size={13} /> Pantau Rute
-                        </button>
-                      </div>
+                          <p className="text-slate-700 font-medium leading-snug">{kurir.deskripsi}</p>
+
+                          {/* Progress Bar */}
+                          <div className="w-full bg-slate-200/60 h-1.5 rounded-full overflow-hidden">
+                            <div className="bg-blue-600 h-full rounded-full transition-all duration-300" style={{ width: `${kurir.progress}%` }}></div>
+                          </div>
+
+                          <div className="flex items-center justify-between text-[11px] text-slate-400 pt-0.5">
+                            <span>Berangkat {kurir.berangkat}</span>
+                            <span className="text-sky-600 font-semibold">{kurir.estimasi}</span>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 pt-1">
+                          <button className="w-full py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200/80 rounded-xl text-xs font-semibold text-slate-700 flex items-center justify-center gap-1.5 transition-colors">
+                            <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                            </svg>
+                            Hubungi
+                          </button>
+                          <button className="w-full py-2 bg-blue-50 hover:bg-blue-100 border border-blue-100 rounded-xl text-xs font-semibold text-blue-600 flex items-center justify-center gap-1.5 transition-colors">
+                            <svg className="w-3.5 h-3.5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            </svg>
+                            Pantau Rute
+                          </button>
+                        </div>
+                      </>
                     ) : (
-                      <button
-                        type="button"
-                        className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-[#0052FF] py-2.5 text-[10px] font-bold text-white shadow-sm hover:bg-[#0047DE]"
-                      >
-                        <Plus size={14} /> Tugaskan Pesanan Antre
-                      </button>
+                      <>
+                        <div className="bg-slate-50 p-3 rounded-xl space-y-1 text-xs">
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="text-slate-400">Status Depo</span>
+                            <span className="font-semibold text-emerald-600">{kurir.statusDepoTitle}</span>
+                          </div>
+                          <p className="text-slate-600 text-[11px] leading-relaxed mt-1">{kurir.deskripsi}</p>
+                        </div>
+
+                        <button className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-colors flex items-center justify-center gap-1">
+                          <span>+</span> Tugaskan Pesanan Antre
+                        </button>
+                      </>
                     )}
                   </div>
-                ))}
-              </div>
+                ))
+              )}
             </div>
 
-            {/* RIGHT: TABEL PENGANTARAN AKTIF (TETAP RAPI + KANAN DIBERI PADDING) */}
-            <div className="xl:col-span-8 rounded-2xl border border-[#EEF0F5] bg-white p-5 md:p-6 space-y-4">
-              <div className="flex items-center justify-between">
+            {/* RIGHT: TABEL PENGANTARAN AKTIF (7/12) */}
+            <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <Compass size={18} className="text-[#0052FF]" />
-                    <h2 className="text-[16px] font-extrabold">
-                      Tabel Pengantaran Aktif
-                    </h2>
-                  </div>
-                  <p className="text-[10px] text-[#687289] mt-0.5">
-                    Pesanan yang sedang dalam proses pengiriman oleh kurir depo
-                  </p>
+                  <h3 className="font-bold text-slate-800 text-base">Tabel Pengantaran Aktif</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Pesanan yang sedang dalam proses pengiriman oleh kurir depo</p>
                 </div>
-
-                <span className="text-[10px] font-bold text-[#556075]">
-                  Diurutkan:{" "}
-                  <span className="text-[#0052FF]">Estimasi SLA Terdekat</span>
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-400">Diurutkan:</span>
+                  <select className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1 text-xs font-semibold text-slate-700 focus:outline-none">
+                    <option>Estimasi SLA Terdekat</option>
+                    <option>Terbaru Hari Ini</option>
+                    <option>Status Pengiriman</option>
+                  </select>
+                </div>
               </div>
 
-              {/* TABLE CONTAINER */}
-              <div className="w-full">
-                <table className="w-full text-left text-[11px]">
+              {/* Table Wrapper */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="border-b border-[#EEF0F5] text-[10px] font-bold uppercase tracking-wider text-[#737C91]">
-                      <th className="pb-3">No. Order</th>
-                      <th className="pb-3">Kurir &amp; Armada</th>
-                      <th className="pb-3">Alamat Tujuan</th>
-                      <th className="pb-3">Muatan</th>
-                      <th className="pb-3">Progress / Estimasi</th>
-                      <th className="pb-3 text-right pr-4 w-[110px]">Status</th>
+                    <tr className="border-b border-slate-100 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                      <th className="py-3 px-2">NO. ORDER</th>
+                      <th className="py-3 px-2">KURIR & ARMADA</th>
+                      <th className="py-3 px-2">ALAMAT TUJUAN</th>
+                      <th className="py-3 px-2">MUATAN</th>
+                      <th className="py-3 px-2">PROGRESS / ESTIMASI</th>
+                      <th className="py-3 px-2 text-center">STATUS</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#EEF0F5]">
-                    {filteredDeliveries.map((delivery) => (
-                      <tr key={delivery.id} className="hover:bg-[#F9FAFD]">
-                        <td className="py-3.5 font-extrabold text-[#0052FF]">
-                          {delivery.id}
-                          <div className="text-[9px] font-normal text-[#80899C]">
-                            {delivery.time}
-                          </div>
-                        </td>
-                        <td className="py-3.5">
-                          <div className="flex items-center gap-2">
-                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#EBF2FF] font-bold text-[#0052FF] text-[10px]">
-                              {delivery.avatarInitial}
-                            </div>
-                            <div>
-                              <div className="font-bold">
-                                {delivery.courierName}
-                              </div>
-                              <div className="text-[9px] text-[#80899C]">
-                                {delivery.courierPlate}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-3.5 max-w-[200px]">
-                          <div className="font-semibold text-[#131B2E]">
-                            {delivery.address}
-                          </div>
-                          <div className="text-[9px] text-[#80899C]">
-                            {delivery.recipient}
-                          </div>
-                          {delivery.note && (
-                            <div className="text-[9px] font-medium text-[#087D86]">
-                              {delivery.note}
-                            </div>
-                          )}
-                        </td>
-                        <td className="py-3.5">
-                          <span className="rounded-md bg-[#F0F3FF] px-2 py-1 font-bold text-[#0052FF] text-[10px] inline-block">
-                            {delivery.items}
-                          </span>
-                        </td>
-                        <td className="py-3.5">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <div className="h-1.5 w-16 overflow-hidden rounded-full bg-[#E1E5F0]">
-                                <div
-                                  className="h-full bg-[#0052FF]"
-                                  style={{
-                                    width: `${delivery.progressPercent}%`,
-                                  }}
-                                />
-                              </div>
-                              <span className="font-bold text-[#087D86]">
-                                {delivery.progressText}
-                              </span>
-                            </div>
-                            <div className="text-[9px] text-[#80899C]">
-                              {delivery.distanceText}
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* FITUR BADGE STATUS RAPI + PR-4 SUPAYA TIDAK KEPOTONG */}
-                        <td className="py-3.5 text-right pr-4">
-                          {delivery.status === "Diantar" ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-[#DCF8F6] px-2.5 py-1 text-[9px] font-bold text-[#087D86] whitespace-nowrap">
-                              <span className="h-1.5 w-1.5 rounded-full bg-[#087D86]" />
-                              Diantar
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-[#DCE7FF] px-2.5 py-1 text-[9px] font-bold text-[#164FC1] whitespace-nowrap">
-                              <span className="h-1.5 w-1.5 rounded-full bg-[#164FC1]" />
-                              Diproses
-                            </span>
-                          )}
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredPengantaran.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-slate-400 text-xs">
+                          Tidak ada data pengantaran untuk status ini.
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      filteredPengantaran.map((item) => (
+                        <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
+                          {/* 1. NO ORDER */}
+                          <td className="py-4 px-2 font-bold text-blue-600">
+                            {item.noOrder}
+                            <span className="block text-[10px] text-slate-400 font-normal">{item.jam}</span>
+                          </td>
+
+                          {/* 2. KURIR & ARMADA */}
+                          <td className="py-4 px-2">
+                            <p className="font-bold text-slate-800">{item.kurirNama}</p>
+                            <p className="text-[10px] text-slate-400">{item.kurirPlat}</p>
+                          </td>
+
+                          {/* 3. ALAMAT TUJUAN */}
+                          <td className="py-4 px-2 max-w-[180px]">
+                            <p className="font-semibold text-slate-800 leading-tight">{item.alamatUtama}</p>
+                            <p className="text-[10px] text-slate-400 leading-tight mt-0.5">{item.alamatDetail}</p>
+                            <p className={`text-[10px] mt-0.5 ${item.isHighlightPatokan ? 'font-bold text-blue-600' : 'text-slate-500'}`}>
+                              {item.patokan}
+                            </p>
+                          </td>
+
+                          {/* 4. MUATAN */}
+                          <td className="py-4 px-2">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-sky-50 text-sky-700 whitespace-nowrap border border-sky-100">
+                              💧 {item.muatan}
+                            </span>
+                          </td>
+
+                          {/* 5. PROGRESS / ESTIMASI */}
+                          <td className="py-4 px-2">
+                            <div className="w-28 space-y-1">
+                              <div className="flex justify-between text-[10px] font-semibold text-slate-700">
+                                <span>{item.estimasiText}</span>
+                              </div>
+                              <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                                <div
+                                  className="bg-blue-600 h-full rounded-full"
+                                  style={{ width: `${item.progressPct}%` }}
+                                ></div>
+                              </div>
+                              <span className="text-[9px] text-slate-400 block">{item.jarakText}</span>
+                            </div>
+                          </td>
+
+                          {/* 6. STATUS (Paling Kanan) */}
+                          <td className="py-4 px-2 text-center">
+                            {item.status === 'Diantar' ? (
+                              <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-sky-50 text-sky-600 inline-flex items-center gap-1 border border-sky-100">
+                                <span className="w-1.5 h-1.5 rounded-full bg-sky-600"></span> Diantar
+                              </span>
+                            ) : (
+                              <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-blue-600 inline-flex items-center gap-1 border border-blue-100">
+                                <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span> Diproses
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
             </div>
-          </section>
-        </main>
-      </div>
+
+          </div>
+
+        </div>
+      </main>
     </div>
   );
 }

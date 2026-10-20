@@ -1,902 +1,683 @@
-"use client";
+'use client';
 
-import { useMemo, useState, useRef } from "react";
-import {
-  Bell,
-  CalendarDays,
-  ClipboardList,
-  CreditCard,
-  LayoutDashboard,
-  Menu,
-  Package,
-  Plus,
-  Search,
-  Truck,
-  UserRound,
-  X,
-  LogOut,
-  RefreshCw,
-  AlertTriangle,
-  WalletCards,
-  Edit3,
-  ShoppingCart,
-  Droplets,
-  CheckCircle2,
-  Check,
-  Printer,
-  ArrowRight,
-  FileText,
-  Clock,
-} from "lucide-react";
+import React, { useState } from 'react';
+import Link from 'next/link';
 
-type ProductItem = {
-  id: string;
-  name: string;
-  category: "Refill 19L" | "Sekali Pakai";
-  description: string;
-  image: string;
-  sku: string;
-  typeDesc: string;
-  sellPrice: string;
-  costPrice: string;
-  stockFilled: number;
-  maxStock: number;
-  emptyBottles: number;
-  status: "Tersedia" | "Rendah" | "Kritis";
-};
-
-const menuItems = [
-  { label: "Dashboard", icon: LayoutDashboard, active: false },
-  { label: "Manajemen Pesanan", icon: ClipboardList, active: false },
-  { label: "Produk & Stok", icon: Package, active: true },
-  { label: "Monitoring Pengantaran", icon: Truck, active: false },
-  { label: "Laporan Keuangan", icon: CreditCard, active: false },
-];
-
-const initialProducts: ProductItem[] = [
+// Data Inventaris Produk & Varian Sesuai Wireframe
+const initialProducts = [
   {
-    id: "p1",
-    name: "Aqua 19 Liter Refill",
-    category: "Refill 19L",
-    description: "Air Mineral Pegunungan Alami",
-    image: "/products/aqua-19l.png",
-    sku: "GLN-AQU-19L",
-    typeDesc: "Galon Tukar Refill",
-    sellPrice: "Rp 18.000",
-    costPrice: "Rp 14.200",
-    stockFilled: 35,
-    maxStock: 50,
-    emptyBottles: 18,
-    status: "Tersedia",
+    id: 'p1',
+    nama: 'Aqua 19 Liter Refill',
+    deskripsi: 'Air Mineral Pegunungan Alami',
+    sku: 'GLN-AQUA-19L',
+    tipe: 'Galon Tukar Refill',
+    hargaJual: 18000,
+    hargaModal: 14200,
+    stokTerisi: 35,
+    stokStatusText: 'Aman (70%)',
+    stokColorPct: '70%',
+    stokBarClass: 'bg-emerald-500',
+    botolKosong: '18 Botol',
+    status: 'Tersedia',
+    typeStatus: 'tersedia',
+    image: '/aqua.png',
   },
   {
-    id: "p2",
-    name: "Le Minerale 15 Liter",
-    category: "Sekali Pakai",
-    description: "Galon Sekali Pakai Tanpa Tukar",
-    image: "/products/le-minerale-15l.png",
-    sku: "GLN-LMN-15L",
-    typeDesc: "Bebas BPA / Sekali Pakai",
-    sellPrice: "Rp 17.000",
-    costPrice: "Rp 13.800",
-    stockFilled: 25,
-    maxStock: 50,
-    emptyBottles: 0,
-    status: "Tersedia",
+    id: 'p2',
+    nama: 'Le Minerale 15 Liter',
+    deskripsi: 'Galon Sekali Pakai Tanpa Tukar',
+    sku: 'GLN-LMN-15L',
+    tipe: 'Bebas BPA / Sekali Pakai',
+    hargaJual: 17000,
+    hargaModal: 13800,
+    stokTerisi: 25,
+    stokStatusText: 'Optimal (50%)',
+    stokColorPct: '50%',
+    stokBarClass: 'bg-teal-500',
+    botolKosong: '- (Non-Refill)',
+    status: 'Tersedia',
+    typeStatus: 'tersedia',
+    image: '/leminerale.png',
   },
   {
-    id: "p3",
-    name: "Cleo 19 Liter Refill",
-    category: "Refill 19L",
-    description: "Pure Water Demineral 0 ppm",
-    image: "/products/cleo-19l.png",
-    sku: "GLN-CLE-19L",
-    typeDesc: "Galon Tukar Refill",
-    sellPrice: "Rp 16.500",
-    costPrice: "Rp 13.000",
-    stockFilled: 15,
-    maxStock: 50,
-    emptyBottles: 14,
-    status: "Kritis",
+    id: 'p3',
+    nama: 'Cleo 19 Liter Refill',
+    deskripsi: 'Pure Water Demineral 0 ppm',
+    sku: 'GLN-CLE-19L',
+    tipe: 'Galon Tukar Refill',
+    hargaJual: 16500,
+    hargaModal: 13000,
+    stokTerisi: 15,
+    stokStatusText: 'Menipis (30%)',
+    stokColorPct: '30%',
+    stokBarClass: 'bg-red-500',
+    botolKosong: '14 Botol',
+    status: 'Stok Kritis',
+    typeStatus: 'kritis',
+    image: '/cleo.png',
   },
   {
-    id: "p4",
-    name: "Vit 19 Liter Refill",
-    category: "Refill 19L",
-    description: "Air Mineral Higienis Terjangkau",
-    image: "/products/vit-19l.png",
-    sku: "GLN-VIT-19L",
-    typeDesc: "Galon Tukar Refill",
-    sellPrice: "Rp 15.000",
-    costPrice: "Rp 11.500",
-    stockFilled: 10,
-    maxStock: 50,
-    emptyBottles: 10,
-    status: "Kritis",
+    id: 'p4',
+    nama: 'Vit 19 Liter Refill',
+    deskripsi: 'Air Mineral Higienis Terjangkau',
+    sku: 'GLN-VIT-19L',
+    tipe: 'Galon Tukar Refill',
+    hargaJual: 15000,
+    hargaModal: 11500,
+    stokTerisi: 10,
+    stokStatusText: 'Sisa 20%',
+    stokColorPct: '20%',
+    stokBarClass: 'bg-red-500',
+    botolKosong: '10 Botol',
+    status: 'Stok Kritis',
+    typeStatus: 'kritis',
+    image: '/aqua.png', // Fallback galon
   },
 ];
 
 export default function ProductsPage() {
-  const [mobileSidebar, setMobileSidebar] = useState(false);
-  const [search, setSearch] = useState("");
-  const [selectedDate, setSelectedDate] = useState("2026-05-24");
-  const [activeFilter, setActiveFilter] = useState<
-    "Semua" | "Refill 19L" | "Sekali Pakai" | "Perlu Restok"
-  >("Semua");
+  const [activeTab, setActiveTab] = useState<'semua' | 'refill' | 'sekalipakai' | 'kritis'>('semua');
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // State untuk produk & edit harga
-  const [products, setProducts] = useState<ProductItem[]>(initialProducts);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editPriceVal, setEditPriceVal] = useState("");
+  // Filter Data Produk Sesuai Tab & Pencarian
+  const filteredProducts = initialProducts.filter((p) => {
+    const matchesSearch =
+      p.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.deskripsi.toLowerCase().includes(searchQuery.toLowerCase());
 
-  const dateInputRef = useRef<HTMLInputElement>(null);
+    if (!matchesSearch) return false;
 
-  const formattedDateText = useMemo(() => {
-    if (!selectedDate) return "Hari ini, 24 Mei";
-    const d = new Date(selectedDate);
-    if (isNaN(d.getTime())) return "Hari ini, 24 Mei";
-
-    const months = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "Mei",
-      "Jun",
-      "Jul",
-      "Agu",
-      "Sep",
-      "Okt",
-      "Nov",
-      "Des",
-    ];
-    return `Hari ini, ${d.getDate()} ${months[d.getMonth()]}`;
-  }, [selectedDate]);
-
- const handleOpenCalendar = () => {
-  const input = dateInputRef.current;
-  if (!input) return;
-
-  if (typeof (input as any).showPicker === "function") {
-    (input as any).showPicker();
-  } else {
-    input.click();
-  }
-};
-
-  const handleStartEditPrice = (product: ProductItem) => {
-    setEditingId(product.id);
-    setEditPriceVal(product.sellPrice);
-  };
-
-  const handleSavePrice = (id: string) => {
-    setProducts((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, sellPrice: editPriceVal } : p))
-    );
-    setEditingId(null);
-  };
-
-  const filteredProducts = useMemo(() => {
-    return products.filter((p) => {
-      const matchFilter =
-        activeFilter === "Semua" ||
-        (activeFilter === "Refill 19L" && p.category === "Refill 19L") ||
-        (activeFilter === "Sekali Pakai" && p.category === "Sekali Pakai") ||
-        (activeFilter === "Perlu Restok" &&
-          (p.status === "Kritis" || p.status === "Rendah"));
-
-      const query = search.toLowerCase().trim();
-      const matchSearch =
-        !query ||
-        p.name.toLowerCase().includes(query) ||
-        p.sku.toLowerCase().includes(query) ||
-        p.description.toLowerCase().includes(query);
-
-      return matchFilter && matchSearch;
-    });
-  }, [activeFilter, search, products]);
+    if (activeTab === 'refill') return p.tipe.includes('Refill');
+    if (activeTab === 'sekalipakai') return p.tipe.includes('Sekali Pakai');
+    if (activeTab === 'kritis') return p.typeStatus === 'kritis';
+    return true; // 'semua'
+  });
 
   return (
-    <div className="min-h-screen bg-[#F7F8FC] text-[#131B2E]">
-      {/* MOBILE OVERLAY */}
-      {mobileSidebar && (
-        <button
-          type="button"
-          aria-label="Tutup menu"
-          className="fixed inset-0 z-40 bg-black/20 lg:hidden"
-          onClick={() => setMobileSidebar(false)}
-        />
-      )}
-
-      {/* SIDEBAR */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-[248px] flex-col border-r border-[#E9ECF4] bg-white transition-transform duration-300 lg:translate-x-0 ${
-          mobileSidebar ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <div className="flex h-[72px] items-center border-b border-[#EEF0F5] px-6">
-          <div>
-            <div className="text-[18px] font-extrabold tracking-[-0.04em] text-[#0052FF]">
-              GalonKu Admin
-            </div>
-            <div className="mt-0.5 text-[10px] font-medium text-[#6F7890]">
-              Portal Manajemen &amp; Operasional
-            </div>
+    <div className="flex min-h-screen bg-[#F8FAFC] text-slate-800 font-sans antialiased">
+      {/* ==================== SIDEBAR ==================== */}
+      <aside className="w-64 bg-white border-r border-slate-100 flex flex-col justify-between shrink-0 sticky top-0 h-screen p-5 z-20">
+        <div>
+          {/* Logo Brand */}
+          <div className="mb-8">
+            <h1 className="text-xl font-bold text-blue-600 tracking-tight">GalonKu Admin</h1>
+            <p className="text-xs text-slate-400 mt-0.5">Portal Manajemen & Operasional</p>
           </div>
 
-          <button
-            type="button"
-            aria-label="Tutup menu"
-            className="ml-auto rounded-lg p-2 text-[#6F7890] hover:bg-[#F3F5FA] lg:hidden"
-            onClick={() => setMobileSidebar(false)}
-          >
-            <X size={18} />
-          </button>
-        </div>
+          {/* Menu Utama */}
+          <div className="space-y-1">
+            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3 px-3">
+              MENU UTAMA
+            </p>
 
-        <div className="flex-1 overflow-y-auto px-4 py-6">
-          <p className="px-3 text-[10px] font-extrabold uppercase tracking-[0.08em] text-[#737C91]">
-            Menu Utama
-          </p>
-
-          <nav className="mt-4 space-y-1.5">
-            {menuItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.label}
-                  type="button"
-                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[14px] font-semibold transition ${
-                    item.active
-                      ? "bg-[#0052FF] text-white shadow-[0_8px_18px_rgba(0,82,255,0.18)]"
-                      : "text-[#293246] hover:bg-[#F1F4FB]"
-                  }`}
-                >
-                  <Icon size={18} strokeWidth={1.8} />
-                  <span>{item.label}</span>
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-
-        <div className="border-t border-[#EEF0F5] p-4">
-          <div className="flex items-center gap-3 rounded-xl bg-[#F1F3FF] px-3 py-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#0052FF] text-white">
-              <UserRound size={18} />
-            </div>
-
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[12px] font-bold text-[#131B2E]">
-                Budi Santoso
-              </p>
-              <p className="text-[10px] text-[#687289]">Super Admin</p>
-            </div>
-
-            <button
-              type="button"
-              aria-label="Keluar"
-              className="rounded-lg p-1.5 text-[#536079] hover:bg-white"
+            <Link
+              href="/dashboard"
+              className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 transition-all font-medium text-sm"
             >
-              <LogOut size={17} />
-            </button>
+              <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+              </svg>
+              Dashboard
+            </Link>
+
+            <Link
+              href="/pesanan"
+              className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 transition-all font-medium text-sm"
+            >
+              <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Manajemen Pesanan
+            </Link>
+
+            {/* Produk & Stok (AKTIF) */}
+            <Link
+              href="/products"
+              className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-blue-600 text-white shadow-md shadow-blue-500/20 font-medium text-sm transition-all"
+            >
+              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+              Produk & Stok
+            </Link>
+
+            <Link
+              href="/monitoring"
+              className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 transition-all font-medium text-sm"
+            >
+              <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 17a2 2 0 100 4 2 2 0 000-4zm10 0a2 2 0 100 4 2 2 0 000-4zm-12-3h10a2 2 0 002-2V7a2 2 0 00-2-2H4a2 2 0 00-2 2v8a2 2 0 002 2zm12 0h2a2 2 0 002-2v-3l-2-3h-2v8z" />
+              </svg>
+              Monitoring Pengantaran
+            </Link>
+
+            <Link
+              href="/laporan"
+              className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 transition-all font-medium text-sm"
+            >
+              <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Laporan Keuangan
+            </Link>
           </div>
+        </div>
+
+        {/* User Card Bottom */}
+        <div className="bg-slate-50 border border-slate-100 rounded-2xl p-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-slate-900 text-white font-semibold flex items-center justify-center text-sm shadow-sm">
+              BS
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-800 leading-tight">Budi Santoso</p>
+              <p className="text-[11px] text-slate-400">Super Admin</p>
+            </div>
+          </div>
+          <button className="text-slate-400 hover:text-slate-600 p-1.5 transition-colors">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+          </button>
         </div>
       </aside>
 
-      {/* MAIN CONTAINER */}
-      <div className="lg:pl-[248px]">
-        {/* TOP HEADER */}
-        <header className="sticky top-0 z-30 flex h-[72px] items-center justify-between border-b border-[#ECEEF4] bg-white/95 px-4 backdrop-blur md:px-6">
-          <button
-            type="button"
-            aria-label="Buka menu"
-            className="rounded-xl p-2 text-[#374258] hover:bg-[#F3F5FA] lg:hidden"
-            onClick={() => setMobileSidebar(true)}
-          >
-            <Menu size={22} />
-          </button>
+      {/* ==================== MAIN CONTENT ==================== */}
+      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+        {/* Top Header */}
+        <header className="h-16 bg-white border-b border-slate-100 px-8 flex items-center justify-between sticky top-0 z-10">
+          <div className="relative w-96">
+            <svg className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Cari pesanan, resi, kurir..."
+              className="w-full bg-slate-50 border-none rounded-xl pl-10 pr-4 py-2 text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            />
+          </div>
 
-          <div className="ml-auto flex items-center gap-2 md:gap-3">
-            <div className="relative hidden w-[270px] md:block">
-              <Search
-                size={17}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7A849A]"
-              />
-              <input
-                type="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Cari pesanan, resi, kurir..."
-                className="h-11 w-full rounded-xl border border-transparent bg-[#F2F1FC] pl-10 pr-4 text-[12px] text-[#131B2E] outline-none transition placeholder:text-[#8A91A3] focus:border-[#0052FF] focus:bg-white"
-              />
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-xl px-3 py-1.5 text-xs text-slate-600 font-medium">
+              <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span>Hari ini, 24 Mei</span>
             </div>
 
-            {/* KALENDER INTERAKTIF */}
-            <button
-              type="button"
-              onClick={handleOpenCalendar}
-              className="hidden h-11 items-center gap-2 rounded-xl bg-[#F2F1FC] px-4 text-[12px] font-bold text-[#293246] transition hover:bg-[#E8EBFA] sm:flex relative cursor-pointer"
-            >
-              <CalendarDays size={16} className="text-[#0052FF]" />
-              <span>{formattedDateText}</span>
-              <input
-                ref={dateInputRef}
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="sr-only"
-              />
+            <button className="relative p-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-100 transition-colors">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v1.341C7.67 7.165 6 9.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 01-6 0v-1m6 0H9" />
+              </svg>
+              <span className="w-2 h-2 bg-red-500 rounded-full absolute top-2 right-2 ring-2 ring-white"></span>
             </button>
 
-            <button
-              type="button"
-              aria-label="Notifikasi"
-              className="relative flex h-11 w-11 items-center justify-center rounded-xl hover:bg-[#F3F5FA]"
-            >
-              <Bell size={20} />
-              <span className="absolute right-2.5 top-2 h-2 w-2 rounded-full bg-[#D93636]" />
-            </button>
-
-            <button
-              type="button"
-              className="hidden h-11 items-center gap-2 rounded-xl bg-[#0052FF] px-4 text-[12px] font-bold text-white shadow-[0_6px_14px_rgba(0,82,255,0.16)] transition hover:bg-[#0047DE] sm:flex"
-            >
-              <Plus size={17} />
-              Buat Pesanan
+            <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-md shadow-blue-500/20 flex items-center gap-1.5 transition-all">
+              <span className="text-sm font-bold">+</span> Buat Pesanan
             </button>
           </div>
         </header>
 
-        {/* CONTENT AREA */}
-        <main className="mx-auto max-w-[1500px] p-4 md:p-6 space-y-4">
-          {/* SECTION HEADER */}
-          <section className="rounded-2xl border border-[#EEF0F5] bg-white p-5 shadow-[0_2px_10px_rgba(19,27,46,0.02)] md:p-6">
-            <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
-              <div>
-                <div className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.04em] text-[#0052FF]">
-                  <Package size={15} />
-                  LOGISTIK &amp; GUDANG DEPO / PRODUK &amp; STOK
-                </div>
-                <h1 className="mt-1 text-[22px] font-extrabold tracking-[-0.035em] text-[#131B2E] md:text-[24px]">
-                  Produk &amp; Stok Galon
-                </h1>
-                <p className="mt-1 text-[11px] text-[#6D768A]">
-                  Monitoring ketersediaan pasokan galon, inventaris botol kosong, dan penyesuaian harga jual.
-                </p>
-              </div>
+        {/* Content Body */}
+        <div className="p-8 space-y-6">
+          {/* Header Title */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <p className="text-[11px] font-bold text-blue-600 uppercase tracking-wider mb-1">
+                LOGISTIK & GUDANG DEPO / <span className="text-slate-400">PRODUK & STOK</span>
+              </p>
+              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Produk & Stok Galon</h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Monitoring ketersediaan pasokan galon, inventaris botol kosong, dan penyesuaian harga jual.
+              </p>
+            </div>
 
+            <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow-md shadow-blue-500/20 flex items-center gap-1.5 transition-all self-start md:self-auto">
+              <span>+</span> Tambah Produk Baru
+            </button>
+          </div>
+
+          {/* ==================== 4 STATS CARDS ROW ==================== */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Card 1: Total Galon Terisi */}
+            <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-start justify-between">
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">TOTAL GALON TERISI</p>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-2xl font-extrabold text-slate-900">85</span>
+                  <span className="text-xs font-medium text-slate-500">Galon</span>
+                </div>
+                <div className="mt-2 text-[10px] text-slate-400 space-y-0.5">
+                  <p><span className="font-semibold text-slate-600">Aqua: 35</span> • LeMin: 25</p>
+                  <p><span className="font-semibold text-slate-600">Cleo: 15</span> • Vit: 10</p>
+                </div>
+              </div>
+              <div className="w-9 h-9 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                💧
+              </div>
+            </div>
+
+            {/* Card 2: Stok Galon Kosong */}
+            <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-start justify-between">
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">STOK GALON KOSONG</p>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-2xl font-extrabold text-slate-900">42</span>
+                  <span className="text-xs font-medium text-slate-500">Galon Kosong</span>
+                </div>
+                <div className="mt-3 flex items-center gap-1.5 text-[10px]">
+                  <span className="text-slate-400">Pool siap tukar pabrik</span>
+                  <span className="px-2 py-0.5 rounded-md bg-sky-50 text-sky-600 font-semibold border border-sky-100">
+                    Tersortir Baik
+                  </span>
+                </div>
+              </div>
+              <div className="w-9 h-9 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
+                🔄
+              </div>
+            </div>
+
+            {/* Card 3: Stok Kritis / Menipis */}
+            <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-start justify-between">
+              <div>
+                <p className="text-[10px] font-bold text-red-500 uppercase tracking-wider">STOK KRITIS / MENIPIS</p>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-2xl font-extrabold text-red-600">2</span>
+                  <span className="text-xs font-medium text-slate-500">Varian</span>
+                </div>
+                <div className="mt-3 flex items-center gap-1.5 text-[10px]">
+                  <span className="text-red-600 font-semibold">VIT 19L & Cleo 19L</span>
+                  <span className="px-2 py-0.5 rounded-md bg-red-50 text-red-600 font-semibold border border-red-100">
+                    Perlu PO
+                  </span>
+                </div>
+              </div>
+              <div className="w-9 h-9 rounded-full bg-red-50 text-red-500 flex items-center justify-center shrink-0">
+                ⚠️
+              </div>
+            </div>
+
+            {/* Card 4: Total Nilai Inventaris */}
+            <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-start justify-between">
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">TOTAL NILAI INVENTARIS</p>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-xl font-extrabold text-slate-900">Rp 1.620.000</span>
+                </div>
+                <div className="mt-3 flex items-center gap-2 text-[10px]">
+                  <span className="text-slate-400">Modal: Rp 1.350.000</span>
+                  <span className="text-emerald-600 font-bold">+22.3% Margin</span>
+                </div>
+              </div>
+              <div className="w-9 h-9 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                💵
+              </div>
+            </div>
+          </div>
+
+          {/* ==================== FILTER & SEARCH BAR ==================== */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+            {/* Search Box */}
+            <div className="relative w-full sm:w-80">
+              <svg className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                placeholder="Cari merk galon, ukuran, SKU..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-white border border-slate-200/80 rounded-xl pl-10 pr-4 py-2 text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              />
+            </div>
+
+            {/* Filter Tabs */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+              <span className="text-xs text-slate-400 font-medium mr-1">Filter Kategori:</span>
               <button
-                type="button"
-                className="flex h-10 items-center gap-2 rounded-xl bg-[#0052FF] px-4 text-[11px] font-bold text-white shadow-[0_4px_12px_rgba(0,82,255,0.18)] transition hover:bg-[#0047DE]"
+                onClick={() => setActiveTab('semua')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                  activeTab === 'semua'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'bg-white border border-slate-100 text-slate-600 hover:bg-slate-50'
+                }`}
               >
-                <Plus size={15} /> Tambah Produk Baru
+                Semua Produk (4)
+              </button>
+              <button
+                onClick={() => setActiveTab('refill')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                  activeTab === 'refill'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'bg-white border border-slate-100 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                Refill 19L (3)
+              </button>
+              <button
+                onClick={() => setActiveTab('sekalipakai')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                  activeTab === 'sekalipakai'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'bg-white border border-slate-100 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                Sekali Pakai (1)
+              </button>
+              <button
+                onClick={() => setActiveTab('kritis')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                  activeTab === 'kritis'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'bg-white border border-slate-100 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                Perlu Restok (2)
               </button>
             </div>
-          </section>
+          </div>
 
-          {/* STAT CARDS */}
-          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-2xl border border-[#EEF0F5] bg-white p-5 flex items-center justify-between">
-              <div>
-                <p className="text-[12px] font-medium text-[#596378]">TOTAL GALON TERISI</p>
-                <div className="mt-1 flex items-end gap-1.5">
-                  <span className="text-[22px] font-extrabold text-[#131B2E]">85</span>
-                  <span className="mb-0.5 text-[11px] font-semibold text-[#6C7588]">Galon</span>
+          {/* ==================== TABEL INVENTARIS DEPO AKTIF ==================== */}
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <h3 className="font-bold text-slate-800 text-base">Daftar Inventaris Depo Aktif</h3>
+                <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 text-[10px] font-semibold">
+                  Live Sync Terkini
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400">Update otomatis setiap pesanan/kirim diselesaikan</p>
+            </div>
+
+            {/* Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-indigo-50/50 text-indigo-900 font-bold uppercase tracking-wider text-[10px] rounded-xl">
+                    <th className="py-3 px-3 rounded-l-xl">PRODUK & VARIAN</th>
+                    <th className="py-3 px-3">SKU / TIPE</th>
+                    <th className="py-3 px-3">HARGA JUAL</th>
+                    <th className="py-3 px-3">HARGA MODAL</th>
+                    <th className="py-3 px-3">STOK TERISI (DEPO)</th>
+                    <th className="py-3 px-3">BOTOL KOSONG</th>
+                    <th className="py-3 px-3">STATUS</th>
+                    <th className="py-3 px-3 text-center rounded-r-xl">AKSI</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredProducts.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-8 text-center text-slate-400 text-xs">
+                        Tidak ada varian produk yang cocok dengan pencarian ini.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredProducts.map((p) => (
+                      <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
+                        {/* 1. PRODUK & VARIAN */}
+                        <td className="py-4 px-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-xl bg-slate-50 border border-slate-100 p-1 flex items-center justify-center shrink-0">
+                              <img
+                                src={p.image}
+                                alt={p.nama}
+                                className="max-h-full max-w-full object-contain"
+                                onError={(e) => {
+                                  // Fallback jika file gambar tidak ditemukan
+                                  (e.target as HTMLElement).style.display = 'none';
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <p className="font-bold text-slate-900 text-sm leading-tight">{p.nama}</p>
+                              <p className="text-[11px] text-slate-400 mt-0.5">{p.deskripsi}</p>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* 2. SKU / TIPE */}
+                        <td className="py-4 px-3">
+                          <p className="font-bold text-slate-800 text-xs">{p.sku}</p>
+                          <p className="text-[10px] text-blue-600 font-medium">{p.tipe}</p>
+                        </td>
+
+                        {/* 3. HARGA JUAL */}
+                        <td className="py-4 px-3">
+                          <div className="flex items-center gap-1 font-extrabold text-slate-900 text-sm">
+                            <span>Rp {p.hargaJual.toLocaleString('id-ID')}</span>
+                            <button className="text-slate-400 hover:text-blue-600 transition-colors p-0.5">
+                              ✏️
+                            </button>
+                          </div>
+                        </td>
+
+                        {/* 4. HARGA MODAL */}
+                        <td className="py-4 px-3 text-slate-500 font-medium">
+                          Rp {p.hargaModal.toLocaleString('id-ID')}
+                        </td>
+
+                        {/* 5. STOK TERISI (DEPO) */}
+                        <td className="py-4 px-3">
+                          <div className="w-32 space-y-1">
+                            <div className="flex justify-between items-center text-[11px] font-semibold">
+                              <span className="text-slate-900 font-bold">{p.stokTerisi} Unit</span>
+                              <span className="text-[10px] text-slate-500 font-normal">{p.stokStatusText}</span>
+                            </div>
+                            <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                              <div
+                                className={`${p.stokBarClass} h-full rounded-full`}
+                                style={{ width: p.stokColorPct }}
+                              ></div>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* 6. BOTOL KOSONG */}
+                        <td className="py-4 px-3 font-semibold text-slate-700">
+                          {p.botolKosong}
+                        </td>
+
+                        {/* 7. STATUS */}
+                        <td className="py-4 px-3">
+                          {p.status === 'Tersedia' ? (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 inline-flex items-center gap-1 border border-emerald-100">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span> Tersedia
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-50 text-red-600 inline-flex items-center gap-1 border border-red-100">
+                              <span className="w-1.5 h-1.5 rounded-full bg-red-600"></span> Stok Kritis
+                            </span>
+                          )}
+                        </td>
+
+                        {/* 8. AKSI */}
+                        <td className="py-4 px-3 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-3 py-1.5 rounded-lg text-xs transition-colors">
+                              Update
+                            </button>
+                            <button className="p-1.5 text-slate-400 hover:text-slate-600 transition-colors">
+                              ⚙️
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Table Footer */}
+            <div className="flex flex-col sm:flex-row items-center justify-between pt-2 border-t border-slate-100 text-xs text-slate-500 gap-2">
+              <p>Menampilkan {filteredProducts.length} dari {initialProducts.length} varian produk galon depo</p>
+              <p className="font-bold text-slate-800">
+                Estimasi Omset Hari Ini: <span className="text-blue-600 text-sm font-extrabold">Rp 1.442.500</span>
+              </p>
+            </div>
+          </div>
+
+          {/* ==================== BOTTOM 2 COLUMNS ==================== */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* LEFT: RIWAYAT & JADWAL KIRIM RESTOK PABRIK (7/12) */}
+            <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400">🕒</span>
+                  <h3 className="font-bold text-slate-800 text-sm">Riwayat & Jadwal Kirim Restok Pabrik</h3>
                 </div>
-                <p className="mt-2 text-[10px] font-bold text-[#0052FF]">
-                  Aqua: 35 • Le Min: 25 <span className="ml-2 text-[#087D86]">Cleo: 15 • Vit: 10</span>
-                </p>
-              </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#EBF2FF] text-[#0052FF]">
-                <Droplets size={20} />
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-[#EEF0F5] bg-white p-5 flex items-center justify-between">
-              <div>
-                <p className="text-[12px] font-medium text-[#596378]">STOK GALON KOSONG</p>
-                <div className="mt-1 flex items-end gap-1.5">
-                  <span className="text-[22px] font-extrabold text-[#131B2E]">42</span>
-                  <span className="mb-0.5 text-[11px] font-semibold text-[#6C7588]">Galon Kosong</span>
-                </div>
-                <p className="mt-2 text-[10px] font-bold text-[#087D86]">
-                  Pool siap tukar pabrik <span className="ml-2 font-extrabold text-[#087D86]">Tersortir Baik</span>
-                </p>
-              </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#DCF8F6] text-[#087D86]">
-                <RefreshCw size={20} />
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-[#EEF0F5] bg-white p-5 flex items-center justify-between">
-              <div>
-                <p className="text-[12px] font-medium text-[#596378]">STOK KRITIS / MENIPIS</p>
-                <div className="mt-1 flex items-end gap-1.5">
-                  <span className="text-[22px] font-extrabold text-[#D93636]">2</span>
-                  <span className="mb-0.5 text-[11px] font-semibold text-[#6C7588]">Varian</span>
-                </div>
-                <p className="mt-2 text-[10px] font-bold text-[#D93636]">
-                  Vit 19L &amp; Cleo 19L <span className="ml-2 rounded bg-[#FFE0E0] px-1 py-0.5 text-[9px]">Perlu PO</span>
-                </p>
-              </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#FFE0E0] text-[#D93636]">
-                <AlertTriangle size={20} />
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-[#EEF0F5] bg-white p-5 flex items-center justify-between">
-              <div>
-                <p className="text-[12px] font-medium text-[#596378]">TOTAL NILAI INVENTARIS</p>
-                <div className="mt-1 flex items-end gap-1.5">
-                  <span className="text-[20px] font-extrabold text-[#131B2E]">Rp 1.620.000</span>
-                </div>
-                <p className="mt-2 text-[10px] font-bold text-[#16752C]">
-                  Modal: Rp 1.258.000 <span className="ml-2 text-[#28A745]">+22.3% Margin</span>
-                </p>
-              </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#E2F9E5] text-[#16752C]">
-                <WalletCards size={20} />
-              </div>
-            </div>
-          </section>
-
-          {/* FILTER & SEARCH BAR */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="relative w-full max-w-[280px]">
-              <Search
-                size={15}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7A849A]"
-              />
-              <input
-                type="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Cari merk galon, ukuran, SKU..."
-                className="h-10 w-full rounded-xl border border-[#E1E5F0] bg-white pl-9 pr-3 text-[11px] outline-none focus:border-[#0052FF]"
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] text-[#687289]">Filter Kategori:</span>
-              <div className="flex rounded-xl bg-[#ECEFF8] p-1 text-[11px] font-bold text-[#556075]">
-                <button
-                  type="button"
-                  onClick={() => setActiveFilter("Semua")}
-                  className={`rounded-lg px-3 py-1.5 transition ${
-                    activeFilter === "Semua"
-                      ? "bg-[#0052FF] text-white shadow-sm"
-                      : "hover:text-[#131B2E]"
-                  }`}
-                >
-                  Semua Produk ({products.length})
+                <button className="text-xs font-semibold text-blue-600 hover:underline">
+                  Lihat Semua PO
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveFilter("Refill 19L")}
-                  className={`rounded-lg px-3 py-1.5 transition ${
-                    activeFilter === "Refill 19L"
-                      ? "bg-[#0052FF] text-white shadow-sm"
-                      : "hover:text-[#131B2E]"
-                  }`}
-                >
-                  Refill 19L (3)
+              </div>
+
+              <div className="space-y-3">
+                {/* Item 1 */}
+                <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-sky-100 text-sky-600 flex items-center justify-center font-bold text-sm shrink-0">
+                      🚚
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-bold text-slate-900">Pabrik PT Danone Aqua Pulogadung</h4>
+                        <span className="px-2 py-0.5 rounded-md bg-sky-100 text-sky-700 font-semibold text-[10px]">
+                          Dalam Pengiriman
+                        </span>
+                      </div>
+                      <p className="text-slate-500 text-[11px] mt-0.5">
+                        Truk Hino B-9142-SDA • Muatan: 50 Galon Aqua 19L • Tukar 50 Galon Kosong
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="font-bold text-slate-800">ETA: Hari ini, 15:30 WIB</p>
+                    <p className="text-[10px] text-slate-400">Sopir: Pak Winarno (+62 813-8872)</p>
+                  </div>
+                </div>
+
+                {/* Item 2 */}
+                <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center font-bold text-sm shrink-0">
+                      📦
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-bold text-slate-900">Pabrik Sariguna Primatirta (Cleo)</h4>
+                        <span className="px-2 py-0.5 rounded-md bg-red-100 text-red-700 font-semibold text-[10px]">
+                          PO Kritis #PO-882
+                        </span>
+                      </div>
+                      <p className="text-slate-500 text-[11px] mt-0.5">
+                        Permintaan Restok: 30 Galon Cleo 19L • Depo butuh percepatan
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="font-bold text-slate-800">Jadwal: Besok, 09:00 WIB</p>
+                    <button className="text-[10px] font-bold text-blue-600 hover:underline">
+                      Follow-up Sales
+                    </button>
+                  </div>
+                </div>
+
+                {/* Item 3 */}
+                <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-sm shrink-0">
+                      ✔
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-bold text-slate-900">Distributor Mayora Le Minerale</h4>
+                        <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-700 font-semibold text-[10px]">
+                          Selesai Diterima
+                        </span>
+                      </div>
+                      <p className="text-slate-500 text-[11px] mt-0.5">
+                        Masuk: 40 Galon Baru 15L • Diterima Staf Depo: Riko
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="font-bold text-slate-800">Kemarin, 14:10 WIB</p>
+                    <p className="text-[10px] text-slate-400">Faktur: #INV-LMN-9921</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-2 text-[11px] text-slate-400 border-t border-slate-100">
+                <span>Supplier resmi Danone, Mayora, Tirta Sariguna terverifikasi.</span>
+                <button className="font-bold text-blue-600 hover:underline">
+                  Buat Surat Jalan Restok →
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveFilter("Sekali Pakai")}
-                  className={`rounded-lg px-3 py-1.5 transition ${
-                    activeFilter === "Sekali Pakai"
-                      ? "bg-[#0052FF] text-white shadow-sm"
-                      : "hover:text-[#131B2E]"
-                  }`}
-                >
-                  Sekali Pakai (1)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveFilter("Perlu Restok")}
-                  className={`rounded-lg px-3 py-1.5 transition ${
-                    activeFilter === "Perlu Restok"
-                      ? "bg-[#0052FF] text-white shadow-sm"
-                      : "hover:text-[#131B2E]"
-                  }`}
-                >
-                  Perlu Restok (2)
+              </div>
+            </div>
+
+            {/* RIGHT: STATUS GALON KOSONG (5/12) */}
+            <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 className="font-bold text-slate-800 text-sm">Status Galon Kosong</h3>
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <div className="flex justify-between items-baseline mb-1">
+                    <span className="text-xs font-semibold text-slate-500">Total Botol di Depo:</span>
+                    <span className="text-lg font-extrabold text-slate-900">42 Botol</span>
+                  </div>
+
+                  {/* Split Progress Bar */}
+                  <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden flex">
+                    <div className="bg-emerald-500 h-full w-[80%]"></div>
+                    <div className="bg-red-500 h-full w-[20%]"></div>
+                  </div>
+
+                  <div className="flex justify-between text-[10px] font-semibold mt-1">
+                    <span className="text-emerald-600">● 34 Siap Tukar</span>
+                    <span className="text-red-600">● 8 Afkir / Rusak</span>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 p-3 rounded-xl space-y-2 text-xs">
+                  <div className="flex justify-between items-center border-b border-slate-200/60 pb-1.5">
+                    <span className="text-slate-600 font-medium">Aqua 19L Kosong</span>
+                    <span className="font-bold text-slate-900">18 Galon</span>
+                  </div>
+                  <div className="flex justify-between items-center border-b border-slate-200/60 pb-1.5">
+                    <span className="text-slate-600 font-medium">Cleo 19L Kosong</span>
+                    <span className="font-bold text-slate-900">14 Galon</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-600 font-medium">VIT 19L Kosong</span>
+                    <span className="font-bold text-slate-900">10 Galon</span>
+                  </div>
+                </div>
+
+                {/* Klaim Garansi Box */}
+                <div className="bg-red-50/80 border border-red-100 p-3 rounded-xl flex items-center justify-between text-xs">
+                  <div>
+                    <p className="font-bold text-red-700">Klaim Garansi Retur Bocor</p>
+                    <p className="text-[10px] text-red-500">3 Galon Diajukan</p>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-lg bg-red-100 text-red-700 font-bold text-[10px]">
+                    3 Galon Diajukan
+                  </span>
+                </div>
+
+                <button className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-1.5">
+                  🖨️ Cetak Manifest Galon Tukar
                 </button>
               </div>
             </div>
           </div>
 
-          {/* TABEL DAFTAR INVENTARIS DEPO */}
-          <section className="rounded-2xl border border-[#EEF0F5] bg-white p-5 md:p-6 space-y-4 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#28A745]" />
-                <h2 className="text-[16px] font-extrabold">
-                  Daftar Inventaris Depo Aktif
-                </h2>
-                <span className="rounded-md bg-[#F0F3FF] px-2 py-0.5 text-[9px] font-bold text-[#0052FF]">
-                  Live Sync Terkini
-                </span>
-              </div>
-
-              <p className="text-[10px] text-[#687289]">
-                Update otomatis setiap pesanan kurir diselesaikan
-              </p>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-[11px]">
-                <thead>
-                  <tr className="border-b border-[#EEF0F5] text-[10px] font-bold uppercase tracking-wider text-[#737C91]">
-                    <th className="pb-3.5 pl-2">Produk &amp; Varian</th>
-                    <th className="pb-3.5">SKU / Tipe</th>
-                    <th className="pb-3.5">Harga Jual</th>
-                    <th className="pb-3.5">Harga Modal</th>
-                    <th className="pb-3.5">Stok Terisi (Depo)</th>
-                    <th className="pb-3.5 text-center">Botol Kosong</th>
-                    <th className="pb-3.5 text-center">Status</th>
-                    <th className="pb-3.5 text-right pr-2">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#EEF0F5]">
-                  {filteredProducts.map((product) => {
-                    const percentage = Math.round(
-                      (product.stockFilled / product.maxStock) * 100
-                    );
-
-                    return (
-                      <tr key={product.id} className="hover:bg-[#F9FAFD] transition">
-                        {/* PRODUK & VARIAN */}
-                        <td className="py-4 pl-2">
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#F4F6FD] p-1 border border-[#E9ECF4]">
-                              <img
-                                src={product.image}
-                                alt={product.name}
-                                className="h-10 w-10 object-contain"
-                                onError={(e) => {
-                                  e.currentTarget.style.display = "none";
-                                }}
-                              />
-                            </div>
-                            <div>
-                              <div className="font-bold text-[#131B2E] text-[12px]">
-                                {product.name}
-                              </div>
-                              <div className="text-[9px] text-[#687289]">
-                                {product.description}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* SKU / TIPE */}
-                        <td className="py-4 whitespace-nowrap">
-                          <div className="font-bold text-[#131B2E] text-[11px]">
-                            {product.sku}
-                          </div>
-                          <div className="text-[9px] text-[#687289]">
-                            {product.typeDesc}
-                          </div>
-                        </td>
-
-                        {/* HARGA JUAL (INTERAKTIF EDIT HARGA) */}
-                        <td className="py-4 whitespace-nowrap">
-                          {editingId === product.id ? (
-                            <div className="flex items-center gap-1">
-                              <input
-                                type="text"
-                                value={editPriceVal}
-                                onChange={(e) => setEditPriceVal(e.target.value)}
-                                className="w-24 rounded-lg border border-[#0052FF] px-2 py-1 text-[11px] font-bold text-[#131B2E] outline-none"
-                                autoFocus
-                              />
-                              <button
-                                type="button"
-                                onClick={() => handleSavePrice(product.id)}
-                                className="rounded-lg bg-[#0052FF] p-1 text-white hover:bg-[#0047DE]"
-                              >
-                                <Check size={13} />
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-1.5 font-extrabold text-[#131B2E] text-[12px]">
-                              <span>{product.sellPrice}</span>
-                              <button
-                                type="button"
-                                title="Edit Harga Jual"
-                                onClick={() => handleStartEditPrice(product)}
-                                className="text-[#0052FF] hover:text-[#0047DE] p-0.5"
-                              >
-                                <Edit3 size={12} />
-                              </button>
-                            </div>
-                          )}
-                        </td>
-
-                        {/* HARGA MODAL */}
-                        <td className="py-4 whitespace-nowrap font-medium text-[#687289] text-[11px]">
-                          {product.costPrice}
-                        </td>
-
-                        {/* STOK TERISI */}
-                        <td className="py-4 whitespace-nowrap">
-                          <div className="space-y-1 w-[130px]">
-                            <div className="flex justify-between text-[10px] font-bold">
-                              <span className="text-[#131B2E]">
-                                {product.stockFilled} Unit
-                              </span>
-                              <span
-                                className={
-                                  product.status === "Tersedia"
-                                    ? "text-[#16752C]"
-                                    : "text-[#D93636]"
-                                }
-                              >
-                                {product.status === "Tersedia"
-                                  ? "Aman (70%)"
-                                  : product.status === "Rendah"
-                                  ? "Menipis (30%)"
-                                  : "Sisa 20%"}
-                              </span>
-                            </div>
-                            <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#E1E5F0]">
-                              <div
-                                className={`h-full rounded-full transition-all ${
-                                  product.status === "Tersedia"
-                                    ? "bg-[#087D86]"
-                                    : product.status === "Rendah"
-                                    ? "bg-[#E58A00]"
-                                    : "bg-[#D93636]"
-                                }`}
-                                style={{ width: `${percentage}%` }}
-                              />
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* BOTOL KOSONG */}
-                        <td className="py-4 text-center whitespace-nowrap">
-                          {product.emptyBottles > 0 ? (
-                            <div>
-                              <span className="font-bold text-[#131B2E]">
-                                {product.emptyBottles}
-                              </span>
-                              <div className="text-[9px] text-[#687289]">
-                                Botol
-                              </div>
-                            </div>
-                          ) : (
-                            <span className="text-[9px] italic text-[#9EA7B8]">
-                              - (Non-Refill)
-                            </span>
-                          )}
-                        </td>
-
-                        {/* STATUS */}
-                        <td className="py-4 text-center whitespace-nowrap">
-                          {product.status === "Tersedia" ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-[#DCF8F6] px-2.5 py-1 text-[9px] font-bold text-[#087D86]">
-                              <span className="h-1.5 w-1.5 rounded-full bg-[#087D86]" />
-                              Tersedia
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-[#FFE0E0] px-2.5 py-1 text-[9px] font-bold text-[#D93636]">
-                              <span className="h-1.5 w-1.5 rounded-full bg-[#D93636]" />
-                              Stok Kritis
-                            </span>
-                          )}
-                        </td>
-
-                        {/* AKSI */}
-                        <td className="py-4 text-right pr-2 whitespace-nowrap">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <button
-                              type="button"
-                              className="rounded-lg bg-[#F0F3FF] px-2.5 py-1 text-[10px] font-bold text-[#0052FF] transition hover:bg-[#E2E8FF]"
-                            >
-                              Update
-                            </button>
-                            <button
-                              type="button"
-                              aria-label="Restok"
-                              className="rounded-lg bg-[#FFE0E0] p-1.5 text-[#D93636] transition hover:bg-[#FFD1D1]"
-                            >
-                              <ShoppingCart size={13} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* SUMMARY UNDER TABLE */}
-            <div className="flex flex-col sm:flex-row items-center justify-between border-t border-[#EEF0F5] pt-3 text-[11px] text-[#687289]">
-              <span>
-                Menampilkan <strong>{filteredProducts.length} dari {products.length}</strong> varian produk galon depo
-              </span>
-              <span>
-                Estimasi Omset Hari Ini: <strong className="text-[#0052FF] text-[13px] font-extrabold ml-1">Rp 1.442.500</strong>
-              </span>
-            </div>
-          </section>
-
-          {/* SECTION BOTTOM GRID (RIWAYAT KIRIM + STATUS GALON KOSONG) */}
-          <section className="grid gap-4 xl:grid-cols-12">
-            {/* LEFT: RIWAYAT & JADWAL KIRIM RESTOK PABRIK (7 COLS) */}
-            <div className="xl:col-span-7 rounded-2xl border border-[#EEF0F5] bg-white p-5 md:p-6 space-y-4 shadow-sm flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <RefreshCw size={17} className="text-[#0052FF]" />
-                    <h2 className="text-[15px] font-extrabold">
-                      Riwayat &amp; Jadwal Kirim Restok Pabrik
-                    </h2>
-                  </div>
-                  <button type="button" className="text-[10px] font-bold text-[#0052FF] hover:underline">
-                    Lihat Semua PO
-                  </button>
-                </div>
-
-                <div className="mt-4 space-y-3">
-                  {/* ITEM 1 */}
-                  <div className="rounded-xl bg-[#F4F6FD] p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[10px]">
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#EBF2FF] text-[#0052FF]">
-                        <Truck size={17} />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-[#131B2E] text-[11px]">
-                            Pabrik PT Danone Aqua Pulogadung
-                          </span>
-                          <span className="rounded-full bg-[#DCF8F6] px-2 py-0.5 text-[8px] font-bold text-[#087D86]">
-                            Dalam Pengiriman
-                          </span>
-                        </div>
-                        <p className="text-[#687289] mt-0.5">
-                          Truk Hino B-9142-SDA • Muatan: 50 Galon Aqua 19L + Tukar 50 Galon Kosong
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <div className="font-bold text-[#131B2E]">ETA: Hari ini, 15:30 WIB</div>
-                      <div className="text-[9px] text-[#687289]">Supir: Pak Wawan (+62 813-8812)</div>
-                    </div>
-                  </div>
-
-                  {/* ITEM 2 */}
-                  <div className="rounded-xl bg-[#FFF4F4] p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[10px]">
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#FFE0E0] text-[#D93636]">
-                        <Clock size={17} />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-[#131B2E] text-[11px]">
-                            Pabrik Sariguna Primatirta (Cleo)
-                          </span>
-                          <span className="rounded-full bg-[#FFE0E0] px-2 py-0.5 text-[8px] font-bold text-[#D93636]">
-                            PO Kritis #PO-882
-                          </span>
-                        </div>
-                        <p className="text-[#687289] mt-0.5">
-                          Permintaan Restok: 30 Galon Cleo 19L • Depo butuh percepatan
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <div className="font-bold text-[#131B2E]">Jadwal: Besok, 09:00 WIB</div>
-                      <button type="button" className="text-[9px] font-bold text-[#0052FF] hover:underline">
-                        Follow-up Sales
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* ITEM 3 */}
-                  <div className="rounded-xl bg-[#F1FBF4] p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[10px]">
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#E2F9E5] text-[#16752C]">
-                        <CheckCircle2 size={17} />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-[#131B2E] text-[11px]">
-                            Distributor Mayora Le Minerale
-                          </span>
-                          <span className="rounded-full bg-[#E2F9E5] px-2 py-0.5 text-[8px] font-bold text-[#16752C]">
-                            Selesai Bongkar
-                          </span>
-                        </div>
-                        <p className="text-[#687289] mt-0.5">
-                          Masuk: 40 Galon Baru 15L • Diterima Staf Depo: Riko
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <div className="font-bold text-[#131B2E]">Kemarin, 14:10 WIB</div>
-                      <div className="text-[9px] text-[#687289]">Faktur: #INV-LMN-9921</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between border-t border-[#EEF0F5] pt-3 text-[10px] text-[#687289]">
-                <span>Supplier resmi Danone, Mayora, Tirta Sariguna terverifikasi.</span>
-                <button type="button" className="flex items-center gap-1 font-bold text-[#0052FF] hover:underline">
-                  Buat Surat Jalan Restok <ArrowRight size={12} />
-                </button>
-              </div>
-            </div>
-
-            {/* RIGHT: STATUS GALON KOSONG (5 COLS) */}
-            <div className="xl:col-span-5 rounded-2xl border border-[#EEF0F5] bg-white p-5 md:p-6 space-y-4 shadow-sm flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <RefreshCw size={17} className="text-[#087D86]" />
-                    <h2 className="text-[15px] font-extrabold">Status Galon Kosong</h2>
-                  </div>
-                  <span className="h-2 w-2 rounded-full bg-[#28A745]" />
-                </div>
-
-                <div className="mt-3 rounded-xl bg-[#F4F6FD] p-3 text-[11px]">
-                  <div className="flex justify-between font-bold text-[#131B2E]">
-                    <span>Total Botol di Depo:</span>
-                    <span className="text-[13px] font-extrabold">42 Botol</span>
-                  </div>
-
-                  {/* PROGRESS BAR BARU */}
-                  <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-[#E1E5F0] flex">
-                    <div className="h-full bg-[#28A745]" style={{ width: "81%" }} />
-                    <div className="h-full bg-[#D93636]" style={{ width: "19%" }} />
-                  </div>
-
-                  <div className="mt-2 flex justify-between text-[9px] font-bold">
-                    <span className="text-[#16752C]">• 34 Siap Tukar</span>
-                    <span className="text-[#D93636]">• 8 Afkir / Rusak</span>
-                  </div>
-                </div>
-
-                {/* BREAKDOWN LIST */}
-                <div className="mt-3 space-y-2 text-[11px]">
-                  <div className="flex items-center justify-between border-b border-[#EEF0F5] pb-1.5">
-                    <span className="text-[#556075]">Aqua 19L Kosong</span>
-                    <span className="font-bold text-[#131B2E]">18 Galon</span>
-                  </div>
-                  <div className="flex items-center justify-between border-b border-[#EEF0F5] pb-1.5">
-                    <span className="text-[#556075]">Cleo 19L Kosong</span>
-                    <span className="font-bold text-[#131B2E]">14 Galon</span>
-                  </div>
-                  <div className="flex items-center justify-between border-b border-[#EEF0F5] pb-1.5">
-                    <span className="text-[#556075]">Vit 19L Kosong</span>
-                    <span className="font-bold text-[#131B2E]">10 Galon</span>
-                  </div>
-                </div>
-
-                <div className="mt-3 flex items-center justify-between rounded-xl bg-[#FFF0F0] p-2.5 text-[10px]">
-                  <span className="font-bold text-[#D93636]">Klaim Garansi Retur Bocor</span>
-                  <span className="rounded-md bg-[#FFE0E0] px-2 py-0.5 font-bold text-[#D93636]">
-                    3 Galon Diajukan
-                  </span>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#F0F3FF] py-2.5 text-[11px] font-bold text-[#0052FF] transition hover:bg-[#E2E8FF]"
-              >
-                <Printer size={14} /> Cetak Manifest Galon Tukar
-              </button>
-            </div>
-          </section>
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }
