@@ -1,4 +1,8 @@
 @import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap");
+<<<<<<< HEAD
+=======
+
+>>>>>>> feature/fira
 
 @import "tailwindcss";
 
@@ -805,7 +809,10 @@ body {
   margin: 0;
   padding: 0;
   min-height: 100%;
+<<<<<<< HEAD
 
+=======
+>>>>>>> feature/fira
 }
 
 @media (max-width: 768px) {
@@ -936,7 +943,10 @@ body {
 }
 html,
 body {
+<<<<<<< HEAD
 
+=======
+>>>>>>> feature/fira
   margin: 0;
   padding: 0;
 }
@@ -3458,6 +3468,7 @@ a {
 
   }
 }
+<<<<<<< HEAD
 /* GALONKU TAILWIND UTILITY FALLBACK
    Fallback styling for environments where Tailwind utilities are not generated.
    Safe to keep alongside the existing GalonKu styles. */
@@ -3557,3 +3568,6 @@ a {
 body { font-family: "Plus Jakarta Sans", Arial, sans-serif; color: #1e293b; background: #f8fafc; }
 button { cursor: pointer; }
 input, button { font: inherit; }
+=======
+}
+>>>>>>> feature/fira

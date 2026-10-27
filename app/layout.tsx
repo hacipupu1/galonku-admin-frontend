@@ -1,9 +1,19 @@
+<<<<<<< HEAD
 import Sidebar from "./components/sidebar";
 import "./globals.css"; // atau stylesheet global kamu
 
 export const metadata = {
   title: "GalonKu Admin",
   description: "Portal Manajemen & Operasional",
+=======
+import type { Metadata } from "next";
+import AppShell from "./components/app-shell";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: "GalonKu Admin",
+  description: "Portal Manajemen & Operasional GalonKu",
+>>>>>>> feature/fira
 };
 
 export default function RootLayout({
@@ -13,6 +23,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="id">
+<<<<<<< HEAD
       <body style={{ margin: 0, padding: 0, fontFamily: "sans-serif", backgroundColor: "#f8fafc" }}>
         <div style={{ display: "flex" }}>
           <Sidebar />
@@ -21,6 +32,10 @@ export default function RootLayout({
             {children}
           </main>
         </div>
+=======
+      <body className="antialiased bg-[#f8fafc] text-slate-800 font-sans">
+        <AppShell>{children}</AppShell>
+>>>>>>> feature/fira
       </body>
     </html>
   );
