@@ -10,14 +10,14 @@ export default function AppShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const isAuthPage = pathname === '/login';
 
-  // Jika di halaman login, tampilkan konten saja tanpa Sidebar & Padding
-  if (isAuthPage) {
-    return <>{children}</>;
+  // Sembunyikan sidebar jika rute diawali dengan /login
+  const isLoginPage = pathname ? pathname.startsWith('/login') : false;
+
+  if (isLoginPage) {
+    return <div className="min-h-screen w-full bg-[#f8fafc]">{children}</div>;
   }
 
-  // Untuk halaman admin lainnya, tampilkan bersama Sidebar
   return (
     <div className="flex min-h-screen">
       <Sidebar />

@@ -55,7 +55,7 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="login-page">
+    <main className="login-page" style={{ zoom: "58%", minHeight: "100vh" }}>
       {/* =====================================================
           BRAND KIRI ATAS
       ====================================================== */}
@@ -85,12 +85,7 @@ export default function LoginPage() {
       ====================================================== */}
       <section className="login-wrapper">
         <div className="login-card">
-          {/* =================================================
-              LOGO / RIDER
-              Dibuat lebih besar dan tidak ter-zoom.
-              object-fit: contain memastikan seluruh gambar
-              tetap terlihat.
-          ================================================== */}
+          {/* LOGO / RIDER */}
           <div className="rider-circle">
             <img
               src="/login-galonku.png"
@@ -99,9 +94,7 @@ export default function LoginPage() {
             />
           </div>
 
-          {/* =================================================
-              TITLE
-          ================================================== */}
+          {/* TITLE */}
           <div className="login-heading">
             <h1>GalonKu Admin</h1>
 
@@ -110,9 +103,7 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* =================================================
-              FORM
-          ================================================== */}
+          {/* FORM */}
           <form onSubmit={handleLogin} className="login-form">
             {/* USERNAME */}
             <div className="field-group">
@@ -263,9 +254,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* =================================================
-              DRIVER LINK
-          ================================================== */}
+          {/* DRIVER LINK */}
           <div className="access-link">
             <span>Butuh akses kurir lapangan?</span>
 
@@ -275,9 +264,7 @@ export default function LoginPage() {
             </button>
           </div>
 
-          {/* =================================================
-              VERSION
-          ================================================== */}
+          {/* VERSION */}
           <div className="card-version">
             <span>
               GalonKu v4.12.0 (Build 2026.04)
