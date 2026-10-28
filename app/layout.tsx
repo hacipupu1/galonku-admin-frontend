@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
+import AppShell from "./components/app-shell";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "GalonKu Admin",
-  description: "Portal Manajemen & Operasional GalonKu",
+  description: "Portal Manajemen & Operasional",
 };
 
 export default function RootLayout({
@@ -14,7 +15,7 @@ export default function RootLayout({
   return (
     <html lang="id">
       <body className="antialiased bg-[#f8fafc] text-slate-800 font-sans">
-        {children}
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );
