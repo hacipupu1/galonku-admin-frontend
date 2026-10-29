@@ -1,617 +1,634 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
+import React, { useState } from 'react';
 import {
-  Users,
-  Truck,
-  Home,
-  Clock,
-  Search,
   Plus,
-  RefreshCw,
-  Phone,
-  Navigation,
+  RotateCw,
+  Search,
+  Users,
+  Zap,
+  Building2,
+  Clock,
   ChevronDown,
-  Layers,
-  Package,
-} from "lucide-react";
+  Droplets,
+  X,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 
-// 1. DATA RINGKASAN ARMADA
-const stats = [
+// Data Mock Pengantaran Aktif
+const initialDeliveries = [
   {
-    title: "Total Armada",
-    value: "6",
-    unit: "Kurir Motor",
-    sub: "Kapasitas 100% Siaga",
-    subColor: "text-blue-600 font-semibold",
-    icon: Users,
-    iconBg: "bg-blue-50 text-blue-600",
+    id: '1',
+    orderNo: '#ORD-8821',
+    time: '10.42 WIB',
+    courierName: 'Pak Budi Santoso',
+    vehicle: 'Honda Beat • B 4120 SZX',
+    addressTitle: 'Jl. Mawar No. 12',
+    customerInfo: 'Ibu Fitriani (0812-9988-xxxx)',
+    note: 'Patokan: Sebelah Pos RW 03',
+    itemCount: '3 Galon Aqua',
+    itemType: 'aqua',
+    progressPercent: 75,
+    progressText: '75% Selesai',
+    etaText: '6 mnt lagi',
+    distanceText: 'Jarak: 600m ke titik kirim',
+    status: 'diantar', // 'diantar' | 'diproses'
+    depoInfo: '',
   },
   {
-    title: "Sedang Mengantar",
-    value: "4",
-    unit: "Kurir di Jalan",
-    sub: "11 Galon Sedang Dikirim",
-    subColor: "text-blue-600 font-semibold",
-    icon: Truck,
-    iconBg: "bg-cyan-50 text-cyan-600",
+    id: '2',
+    orderNo: '#ORD-8822',
+    time: '10.51 WIB',
+    courierName: 'Mas Doni Wijaya',
+    vehicle: 'Honda Vario • B 6891 PQR',
+    addressTitle: 'Gandaria Heights Lt. 08 #8B',
+    customerInfo: 'Bpk. Ronald (0817-2345-xxxx)',
+    note: 'Titip di Lobby Resepsionis',
+    itemCount: '2 Galon Le Minerale',
+    itemType: 'le_minerale',
+    progressPercent: 45,
+    progressText: '45% Selesai',
+    etaText: '12 mnt lagi',
+    distanceText: 'Jarak: 1.8 KM (Lampu Merah Kyai Maja)',
+    status: 'diantar',
+    depoInfo: '',
   },
   {
-    title: "Standby Depo",
-    value: "2",
-    unit: "Siap Muat Kirim",
-    sub: "Idle < 8 Menit",
-    subColor: "text-emerald-600 font-semibold",
-    icon: Home,
-    iconBg: "bg-emerald-50 text-emerald-600",
+    id: '3',
+    orderNo: '#ORD-8824',
+    time: '11.02 WIB',
+    courierName: 'Hendra Kurnia',
+    vehicle: 'Honda Revo • B 5502 TYA',
+    addressTitle: 'Apartemen 1Park Residences Lt. 14',
+    customerInfo: 'Sdr. Kevin Hadi (0852-1100-xxxx)',
+    note: 'Bawa Troli Depo',
+    itemCount: '4 Galon Campur',
+    itemType: 'campur',
+    progressPercent: 25,
+    progressText: '25% Selesai',
+    etaText: '15 mnt lagi',
+    distanceText: 'Jarak: 2.7 KM (Baru keluar Depo)',
+    status: 'diantar',
+    depoInfo: '',
   },
   {
-    title: "Rata-rata Waktu",
-    value: "18",
-    unit: "Menit / Pesanan",
-    sub: "3.2 mnt lebih cepat dr SLA",
-    subColor: "text-blue-600 font-semibold",
-    icon: Clock,
-    iconBg: "bg-blue-50 text-blue-600",
-  },
-];
-
-// 2. DATA KURIR LAPANGAN (KOLOM KIRI)
-const kurirList = [
-  {
-    id: 1,
-    nama: "Pak Budi Santoso",
-    armada: "Honda Beat • B 4120 SZX",
-    statusType: "on-the-way",
-    tugas: "Membawa 3 Galon Aqua ke Jl. Mawar No. 12, Kebayoran Lama",
-    orderId: "#ORD-8821",
-    berangkat: "10:45",
-    estimasi: "Est. 6 menit lagi",
+    id: '4',
+    orderNo: '#ORD-8825',
+    time: '11.15 WIB',
+    courierName: 'Rian Pratama',
+    vehicle: 'Honda Scoopy • B 3912 BKN',
+    addressTitle: 'Komp. Rempoa Blok B4',
+    customerInfo: 'Ibu Maya (0811-9481-xxxx)',
+    note: 'Bayar COD Rp 54.000',
+    itemCount: '3 Galon Aqua',
+    itemType: 'aqua',
+    progressPercent: 10,
+    progressText: 'Sedang Muat',
+    etaText: '',
+    distanceText: 'Persiapan berangkat',
+    status: 'diproses',
+    depoInfo: 'Depo JKT-04',
   },
   {
-    id: 2,
-    nama: "Mas Doni Wijaya",
-    armada: "Honda Vario • B 6891 PQR",
-    statusType: "on-the-way",
-    tugas: "Membawa 2 Galon Le Minerale ke Gandaria Heights Lt. 08",
-    orderId: "#ORD-8822",
-    berangkat: "10:35",
-    estimasi: "Est. 12 menit lagi",
+    id: '5',
+    orderNo: '#ORD-8826',
+    time: '12.05 WIB',
+    courierName: 'Raynar Putra M.',
+    vehicle: 'Honda Beat • B 3434 RTA',
+    addressTitle: 'Jl. Indah Megah (Araya)',
+    customerInfo: 'Ibu Susi (0811-9481-xxxx)',
+    note: 'Taruh di pos satpam',
+    itemCount: '5 Galon Aqua',
+    itemType: 'aqua',
+    progressPercent: 10,
+    progressText: 'Sedang Muat',
+    etaText: '',
+    distanceText: 'Persiapan berangkat',
+    status: 'diproses',
+    depoInfo: 'Depo Mhg-03',
   },
   {
-    id: 3,
-    nama: "Pak Agus Prasetyo",
-    armada: "Honda Scoopy • B 3310 KLM",
-    statusType: "standby",
-    statusDepo: "Siap Antar Kloter Baru",
-    desc: "Telah menyelesaikan 7 pengantaran pagi. Siap menerima penugasan kloter berikutnya.",
+    id: '6',
+    orderNo: '#ORD-8827',
+    time: '13.17 WIB',
+    courierName: 'Tono Sani',
+    vehicle: 'Yamaha Mio • B 5879 SFN',
+    addressTitle: 'Jl. Mawar No. 12',
+    customerInfo: 'Ibu Fitriani (0812-9988-xxxx)',
+    note: 'Patokan: Sebelah Pos RW 03',
+    itemCount: '3 Galon Aqua',
+    itemType: 'aqua',
+    progressPercent: 10,
+    progressText: 'Sedang Muat',
+    etaText: '',
+    distanceText: 'Persiapan berangkat',
+    status: 'diproses',
+    depoInfo: 'Depo JKT-05',
   },
   {
-    id: 4,
-    nama: "Hendra Kurnia",
-    armada: "Honda Revo • B 5502 TYA",
-    statusType: "on-the-way",
-    tugas: "Membawa 4 Galon (2 Aqua + 2 Cleo) ke Apartemen Gandaria Lt. 14",
-    orderId: "#ORD-8824",
-    berangkat: "11:05",
-    estimasi: "Est. 15 menit lagi",
-  },
-];
-
-// 3. DATA TABEL PENGANTARAN AKTIF (KOLOM KANAN)
-const orderList = [
-  {
-    id: "#ORD-8821",
-    waktu: "10:42 WIB",
-    kurir: "Pak Budi",
-    plat: "B 4120 SZX",
-    alamat: "Jl. Mawar No. 12",
-    penerima: "Ibu Fitriani (0812-9988-xxxx)",
-    patokan: "Patokan: Sebelah Pos RW 03",
-    muatan: "3 Galon Aqua",
-    progress: 75,
-    estimasi: "6 mnt lagi",
-    jarak: "Jarak: 600m ke titik kirim",
-    status: "Diantar",
+    id: '7',
+    orderNo: '#ORD-8828',
+    time: '14.15 WIB',
+    courierName: 'Iwan Dwi',
+    vehicle: 'Honda Beat • B 2567 SMF',
+    addressTitle: 'Gandaria Heights Lt. 08 #8B',
+    customerInfo: 'Bpk. Ronald (0817-2345-xxxx)',
+    note: 'Titip di Lobby Resepsionis',
+    itemCount: '2 Galon Le Minerale',
+    itemType: 'le_minerale',
+    progressPercent: 10,
+    progressText: 'Sedang Muat',
+    etaText: '',
+    distanceText: 'Persiapan berangkat',
+    status: 'diproses',
+    depoInfo: 'Depo JKT-04',
   },
   {
-    id: "#ORD-8822",
-    waktu: "10:51 WIB",
-    kurir: "Mas Doni",
-    plat: "B 6891 PQR",
-    alamat: "Gandaria Heights Lt. 08 #8B",
-    penerima: "Bpk. Ronald (0817-2345-xxxx)",
-    patokan: "Titip di Lobby Resepsionis",
-    muatan: "2 Galon Le Minerale",
-    progress: 45,
-    estimasi: "12 mnt lagi",
-    jarak: "Jarak: 1.8 KM (Lampu Merah Kyai Maja)",
-    status: "Diantar",
-  },
-  {
-    id: "#ORD-8824",
-    waktu: "11:02 WIB",
-    kurir: "Hendra K.",
-    plat: "B 5502 TYA",
-    alamat: "Apartemen 1Park Residences Lt. 14",
-    penerima: "Sdr. Kevin Hadi (0852-1100-xxxx)",
-    patokan: "Bawa Troli Depo",
-    muatan: "4 Galon Campur",
-    progress: 25,
-    estimasi: "15 mnt lagi",
-    jarak: "Jarak: 2.7 KM (Baru keluar Depo)",
-    status: "Diantar",
-  },
-  {
-    id: "#ORD-8825",
-    waktu: "11:15 WIB",
-    kurir: "Rian Pratama",
-    plat: "B 3912 BKN",
-    alamat: "Komp. Rempoa Blok B4",
-    penerima: "Ibu Maya (0811-9481-xxxx)",
-    patokan: "Bayar COD Rp 54.000",
-    muatan: "3 Galon Aqua",
-    progressStatus: "Sedang Muat",
-    depo: "Depo JKT-04",
-    status: "Diproses",
-  },
-  {
-    id: "#ORD-8826",
-    waktu: "12:05 WIB",
-    kurir: "Raynar Putra M.",
-    plat: "B 3434 RTA",
-    alamat: "Jl. Indah Megah (Araya)",
-    penerima: "Ibu Susi (0817-2345-xxxx)",
-    patokan: "Taruh di pos satpam",
-    muatan: "5 Galon Aqua",
-    progressStatus: "Sedang Muat",
-    depo: "Depo Mlg-03",
-    status: "Diproses",
-  },
-  {
-    id: "#ORD-8827",
-    waktu: "13:17 WIB",
-    kurir: "Tono Sani",
-    plat: "B 5879 EFN",
-    alamat: "Jl. Mawar No. 12",
-    penerima: "Ibu Fitriani (0812-9988-xxxx)",
-    patokan: "Patokan: Sebelah Pos RW 03",
-    muatan: "3 Galon Aqua",
-    progressStatus: "Sedang Muat",
-    depo: "Depo JKT-05",
-    status: "Diproses",
-  },
-  {
-    id: "#ORD-8828",
-    waktu: "14:15 WIB",
-    kurir: "Iwan Dwi",
-    plat: "B 2567 SMF",
-    alamat: "Gandaria Heights Lt. 08 #8B",
-    penerima: "Bpk. Ronald (0817-2345-xxxx)",
-    patokan: "Titip di Lobby Resepsionis",
-    muatan: "2 Galon Le Minerale",
-    progressStatus: "Sedang Muat",
-    depo: "Depo JKT-04",
-    status: "Diproses",
-  },
-  {
-    id: "#ORD-8829",
-    waktu: "16:00 WIB",
-    kurir: "Kevin Hadi",
-    plat: "B 5678 OPQ",
-    alamat: "Apartemen 1Park Residences Lt. 14",
-    penerima: "Sdr. Jonathan C. (0852-1100-xxxx)",
-    patokan: "Bawa Troli Depo",
-    muatan: "4 Galon Vit",
-    progressStatus: "Sedang Muat",
-    depo: "Depo JKT-06",
-    status: "Diproses",
-  },
-  {
-    id: "#ORD-8830",
-    waktu: "17:00 WIB",
-    kurir: "Aryo Putra",
-    plat: "B 1092 IKN",
-    alamat: "Cluster Harmoni Blok D6",
-    penerima: "Ibu Sari (0819-4722-xxxx)",
-    patokan: "Patokan: Pos Satpam",
-    muatan: "4 Galon Cleo",
-    progressStatus: "Sedang Muat",
-    depo: "Depo JKT-05",
-    status: "Diproses",
+    id: '8',
+    orderNo: '#ORD-8829',
+    time: '16.00 WIB',
+    courierName: 'Kevin Hadi',
+    vehicle: 'Honda Vario • B 5678 OPQ',
+    addressTitle: 'Apartemen 1Park Residences Lt. 14',
+    customerInfo: 'Sdr. Jonathan C. (0852-1100-xxxx)',
+    note: 'Bawa Troli Depo',
+    itemCount: '4 Galon Vit',
+    itemType: 'vit',
+    progressPercent: 10,
+    progressText: 'Sedang Muat',
+    etaText: '',
+    distanceText: 'Persiapan berangkat',
+    status: 'diproses',
+    depoInfo: 'Depo JKT-06',
   },
 ];
 
 export default function MonitoringPage() {
-  const [activeTab, setActiveTab] = useState("semua");
+  const [activeTab, setActiveTab] = useState<'semua' | 'jalan' | 'standby' | 'riwayat'>('semua');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState('sla');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  // Filter Data Berdasarkan Tab & Input Pencarian
+  const filteredData = initialDeliveries.filter((item) => {
+    let matchTab = true;
+    if (activeTab === 'jalan') {
+      matchTab = item.status === 'diantar';
+    } else if (activeTab === 'standby') {
+      matchTab = item.status === 'diproses';
+    } else if (activeTab === 'riwayat') {
+      matchTab = false; // Tab riwayat
+    }
+
+    const matchSearch =
+      item.orderNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.courierName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.vehicle.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.addressTitle.toLowerCase().includes(searchQuery.toLowerCase());
+
+    return matchTab && matchSearch;
+  });
 
   return (
-    <div className="p-6 space-y-6 w-full text-slate-800 bg-[#F8FAFC] min-h-screen">
-      {/* 1. HEADER SECTION */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <main className="w-full bg-[#F8FAFC] min-h-screen p-6 pt-4 font-sans text-slate-800">
+      {/* HEADER PAGE */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
-          <div className="flex items-center gap-2 text-xs font-bold text-[#0052FF] uppercase tracking-wider">
-            <Truck size={14} />
-            <span>FLEET LOGISTICS & LIVE DISPATCH</span>
-          </div>
-          <h1 className="text-2xl font-extrabold text-slate-900 mt-1">
-            Monitoring Pengantaran
-          </h1>
-          <p className="text-sm text-slate-500">
+          <div className="flex items-center gap-2 text-[11px] font-bold tracking-wider text-blue-600 uppercase mb-1">
+            <span>Fleet Logistics & Live Dispatch</span>
+          </div>  
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight leading-tight">Monitoring Pengantaran</h1>
+          <p className="text-xs text-slate-500 mt-0.5">
             Pelacakan armada kurir motor, status pengiriman pesanan, dan efisiensi rute depo secara langsung.
           </p>
         </div>
 
-        {/* Action Buttons Right */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
-            <button className="px-3 py-1.5 text-xs font-bold text-blue-600 bg-blue-50 rounded-lg flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-blue-600"></span>
-              Daftar
-            </button>
-            <button className="px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-900 flex items-center gap-1.5">
-              Live Peta
-            </button>
-          </div>
-
-          <button className="px-4 py-2.5 bg-[#0052FF] hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-md shadow-blue-500/20 transition-all cursor-pointer">
-            <Plus size={16} />
-            Tambah Armada Kurir
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setIsAddModalOpen(true)}
+            className="bg-[#2563EB] hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-sm flex items-center gap-2 transition active:scale-95 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Tambah Armada Kurir</span>
           </button>
-
-          <button className="p-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl shadow-sm transition-all cursor-pointer">
-            <RefreshCw size={16} />
+          <button
+            type="button"
+            onClick={() => {
+              setSearchQuery('');
+              setActiveTab('semua');
+            }}
+            className="p-2.5 border border-slate-200 bg-white rounded-xl hover:bg-slate-50 text-slate-600 transition active:scale-95 shadow-sm cursor-pointer"
+            title="Refresh Data"
+          >
+            <RotateCw className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {/* 2. STATS CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((item, index) => {
-          const IconComponent = item.icon;
-          return (
-            <div
-              key={index}
-              className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-start justify-between"
-            >
-              <div>
-                <span className="text-xs font-medium text-slate-400">
-                  {item.title}
-                </span>
-                <div className="flex items-baseline gap-1.5 mt-1">
-                  <span className="text-2xl font-black text-slate-900">
-                    {item.value}
-                  </span>
-                  <span className="text-xs font-semibold text-slate-600">
-                    {item.unit}
-                  </span>
-                </div>
-                <p className={`text-[11px] mt-2 ${item.subColor}`}>
-                  {item.sub}
-                </p>
-              </div>
-              <div
-                className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${item.iconBg}`}
-              >
-                <IconComponent size={20} />
-              </div>
+      {/* KPI CARDS (4 CARD SUMMARY) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {/* Card 1 */}
+        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Armada</p>
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="text-2xl font-extrabold text-slate-900">6</span>
+              <span className="text-xs font-semibold text-slate-600">Kurir Motor</span>
             </div>
-          );
-        })}
-      </div>
-
-      {/* 3. FILTER TABS & SEARCH BAR */}
-      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
-        {/* Filter Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
-          <button
-            onClick={() => setActiveTab("semua")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
-              activeTab === "semua"
-                ? "bg-[#0052FF] text-white shadow-md shadow-blue-500/20"
-                : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
-            }`}
-          >
-            Semua Armada (6)
-          </button>
-          <button
-            onClick={() => setActiveTab("jalan")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
-              activeTab === "jalan"
-                ? "bg-[#0052FF] text-white shadow-md shadow-blue-500/20"
-                : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
-            }`}
-          >
-            Sedang Jalan (4)
-          </button>
-          <button
-            onClick={() => setActiveTab("standby")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
-              activeTab === "standby"
-                ? "bg-[#0052FF] text-white shadow-md shadow-blue-500/20"
-                : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
-            }`}
-          >
-            Standby Depo (2)
-          </button>
-          <button
-            onClick={() => setActiveTab("riwayat")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
-              activeTab === "riwayat"
-                ? "bg-[#0052FF] text-white shadow-md shadow-blue-500/20"
-                : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
-            }`}
-          >
-            Riwayat Hari I...
-          </button>
-        </div>
-
-        {/* Search Input */}
-        <div className="relative w-full md:w-80">
-          <Search
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-            size={16}
-          />
-          <input
-            type="text"
-            placeholder="Cari kurir, plat, order..."
-            className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 shadow-sm"
-          />
-        </div>
-      </div>
-
-      {/* 4. MAIN LAYOUT GRID (KURIR LAPANGAN & TABEL PENGANTARAN) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        
-        {/* KOLOM KIRI: KURIR LAPANGAN (5 COLS) */}
-        <div className="lg:col-span-5 space-y-4">
-          <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-2">
-              <Truck size={18} className="text-[#0052FF]" />
-              <h2 className="text-base font-bold text-slate-900">
-                Kurir Lapangan
-              </h2>
-            </div>
-            <span className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg text-[11px] font-bold">
-              4 / 6 Bergerak
+            <span className="inline-block mt-2 text-[10px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
+              Kapasitas 100% Siaga
             </span>
           </div>
-
-          {/* LIST CARD KURIR */}
-          <div className="space-y-3">
-            {kurirList.map((kurir) => (
-              <div
-                key={kurir.id}
-                className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm space-y-3"
-              >
-                {/* Header Card */}
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-900">
-                      {kurir.nama}
-                    </h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      {kurir.armada}
-                    </p>
-                  </div>
-                  {kurir.statusType === "on-the-way" ? (
-                    <span className="px-2.5 py-1 bg-cyan-50 text-cyan-600 rounded-full text-[11px] font-bold flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse"></span>
-                      Di Jalan
-                    </span>
-                  ) : (
-                    <span className="px-2.5 py-1 bg-emerald-50 text-emerald-600 rounded-full text-[11px] font-bold flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                      Standby Depo
-                    </span>
-                  )}
-                </div>
-
-                {/* Box Detail Tugas / Status */}
-                {kurir.statusType === "on-the-way" ? (
-                  <div className="bg-slate-50 p-3 rounded-xl space-y-2 border border-slate-100">
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="font-semibold text-slate-600">
-                        Tugas Saat Ini
-                      </span>
-                      <span className="font-bold text-blue-600">
-                        {kurir.orderId}
-                      </span>
-                    </div>
-                    <p className="text-xs font-medium text-slate-800 leading-snug">
-                      {kurir.tugas}
-                    </p>
-                    <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-200/60">
-                      <span>Berangkat {kurir.berangkat}</span>
-                      <span className="font-semibold text-cyan-600">
-                        {kurir.estimasi}
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="bg-slate-50 p-3 rounded-xl space-y-1.5 border border-slate-100">
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="font-semibold text-slate-600">
-                        Status Depo
-                      </span>
-                      <span className="font-bold text-emerald-600">
-                        {kurir.statusDepo}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 leading-relaxed">
-                      {kurir.desc}
-                    </p>
-                  </div>
-                )}
-
-                {/* Tombol Aksi Bottom */}
-                {kurir.statusType === "on-the-way" ? (
-                  <div className="grid grid-cols-2 gap-2 pt-1">
-                    <button className="py-2 px-3 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer">
-                      <Phone size={14} />
-                      Hubungi
-                    </button>
-                    <button className="py-2 px-3 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer">
-                      <Navigation size={14} />
-                      Pantau Rute
-                    </button>
-                  </div>
-                ) : (
-                  <button className="w-full py-2.5 bg-[#0052FF] hover:bg-blue-700 text-white rounded-xl text-xs font-semibold transition-all shadow-sm cursor-pointer">
-                    Tugaskan Pesanan Antre
-                  </button>
-                )}
-              </div>
-            ))}
+          <div className="p-3 bg-blue-50 rounded-xl text-blue-600">
+            <Users className="w-5 h-5" />
           </div>
         </div>
 
-        {/* KOLOM KANAN: TABEL PENGANTARAN AKTIF (7 COLS) */}
-        <div className="lg:col-span-7 bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4">
-          {/* Header Tabel */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
-            <div>
-              <div className="flex items-center gap-2">
-                <Layers size={18} className="text-[#0052FF]" />
-                <h2 className="text-base font-bold text-slate-900">
-                  Tabel Pengantaran Aktif
-                </h2>
-              </div>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Pesanan yang sedang dalam proses pengiriman oleh kurir depo
-              </p>
+        {/* Card 2 */}
+        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Sedang Mengantar</p>
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="text-2xl font-extrabold text-slate-900">4</span>
+              <span className="text-xs font-semibold text-slate-600">Kurir di Jalan</span>
             </div>
+            <span className="inline-block mt-2 text-[10px] font-medium text-cyan-600 bg-cyan-50 px-2 py-0.5 rounded-md">
+              • 11 Galon Sedang Dikirim
+            </span>
+          </div>
+          <div className="p-3 bg-cyan-50 rounded-xl text-cyan-600">
+            <Zap className="w-5 h-5" />
+          </div>
+        </div>
 
-            <div className="flex items-center gap-1.5 text-xs text-slate-500 self-start sm:self-auto">
-              <span>Diurutkan:</span>
-              <button className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg font-semibold text-slate-700 flex items-center gap-1 cursor-pointer">
-                Estimasi SLA Terdekat
-                <ChevronDown size={14} />
-              </button>
+        {/* Card 3 */}
+        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Standby Depo</p>
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="text-2xl font-extrabold text-slate-900">2</span>
+              <span className="text-xs font-semibold text-slate-600">Siap Muat Kirim</span>
             </div>
+            <span className="inline-block mt-2 text-[10px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
+              Idle &lt; 8 Menit
+            </span>
+          </div>
+          <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600">
+            <Building2 className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* Card 4 */}
+        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Rata-rata Waktu</p>
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="text-2xl font-extrabold text-slate-900">18</span>
+              <span className="text-xs font-semibold text-slate-600">Menit / Pesanan</span>
+            </div>
+            <span className="inline-block mt-2 text-[10px] font-medium text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md">
+              3.2 mnt lebih cepat dr SLA
+            </span>
+          </div>
+          <div className="p-3 bg-purple-50 rounded-xl text-purple-600">
+            <Clock className="w-5 h-5" />
+          </div>
+        </div>
+      </div>
+
+      {/* FILTER TABS & SEARCH INPUT */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+          <button
+            type="button"
+            onClick={() => setActiveTab('semua')}
+            className={`text-xs font-semibold px-4 py-2 rounded-xl transition whitespace-nowrap cursor-pointer ${
+              activeTab === 'semua'
+                ? 'bg-[#2563EB] text-white shadow-sm'
+                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            Semua Armada (8)
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('jalan')}
+            className={`text-xs font-semibold px-4 py-2 rounded-xl transition whitespace-nowrap cursor-pointer ${
+              activeTab === 'jalan'
+                ? 'bg-[#2563EB] text-white shadow-sm'
+                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            Sedang Jalan (3)
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('standby')}
+            className={`text-xs font-semibold px-4 py-2 rounded-xl transition whitespace-nowrap cursor-pointer ${
+              activeTab === 'standby'
+                ? 'bg-[#2563EB] text-white shadow-sm'
+                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            Standby Depo (5)
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('riwayat')}
+            className={`text-xs font-semibold px-4 py-2 rounded-xl transition whitespace-nowrap cursor-pointer ${
+              activeTab === 'riwayat'
+                ? 'bg-[#2563EB] text-white shadow-sm'
+                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            Riwayat Hari Ini
+          </button>
+        </div>
+
+        <div className="relative min-w-[260px]">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Cari kurir, plat, order..."
+            className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:border-blue-500 shadow-sm"
+          />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+        </div>
+      </div>
+
+      {/* TABLE SECTION: TABEL PENGANTARAN AKTIF */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-6">
+        {/* Table Title & Filter Header */}
+        <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="font-bold text-slate-900 text-base">Tabel Pengantaran Aktif</h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Pesanan yang sedang dalam proses pengiriman oleh kurir depo
+            </p>
           </div>
 
-          {/* Kontainer Tabel */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-100 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-                  <th className="py-3 px-2">NO. ORDER</th>
-                  <th className="py-3 px-2">KURIR & ARMADA</th>
-                  <th className="py-3 px-2">ALAMAT TUJUAN</th>
-                  <th className="py-3 px-2">MUATAN</th>
-                  <th className="py-3 px-2">PROGRESS / ESTIMASI</th>
-                  <th className="py-3 px-2 text-right">STATUS</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs">
-                {orderList.map((order, i) => (
-                  <tr key={i} className="hover:bg-slate-50/80 transition-all">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-400">Diurutkan:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 rounded-xl px-3 py-1.5 focus:outline-none focus:border-blue-500 cursor-pointer"
+            >
+              <option value="sla">Estimasi SLA Terdekat</option>
+              <option value="terbaru">Order Terbaru</option>
+              <option value="muatan">Muatan Terbanyak</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Table Content */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-slate-100 bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                <th className="py-3 px-5">NO. ORDER</th>
+                <th className="py-3 px-5">KURIR &amp; ARMADA</th>
+                <th className="py-3 px-5">ALAMAT TUJUAN</th>
+                <th className="py-3 px-5">MUATAN</th>
+                <th className="py-3 px-5">PROGRESS / ESTIMASI</th>
+                <th className="py-3 px-5 text-right">STATUS</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-xs">
+              {filteredData.length > 0 ? (
+                filteredData.map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-50/80 transition">
                     {/* NO. ORDER */}
-                    <td className="py-3.5 px-2 align-top">
-                      <span className="font-bold text-blue-600 block">
-                        {order.id}
-                      </span>
-                      <span className="text-[10px] text-slate-400 font-medium">
-                        {order.waktu}
-                      </span>
+                    <td className="py-4 px-5 align-top">
+                      <span className="font-bold text-blue-600 block">{item.orderNo}</span>
+                      <span className="text-[10px] text-slate-400">{item.time}</span>
                     </td>
 
                     {/* KURIR & ARMADA */}
-                    <td className="py-3.5 px-2 align-top whitespace-nowrap">
-                      <span className="font-bold text-slate-900 block">
-                        {order.kurir}
-                      </span>
-                      <span className="text-[10px] text-slate-400 font-medium">
-                        {order.plat}
-                      </span>
+                    <td className="py-4 px-5 align-top">
+                      <span className="font-bold text-slate-800 block">{item.courierName}</span>
+                      <span className="text-[11px] text-slate-400">{item.vehicle}</span>
                     </td>
 
                     {/* ALAMAT TUJUAN */}
-                    <td className="py-3.5 px-2 align-top max-w-[200px]">
-                      <span className="font-bold text-slate-800 block truncate">
-                        {order.alamat}
-                      </span>
-                      <span className="text-[10px] text-slate-400 block truncate">
-                        {order.penerima}
-                      </span>
-                      <span className="text-[10px] font-semibold text-blue-600 block truncate mt-0.5">
-                        {order.patokan}
-                      </span>
+                    <td className="py-4 px-5 align-top max-w-[280px]">
+                      <span className="font-bold text-slate-800 block">{item.addressTitle}</span>
+                      <span className="text-[11px] text-slate-500 block">{item.customerInfo}</span>
+                      {item.note && (
+                        <span className="text-[10px] text-amber-600 font-medium block mt-0.5">
+                          {item.note}
+                        </span>
+                      )}
                     </td>
 
                     {/* MUATAN */}
-                    <td className="py-3.5 px-2 align-top whitespace-nowrap">
-                      <span className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-lg text-[11px] font-bold inline-flex items-center gap-1">
-                        <Package size={12} />
-                        {order.muatan}
+                    <td className="py-4 px-5 align-top">
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold ${
+                          item.itemType === 'aqua'
+                            ? 'bg-blue-50 text-blue-600'
+                            : item.itemType === 'le_minerale'
+                            ? 'bg-teal-50 text-teal-600'
+                            : item.itemType === 'campur'
+                            ? 'bg-purple-50 text-purple-600'
+                            : 'bg-indigo-50 text-indigo-600'
+                        }`}
+                      >
+                        <Droplets className="w-3.5 h-3.5" />
+                        {item.itemCount}
                       </span>
                     </td>
 
                     {/* PROGRESS / ESTIMASI */}
-                    <td className="py-3.5 px-2 align-top">
-                      {order.status === "Diantar" ? (
-                        <div className="space-y-1 min-w-[130px]">
-                          <div className="flex items-center justify-between text-[11px]">
-                            <span className="font-bold text-blue-600">
-                              {order.progress}% Selesai
-                            </span>
-                            <span className="text-[10px] text-slate-500 font-medium">
-                              {order.estimasi}
-                            </span>
+                    <td className="py-4 px-5 align-top min-w-[200px]">
+                      {item.status === 'diantar' ? (
+                        <div>
+                          <div className="flex justify-between text-[11px] font-bold text-blue-600 mb-1">
+                            <span>{item.progressText}</span>
+                            <span>{item.etaText}</span>
                           </div>
-                          <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                          <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mb-1">
                             <div
-                              className="bg-blue-600 h-full rounded-full"
-                              style={{ width: `${order.progress}%` }}
+                              className="h-full bg-blue-600 rounded-full"
+                              style={{ width: `${item.progressPercent}%` }}
                             ></div>
                           </div>
-                          <span className="text-[10px] text-slate-400 block truncate">
-                            {order.jarak}
-                          </span>
+                          <span className="text-[10px] text-slate-400 block">{item.distanceText}</span>
                         </div>
                       ) : (
-                        <div className="space-y-1 min-w-[130px]">
-                          <div className="flex items-center justify-between text-[11px]">
-                            <span className="font-semibold text-slate-700">
-                              {order.progressStatus}
-                            </span>
-                            <span className="text-[10px] text-slate-400">
-                              {order.depo}
-                            </span>
+                        <div>
+                          <div className="flex justify-between text-[11px] font-semibold text-slate-700 mb-1">
+                            <span>Sedang Muat</span>
+                            <span className="text-slate-400 font-normal">{item.depoInfo}</span>
                           </div>
-                          <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                            <div className="bg-purple-500 h-full w-1/3 rounded-full"></div>
+                          <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mb-1">
+                            <div className="h-full bg-amber-500 rounded-full" style={{ width: '20%' }}></div>
                           </div>
-                          <span className="text-[10px] text-slate-400 block">
-                            Persiapan berangkat
-                          </span>
+                          <span className="text-[10px] text-slate-400 block">Persiapan berangkat</span>
                         </div>
                       )}
                     </td>
 
-                    {/* STATUS BADGE */}
-                    <td className="py-3.5 px-2 align-top text-right whitespace-nowrap">
-                      {order.status === "Diantar" ? (
-                        <span className="px-2.5 py-1 bg-cyan-50 text-cyan-600 rounded-full text-[11px] font-bold inline-flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-500"></span>
-                          Diantar
+                    {/* STATUS */}
+                    <td className="py-4 px-5 align-top text-right">
+                      {item.status === 'diantar' ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Diantar
                         </span>
                       ) : (
-                        <span className="px-2.5 py-1 bg-purple-50 text-purple-600 rounded-full text-[11px] font-bold inline-flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
-                          Diproses
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Diproses
                         </span>
                       )}
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-slate-400 font-medium">
+                    Tidak ada data pengantaran aktif yang ditemukan.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
 
+        {/* PAGINATION FOOTER */}
+        <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+          <div>
+            Menampilkan <strong className="text-slate-800">{filteredData.length}</strong> dari{' '}
+            <strong className="text-slate-800">24</strong> antrean pengantaran aktif
+          </div>
+
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+              className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-50 transition cursor-pointer"
+            >
+              Sebelumnya
+            </button>
+            <button
+              type="button"
+              onClick={() => setCurrentPage(1)}
+              className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer ${
+                currentPage === 1
+                  ? 'bg-blue-600 text-white'
+                  : 'border border-slate-200 hover:bg-slate-50 text-slate-700'
+              }`}
+            >
+              1
+            </button>
+            <button
+              type="button"
+              onClick={() => setCurrentPage(2)}
+              className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer ${
+                currentPage === 2
+                  ? 'bg-blue-600 text-white'
+                  : 'border border-slate-200 hover:bg-slate-50 text-slate-700'
+              }`}
+            >
+              2
+            </button>
+            <button
+              type="button"
+              onClick={() => setCurrentPage(3)}
+              className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer ${
+                currentPage === 3
+                  ? 'bg-blue-600 text-white'
+                  : 'border border-slate-200 hover:bg-slate-50 text-slate-700'
+              }`}
+            >
+              3
+            </button>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((p) => Math.min(p + 1, 3))}
+              className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition cursor-pointer"
+            >
+              Selanjutnya
+            </button>
+          </div>
+        </div>
       </div>
-    </div>
+
+      {/* MODAL TAMBAH ARMADA KURIR */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl animate-in fade-in zoom-in duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <h3 className="font-bold text-slate-900 text-base">Tambah Armada Kurir Baru</h3>
+              <button
+                type="button"
+                onClick={() => setIsAddModalOpen(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                setIsAddModalOpen(false);
+              }}
+              className="space-y-4 text-xs"
+            >
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Nama Lengkap Kurir</label>
+                <input
+                  type="text"
+                  placeholder="Contoh: Ahmad Rizky"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-blue-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Jenis &amp; Plat Kendaraan</label>
+                <input
+                  type="text"
+                  placeholder="Contoh: Honda Beat • B 1234 ABC"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-blue-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Nomor WhatsApp / HP</label>
+                <input
+                  type="text"
+                  placeholder="Contoh: 0812-3456-7890"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-blue-500"
+                  required
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 font-semibold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition cursor-pointer shadow-sm"
+                >
+                  Simpan Armada
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </main>
   );
 }

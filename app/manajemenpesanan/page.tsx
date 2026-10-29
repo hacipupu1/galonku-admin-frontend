@@ -1,511 +1,912 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
+import {
+  Search,
+  Filter,
+  Download,
+  Check,
+  Eye,
+  X,
+  ShoppingBag,
+  Clock,
+  Truck,
+  Wallet,
+  Droplets,
+  CreditCard,
+  User,
+  Printer,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 
-// Data Pesanan Sesuai Wireframe
-const pesananData = [
-  {
-    id: '1',
-    noOrder: '#ORD-8824',
-    jam: 'Hari ini, 10:15 WIB',
-    tipeRefill: 'Refill Instan (30m)',
-    isInstant: true,
-    pelanggan: 'Fia Salsa',
-    hp: '0812-9844-3211',
-    alamat: 'Kost Sakura No. 4, Lt. 2',
-    qty: '2x',
-    produk: 'Aqua 19L Refill',
-    catatan: 'Tukar Galon Kosong',
-    total: 'Rp 36.000',
-    metode: 'QRIS • Lunas',
-    statusTag: 'Menunggu Konfirmasi',
-    statusType: 'konfirmasi',
-    kurirText: 'Tugaskan Kurir',
-    isKurirButton: true,
-  },
-  {
-    id: '2',
-    noOrder: '#ORD-8823',
-    jam: 'Hari ini, 10:02 WIB',
-    tipeRefill: 'Refill Terjadwal',
-    isInstant: false,
-    pelanggan: 'Agus Setiawan',
-    hp: '0857-1120-9943',
-    alamat: 'Jl. Ciputat Raya No. 18B',
-    qty: '3x',
-    produk: 'Le Minerale 19L',
-    catatan: '1 Galon Baru + 2 Refill',
-    total: 'Rp 89.000',
-    metode: 'BCA TF • Lunas',
-    statusTag: 'Diproses Depo',
-    statusType: 'diproses',
-    kurirNama: 'Pak Budi K.',
-    kurirSub: 'Motor 01 (Siap Angkut)',
-    isKurirButton: false,
-  },
-  {
-    id: '3',
-    noOrder: '#ORD-8822',
-    jam: 'Hari ini, 09:48 WIB',
-    tipeRefill: 'Refill Instan',
-    isInstant: true,
-    pelanggan: 'Dewi Anggraini',
-    hp: '0813-8871-0021',
-    alamat: 'Paku Terrace Twr S-1208',
-    qty: '1x',
-    produk: 'Aqua 19L Refill',
-    catatan: 'Tukar Galon Kosong',
-    total: 'Rp 18.000',
-    metode: 'COD (Tunai)',
-    statusTag: 'Diantar Kurir',
-    statusType: 'diantar',
-    kurirNama: 'Rian Irawan',
-    kurirSub: 'ETA: 8 mnt lagi',
-    isKurirButton: false,
-  },
-  {
-    id: '4',
-    noOrder: '#ORD-8821',
-    jam: 'Hari ini, 09:20 WIB',
-    tipeRefill: 'Refill Reguler',
-    isInstant: false,
-    pelanggan: 'Warung Kopi Mas Jon',
-    hp: '0878-5544-2201',
-    alamat: 'Jl. Teuku Nyak Arief No. 51',
-    qty: '5x',
-    produk: 'Aqua 19L Refill',
-    catatan: 'Langganan Bisnis UMKM',
-    total: 'Rp 90.000',
-    metode: 'QRIS • Lunas',
-    statusTag: 'Selesai Diterima',
-    statusType: 'selesai',
-    kurirNama: 'Pak Budi K.',
-    kurirSub: 'Diterima 09:42 WIB',
-    isKurirButton: false,
-  },
-  {
-    id: '5',
-    noOrder: '#ORD-8820',
-    jam: 'Hari ini, 08:50 WIB',
-    tipeRefill: 'Refill Reguler',
-    isInstant: false,
-    pelanggan: 'Hendro Pratama',
-    hp: '0812-7788-3312',
-    alamat: 'Komplek Lemigas Blok B4/12',
-    qty: '2x',
-    produk: 'Cleo 19L Eco Refill',
-    catatan: 'Bebas BPA Galon',
-    total: 'Rp 34.000',
-    metode: 'GoPay • Lunas',
-    statusTag: 'Selesai Diterima',
-    statusType: 'selesai',
-    kurirNama: 'Deni Setiawan',
-    kurirSub: 'Diterima 09:18 WIB',
-    isKurirButton: false,
-  },
-  {
-    id: '6',
-    noOrder: '#ORD-8819',
-    jam: 'Hari ini, 08:35 WIB',
-    tipeRefill: 'Refill Terjadwal (Siang)',
-    isInstant: false,
-    pelanggan: 'Siti Nurhaliza',
-    hp: '0896-1234-9001',
-    alamat: 'Jl. Kebayoran Lama No. 44',
-    qty: '1x',
-    produk: 'Aqua 19L + Pompa Elektrik',
-    catatan: 'Beli Unit Pompa Baru',
-    total: 'Rp 68.000',
-    metode: 'Menunggu Verif',
-    statusTag: 'Diproses Depo',
-    statusType: 'diproses',
-    kurirText: 'Jadwalkan',
-    isKurirButton: true,
-  },
-  {
-    id: '7',
-    noOrder: '#ORD-8818',
-    jam: 'Hari ini, 08:10 WIB',
-    tipeRefill: 'Dibatalkan Pelanggan',
-    isCancel: true,
-    pelanggan: 'Bambang Tri',
-    hp: '0811-9922-3112',
-    alamat: 'Jl. Praja Raya No. 10',
-    qty: '2x',
-    produk: 'Vit 19L Refill',
-    catatan: 'Alasan: Salah input alamat',
-    total: 'Rp 30.000',
-    metode: 'Refund Dana Selesai',
-    statusTag: 'Dibatalkan',
-    statusType: 'dibatalkan',
-    kurirText: '-',
-    isKurirButton: false,
-  },
-];
-
-export default function ManajemenPesananPage() {
-  const [activeTab, setActiveTab] = useState<'semua' | 'konfirmasi' | 'diproses' | 'diantar' | 'selesai' | 'dibatalkan'>('semua');
-
-  const filteredData = pesananData.filter((item) => {
-    if (activeTab === 'konfirmasi') return item.statusType === 'konfirmasi';
-    if (activeTab === 'diproses') return item.statusType === 'diproses';
-    if (activeTab === 'diantar') return item.statusType === 'diantar';
-    if (activeTab === 'selesai') return item.statusType === 'selesai';
-    if (activeTab === 'dibatalkan') return item.statusType === 'dibatalkan';
-    return true;
-  });
+// Sub-komponen Gambar Thumbnail Galon Mini
+function ProductThumb({ src, alt, fallbackText }: { src: string; alt: string; fallbackText: string }) {
+  const [hasError, setHasError] = useState(false);
 
   return (
-    <div className="flex min-h-screen bg-[#F8FAFC] text-slate-800 font-sans antialiased">
-      {/* ==================== MAIN CONTENT ==================== */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-        {/* Header Bar */}
-        
+    <div className="w-9 h-9 rounded-xl bg-blue-50/70 border border-blue-100 p-1 flex items-center justify-center shrink-0 shadow-sm">
+      {!hasError ? (
+        <img
+          src={src}
+          alt={alt}
+          className="max-h-full max-w-full object-contain"
+          onError={() => setHasError(true)}
+        />
+      ) : (
+        <span className="font-bold text-[9px] text-blue-600 uppercase">{fallbackText}</span>
+      )}
+    </div>
+  );
+}
 
-        {/* Subheader & Content Body */}
-        <div className="p-6 space-y-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 text-blue-600 font-semibold text-[11px] uppercase tracking-wider mb-1">
+// Tipe Data TypeScript untuk Pesanan
+interface OrderItem {
+  id: string;
+  time: string;
+  customerName: string;
+  customerPhone: string;
+  customerAddress: string;
+  product: string;
+  productNote: string;
+  productBrand: string;
+  image: string;
+  fallback: string;
+  total: string;
+  paymentMethod: string;
+  paymentLabel: string;
+  paymentStatus: string;
+  paymentBg: string;
+  status: string;
+  statusLabel: string;
+  statusBg: string;
+  courier: string | null;
+  courierDetail: string | null;
+}
+
+export default function ManajemenPesananPage() {
+  const [orders, setOrders] = useState<OrderItem[]>([
+    {
+      id: '#ORD-8824',
+      time: '10:15 WIB',
+      customerName: 'Fia Salsa',
+      customerPhone: '0812-9844-3211',
+      customerAddress: 'Kost Sakura No. 4, Lt. 2',
+      product: '2x Aqua 19L Refill',
+      productNote: 'Tukar Galon Kosong',
+      productBrand: 'aqua',
+      image: '/aqua.png',
+      fallback: 'Aqua',
+      total: 'Rp 36.000',
+      paymentMethod: 'qris',
+      paymentLabel: 'QRIS',
+      paymentStatus: 'Lunas',
+      paymentBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      status: 'konfirmasi',
+      statusLabel: '• Menunggu Konfirmasi',
+      statusBg: 'bg-amber-50 text-amber-700 border-amber-200',
+      courier: null,
+      courierDetail: null,
+    },
+    {
+      id: '#ORD-8823',
+      time: '10:02 WIB',
+      customerName: 'Agus Setiawan',
+      customerPhone: '0857-1120-9963',
+      customerAddress: 'Jl. Ciputat Raya No. 188',
+      product: '3x Le Minerale 15L',
+      productNote: '1 Galon Baru + 2 Refill',
+      productBrand: 'leminerale',
+      image: '/leminerale.png',
+      fallback: 'Le M',
+      total: 'Rp 89.000',
+      paymentMethod: 'bca',
+      paymentLabel: 'BCA TF',
+      paymentStatus: 'Lunas',
+      paymentBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      status: 'diproses',
+      statusLabel: '• Diproses Depo',
+      statusBg: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+      courier: 'Pak Budi K.',
+      courierDetail: 'Motor 01 (Siap Angkut)',
+    },
+    {
+      id: '#ORD-8822',
+      time: '09:48 WIB',
+      customerName: 'Dewi Anggraini',
+      customerPhone: '0813-8871-0021',
+      customerAddress: 'Paku Terrace Twr S-1208',
+      product: '1x Aqua 19L Refill',
+      productNote: 'Tukar Galon Kosong',
+      productBrand: 'aqua',
+      image: '/aqua.png',
+      fallback: 'Aqua',
+      total: 'Rp 18.000',
+      paymentMethod: 'cod',
+      paymentLabel: 'COD (Tunai)',
+      paymentStatus: 'COD',
+      paymentBg: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+      status: 'diantar',
+      statusLabel: '• Diantar Kurir',
+      statusBg: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+      courier: 'Rian Irawan',
+      courierDetail: 'ETA: 8 mnt lagi',
+    },
+    {
+      id: '#ORD-8821',
+      time: '09:20 WIB',
+      customerName: 'Warung Kopi Mas Jon',
+      customerPhone: '0878-5544-2201',
+      customerAddress: 'Jl. Teuku Nyak Arief No. 51',
+      product: '5x Aqua 19L Refill',
+      productNote: 'Langganan Bisnis UMKM',
+      productBrand: 'aqua',
+      image: '/aqua.png',
+      fallback: 'Aqua',
+      total: 'Rp 90.000',
+      paymentMethod: 'qris',
+      paymentLabel: 'QRIS',
+      paymentStatus: 'Lunas',
+      paymentBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      status: 'selesai',
+      statusLabel: '• Selesai Diterima',
+      statusBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      courier: 'Pak Budi K.',
+      courierDetail: 'Diterima 09:42 WIB',
+    },
+    {
+      id: '#ORD-8820',
+      time: '08:50 WIB',
+      customerName: 'Hendro Pratama',
+      customerPhone: '0812-7788-3312',
+      customerAddress: 'Komplek Lamigres Blok B4/12',
+      product: '2x Cleo 19L',
+      productNote: 'Bebas BPA Galon',
+      productBrand: 'cleo',
+      image: '/cleo.png',
+      fallback: 'Cleo',
+      total: 'Rp 34.000',
+      paymentMethod: 'gopay',
+      paymentLabel: 'GoPay',
+      paymentStatus: 'Lunas',
+      paymentBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      status: 'selesai',
+      statusLabel: '• Selesai Diterima',
+      statusBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      courier: 'Deni Setiawan',
+      courierDetail: 'Diterima 09:18 WIB',
+    },
+    {
+      id: '#ORD-8819',
+      time: '08:35 WIB',
+      customerName: 'Siti Nurhaliza',
+      customerPhone: '0896-1234-9001',
+      customerAddress: 'Jl. Kebayoran Lama No. 44',
+      product: '1x Aqua 19L + Pompa',
+      productNote: 'Beli Unit Pompa Baru',
+      productBrand: 'aqua',
+      image: '/aqua.png',
+      fallback: 'Aqua',
+      total: 'Rp 68.000',
+      paymentMethod: 'bca',
+      paymentLabel: 'BCA TF',
+      paymentStatus: 'Lunas',
+      paymentBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      status: 'diproses',
+      statusLabel: '• Diproses Depo',
+      statusBg: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+      courier: null,
+      courierDetail: 'Jadwalkan',
+    },
+    {
+      id: '#ORD-8818',
+      time: '08:10 WIB',
+      customerName: 'Bambang Tri',
+      customerPhone: '0811-9922-3112',
+      customerAddress: 'Jl. Praja Raya No. 10',
+      product: '2x Vit 19L Refill',
+      productNote: 'Alasan: Salah input alamat',
+      productBrand: 'vit',
+      image: '/vit.png',
+      fallback: 'Vit',
+      total: 'Rp 30.000',
+      paymentMethod: 'cod',
+      paymentLabel: 'COD (Tunai)',
+      paymentStatus: 'Refunded',
+      paymentBg: 'bg-red-50 text-red-600 border-red-200',
+      status: 'dibatalkan',
+      statusLabel: '• Dibatalkan',
+      statusBg: 'bg-red-50 text-red-600 border-red-200',
+      courier: null,
+      courierDetail: '-',
+    },
+  ]);
+
+  const [activeTab, setActiveTab] = useState<'semua' | 'konfirmasi' | 'diproses' | 'diantar' | 'selesai' | 'dibatalkan'>('semua');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedGallon, setSelectedGallon] = useState('semua');
+  const [selectedPayment, setSelectedPayment] = useState('semua');
+
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<OrderItem | null>(null);
+  const [selectedCourierName, setSelectedCourierName] = useState('Pak Budi Santoso');
+
+  const handleConfirmOrder = (orderId: string) => {
+    setOrders((prev) =>
+      prev.map((o) => {
+        if (o.id === orderId) {
+          return {
+            ...o,
+            status: 'diproses',
+            statusLabel: '• Diproses Depo',
+            statusBg: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+          };
+        }
+        return o;
+      })
+    );
+    alert(`Pesanan ${orderId} berhasil dikonfirmasi!`);
+  };
+
+  const handleAssignCourier = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedOrder) return;
+
+    setOrders((prev) =>
+      prev.map((o) => {
+        if (o.id === selectedOrder.id) {
+          return {
+            ...o,
+            status: 'diantar',
+            statusLabel: '• Diantar Kurir',
+            statusBg: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+            courier: selectedCourierName,
+            courierDetail: 'Tiba ~15 mnt lagi',
+          };
+        }
+        return o;
+      })
+    );
+    setShowAssignModal(false);
+    alert(`Kurir ${selectedCourierName} berhasil ditugaskan untuk ${selectedOrder.id}!`);
+  };
+
+  const filteredOrders = orders.filter((o) => {
+    let matchTab = true;
+    if (activeTab === 'konfirmasi') matchTab = o.status === 'konfirmasi';
+    if (activeTab === 'diproses') matchTab = o.status === 'diproses';
+    if (activeTab === 'diantar') matchTab = o.status === 'diantar';
+    if (activeTab === 'selesai') matchTab = o.status === 'selesai';
+    if (activeTab === 'dibatalkan') matchTab = o.status === 'dibatalkan';
+
+    let matchGallon = true;
+    if (selectedGallon !== 'semua') {
+      matchGallon = o.productBrand === selectedGallon;
+    }
+
+    let matchPayment = true;
+    if (selectedPayment !== 'semua') {
+      matchPayment = o.paymentMethod === selectedPayment;
+    }
+
+    const matchSearch =
+      o.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      o.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      o.customerPhone.includes(searchQuery) ||
+      o.product.toLowerCase().includes(searchQuery.toLowerCase());
+
+    return matchTab && matchGallon && matchPayment && matchSearch;
+  });
+
+  const handleResetFilter = () => {
+    setSearchQuery('');
+    setSelectedGallon('semua');
+    setSelectedPayment('semua');
+    setActiveTab('semua');
+  };
+
+  return (
+    <main className="w-full bg-[#F8FAFC] min-h-screen p-6 pt-4 font-sans text-slate-800">
+      
+      {/* 1. HEADER HALAMAN */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div>
+          <div className="text-[11px] font-bold text-blue-600 uppercase tracking-wider mb-0.5 h-4 flex items-center gap-1.5">
+            <span>MANAJEMEN TRANSAKSI &amp; DISPATCH</span>
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight leading-tight">
+            Manajemen Pesanan
+          </h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Kelola, verifikasi, dan pantau status transaksi pemesanan galon pelanggan secara real-time.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => alert('Mengunduh Laporan Pesanan (CSV/Excel)...')}
+            className="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold px-3.5 py-2.5 rounded-xl shadow-sm flex items-center gap-2 transition cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5 text-blue-600" />
+            <span>Ekspor (CSV/Excel)</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 2. TOP 4 KPI CARDS */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">TOTAL PESANAN HARI INI</span>
+              <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
+                <ShoppingBag className="w-4 h-4" />
               </div>
-              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Manajemen Pesanan</h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Kelola, verifikasi, dan pantau status transaksi pemesanan galon pelanggan secara real-time.
-              </p>
             </div>
-
-            <div className="flex items-center gap-2">
-              <button className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all">
-                📥 Ekspor (CSV/Excel)
-              </button>
-              <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-md shadow-blue-500/20 transition-all flex items-center gap-1.5">
-                <span>+</span> Buat Pesanan Manual
-              </button>
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="text-2xl font-bold text-slate-900">48</span>
             </div>
           </div>
+          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center text-[11px]">
+            <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md font-semibold">
+              ↗ +14% dibanding kemarin
+            </span>
+          </div>
+        </div>
 
-          {/* 4 Cards Stat Ringkasan */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-start justify-between">
-              <div>
-                <p className="text-[10px] font-bold text-slate-400 tracking-wider uppercase">TOTAL PESANAN HARI INI</p>
-                <div className="flex items-baseline gap-1.5 mt-2">
-                  <span className="text-2xl font-bold text-slate-900">48</span>
-                </div>
-                <p className="text-[11px] text-emerald-600 font-semibold mt-2 flex items-center gap-1">
-                  📈 +14% dr kemarin
-                </p>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                🛒
+        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-red-600 uppercase tracking-wider">PERLU KONFIRMASI</span>
+              <div className="p-2.5 bg-red-50 text-red-600 rounded-xl">
+                <Clock className="w-4 h-4" />
               </div>
             </div>
-
-            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-start justify-between">
-              <div>
-                <p className="text-[10px] font-bold text-slate-400 tracking-wider uppercase">PERLU KONFIRMASI</p>
-                <div className="flex items-baseline gap-1.5 mt-2">
-                  <span className="text-2xl font-bold text-slate-900">4</span>
-                </div>
-                <p className="text-[11px] text-red-500 font-semibold mt-2 flex items-center gap-1">
-                  ⏱ Respon &lt; 5 mnt
-                </p>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-red-50 text-red-500 flex items-center justify-center shrink-0">
-                🚨
-              </div>
-            </div>
-
-            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-start justify-between">
-              <div>
-                <p className="text-[10px] font-bold text-slate-400 tracking-wider uppercase">SEDANG DIANTAR</p>
-                <div className="flex items-baseline gap-1.5 mt-2">
-                  <span className="text-2xl font-bold text-slate-900">5</span>
-                </div>
-                <p className="text-[11px] text-sky-600 font-semibold mt-2 flex items-center gap-1">
-                  🛵 4 Armada aktif
-                </p>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center shrink-0">
-                🚚
-              </div>
-            </div>
-
-            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-start justify-between">
-              <div>
-                <p className="text-[10px] font-bold text-slate-400 tracking-wider uppercase">TOTAL OMZET TERCATAT</p>
-                <p className="text-2xl font-bold text-slate-900 mt-2">Rp 864.000</p>
-                <p className="text-[11px] text-emerald-600 font-semibold mt-2 flex items-center gap-1">
-                  ✔ 92% Lunas
-                </p>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                💵
-              </div>
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="text-2xl font-bold text-red-600">4</span>
             </div>
           </div>
-
-          {/* TAB FILTER STATUS PESANAN */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1">
-            <button
-              onClick={() => setActiveTab('semua')}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                activeTab === 'semua' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'bg-white border border-slate-100 text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              Semua <span className="ml-1 bg-blue-500 text-white px-1.5 py-0.5 rounded-full text-[10px]">48</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('konfirmasi')}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                activeTab === 'konfirmasi' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'bg-white border border-slate-100 text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              Menunggu Konfirmasi <span className="ml-1 bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full text-[10px]">1</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('diproses')}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                activeTab === 'diproses' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'bg-white border border-slate-100 text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              Diproses Depo <span className="ml-1 bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded-full text-[10px]">2</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('diantar')}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                activeTab === 'diantar' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'bg-white border border-slate-100 text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              Dalam Pengantaran <span className="ml-1 bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-full text-[10px]">1</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('selesai')}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                activeTab === 'selesai' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'bg-white border border-slate-100 text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              Selesai <span className="ml-1 bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full text-[10px]">45</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('dibatalkan')}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                activeTab === 'dibatalkan' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'bg-white border border-slate-100 text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              Dibatalkan <span className="ml-1 bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-full text-[10px]">1</span>
-            </button>
+          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center text-[11px]">
+            <span className="text-red-600 bg-red-50 px-2 py-0.5 rounded-md font-semibold">
+              ⚡ Respon &lt; 5 mnt
+            </span>
           </div>
+        </div>
 
-          {/* SECONDARY FILTER BAR */}
-          <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="relative flex-1 w-full">
-              <svg className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <input
-                type="text"
-                placeholder="Cari berdasarkan No. Order (#ORD-...), nama..."
-                className="w-full bg-slate-50 border border-slate-200/60 rounded-xl pl-10 pr-4 py-2 text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              />
+        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">SEDANG DIANTAR</span>
+              <div className="p-2.5 bg-cyan-50 text-cyan-600 rounded-xl">
+                <Truck className="w-4 h-4" />
+              </div>
             </div>
-
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <select className="bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none">
-                <option>Hari Ini (24 Mei)</option>
-                <option>7 Hari Terakhir</option>
-                <option>Bulan Ini</option>
-              </select>
-
-              <select className="bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none">
-                <option>Semua Galon</option>
-                <option>Aqua 19L</option>
-                <option>Le Minerale 19L</option>
-                <option>Cleo 19L</option>
-              </select>
-
-              <select className="bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none">
-                <option>Pembayaran</option>
-                <option>QRIS</option>
-                <option>Transfer Bank</option>
-                <option>COD (Tunai)</option>
-              </select>
-
-              <button className="p-2 bg-slate-50 border border-slate-200/80 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors">
-                ⚙️
-              </button>
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="text-2xl font-bold text-slate-900">5</span>
             </div>
           </div>
+          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center text-[11px]">
+            <span className="text-cyan-700 bg-cyan-50 px-2 py-0.5 rounded-md font-semibold">
+              🛵 4 Armada aktif
+            </span>
+          </div>
+        </div>
 
-          {/* TABEL MANAJEMEN PESANAN */}
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-100 text-slate-400 font-bold uppercase text-[10px] tracking-wider">
-                    <th className="py-3 px-3 min-w-[150px]">NO. ORDER & WAKTU</th>
-                    <th className="py-3 px-3 min-w-[180px]">PELANGGAN & LOKASI</th>
-                    <th className="py-3 px-3 min-w-[180px]">ITEM PESANAN</th>
-                    <th className="py-3 px-3 min-w-[130px]">TAGIHAN & BAYAR</th>
-                    <th className="py-3 px-3 min-w-[150px]">STATUS</th>
-                    <th className="py-3 px-3 min-w-[160px]">KURIR PENGANTAR</th>
-                    <th className="py-3 px-3 text-right min-w-[110px]">AKSI</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-700">
-                  {filteredData.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="py-8 text-center text-slate-400 text-xs">
-                        Tidak ada pesanan untuk kategori ini.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredData.map((item) => (
-                      <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
-                        {/* 1. NO ORDER */}
-                        <td className="py-4 px-3">
-                          <p className="font-bold text-blue-600">{item.noOrder}</p>
-                          <p className="text-[10px] text-slate-400 mt-0.5">{item.jam}</p>
-                          {item.isInstant ? (
-                            <span className="inline-block mt-1 bg-red-50 text-red-600 text-[9px] font-bold px-1.5 py-0.5 rounded">
-                              ⚡ {item.tipeRefill}
-                            </span>
-                          ) : item.isCancel ? (
-                            <span className="inline-block mt-1 bg-red-50 text-red-600 text-[9px] font-bold px-1.5 py-0.5 rounded">
-                              {item.tipeRefill}
-                            </span>
-                          ) : (
-                            <span className="inline-block mt-1 bg-slate-100 text-slate-600 text-[9px] font-bold px-1.5 py-0.5 rounded">
-                              {item.tipeRefill}
-                            </span>
-                          )}
-                        </td>
+        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">TOTAL OMZET TERCATAT</span>
+              <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
+                <Wallet className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="mt-1">
+              <span className="text-2xl font-bold text-slate-900">Rp 864.000</span>
+            </div>
+          </div>
+          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center text-[11px]">
+            <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md font-semibold">
+              🛡️ 92% Lunas
+            </span>
+          </div>
+        </div>
+      </div>
 
-                        {/* 2. PELANGGAN */}
-                        <td className="py-4 px-3">
-                          <p className="font-bold text-slate-800">{item.pelanggan}</p>
-                          <p className="text-[10px] text-slate-400">{item.hp}</p>
-                          <p className="text-[10px] text-slate-400 truncate max-w-[160px] mt-0.5">
-                            📍 {item.alamat}
-                          </p>
-                        </td>
+      {/* 3. TABS FILTER STATUS PESANAN */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-4 scrollbar-none">
+        <button
+          type="button"
+          onClick={() => setActiveTab('semua')}
+          className={`text-xs font-semibold px-4 py-2 rounded-xl transition cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+            activeTab === 'semua'
+              ? 'bg-[#2563EB] text-white shadow-sm'
+              : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          <span>Semua</span>
+          <span className={`px-1.5 py-0.5 rounded-md text-[10px] ${activeTab === 'semua' ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-600'}`}>
+            48
+          </span>
+        </button>
 
-                        {/* 3. ITEM PESANAN */}
-                        <td className="py-4 px-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 font-bold flex items-center justify-center shrink-0">
-                              🛢️
-                            </div>
-                            <div>
-                              <p className="font-bold text-slate-800">{item.qty} {item.produk}</p>
-                              <p className="text-[10px] text-slate-400">{item.catatan}</p>
-                            </div>
-                          </div>
-                        </td>
+        <button
+          type="button"
+          onClick={() => setActiveTab('konfirmasi')}
+          className={`text-xs font-semibold px-4 py-2 rounded-xl transition cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+            activeTab === 'konfirmasi'
+              ? 'bg-[#2563EB] text-white shadow-sm'
+              : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          <span>Menunggu Konfirmasi</span>
+          <span className="px-1.5 py-0.5 rounded-md text-[10px] bg-red-100 text-red-600 font-bold">
+            1
+          </span>
+        </button>
 
-                        {/* 4. TAGIHAN */}
-                        <td className="py-4 px-3">
-                          <p className="font-bold text-slate-800">{item.total}</p>
-                          <span className="inline-block mt-1 bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded">
-                            {item.metode}
+        <button
+          type="button"
+          onClick={() => setActiveTab('diproses')}
+          className={`text-xs font-semibold px-4 py-2 rounded-xl transition cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+            activeTab === 'diproses'
+              ? 'bg-[#2563EB] text-white shadow-sm'
+              : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          <span>Diproses Depo</span>
+          <span className="px-1.5 py-0.5 rounded-md text-[10px] bg-slate-100 text-slate-700 font-bold">
+            2
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('diantar')}
+          className={`text-xs font-semibold px-4 py-2 rounded-xl transition cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+            activeTab === 'diantar'
+              ? 'bg-[#2563EB] text-white shadow-sm'
+              : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          <span>Dalam Pengantaran</span>
+          <span className="px-1.5 py-0.5 rounded-md text-[10px] bg-cyan-100 text-cyan-700 font-bold">
+            1
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('selesai')}
+          className={`text-xs font-semibold px-4 py-2 rounded-xl transition cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+            activeTab === 'selesai'
+              ? 'bg-[#2563EB] text-white shadow-sm'
+              : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          <span>Selesai</span>
+          <span className="px-1.5 py-0.5 rounded-md text-[10px] bg-emerald-100 text-emerald-700 font-bold">
+            43
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('dibatalkan')}
+          className={`text-xs font-semibold px-4 py-2 rounded-xl transition cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+            activeTab === 'dibatalkan'
+              ? 'bg-[#2563EB] text-white shadow-sm'
+              : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          <span>Dibatalkan</span>
+          <span className="px-1.5 py-0.5 rounded-md text-[10px] bg-slate-100 text-slate-600 font-bold">
+            1
+          </span>
+        </button>
+      </div>
+
+      {/* 4. SEARCH & DROPDOWN FILTER BAR */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 mb-6">
+        <div className="md:col-span-5 relative">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Cari berdasarkan No. Order (#ORD-...), nama..."
+            className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 shadow-sm"
+          />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+        </div>
+
+        <div className="md:col-span-3 relative">
+          <select
+            value={selectedGallon}
+            onChange={(e) => setSelectedGallon(e.target.value)}
+            className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-8 py-2.5 text-xs text-slate-800 font-bold focus:outline-none focus:border-blue-500 shadow-sm appearance-none cursor-pointer"
+          >
+            <option value="semua">Semua Galon</option>
+            <option value="aqua">Aqua 19L</option>
+            <option value="leminerale">Le Minerale 15L</option>
+            <option value="cleo">Cleo 19L</option>
+            <option value="vit">Vit 19L</option>
+          </select>
+          <Droplets className="w-4 h-4 text-blue-600 absolute left-3 top-3" />
+        </div>
+
+        <div className="md:col-span-3 relative">
+          <select
+            value={selectedPayment}
+            onChange={(e) => setSelectedPayment(e.target.value)}
+            className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-8 py-2.5 text-xs text-slate-800 font-bold focus:outline-none focus:border-blue-500 shadow-sm appearance-none cursor-pointer"
+          >
+            <option value="semua">Semua Pembayaran</option>
+            <option value="qris">QRIS</option>
+            <option value="bca">Transfer BCA</option>
+            <option value="cod">COD (Tunai)</option>
+            <option value="gopay">GoPay</option>
+          </select>
+          <CreditCard className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+        </div>
+
+        <div className="md:col-span-1 flex items-center justify-end">
+          <button
+            type="button"
+            onClick={handleResetFilter}
+            title="Reset Semua Filter"
+            className="w-full h-full bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl flex items-center justify-center p-2.5 shadow-sm transition cursor-pointer"
+          >
+            <Filter className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* 5. TABEL MANAJEMEN PESANAN (7 KOLOM SEPERTI WIREFRAME) */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-6">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-slate-100 bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                <th className="py-3.5 px-4 whitespace-nowrap">NO. ORDER &amp; WAKTU</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">PELANGGAN &amp; LOKASI</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">ITEM PESANAN</th>
+                <th className="py-3.5 px-3 whitespace-nowrap">TAGIHAN &amp; BAYAR</th>
+                <th className="py-3.5 px-3 whitespace-nowrap">STATUS</th>
+                <th className="py-3.5 px-4 whitespace-nowrap">KURIR PENGANTAR</th>
+                <th className="py-3.5 px-4 text-center whitespace-nowrap">AKSI</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-xs">
+              {filteredOrders.length > 0 ? (
+                filteredOrders.map((order) => (
+                  <tr key={order.id} className="hover:bg-slate-50/80 transition">
+                    
+                    {/* KOLOM 1: NO. ORDER & WAKTU */}
+                    <td className="py-3.5 px-4 align-top whitespace-nowrap">
+                      <span
+                        onClick={() => {
+                          setSelectedOrder(order);
+                          setShowDetailModal(true);
+                        }}
+                        className="font-bold text-blue-600 text-xs hover:underline cursor-pointer block"
+                      >
+                        {order.id}
+                      </span>
+                      <span className="text-[10px] text-slate-400 block mt-0.5">{order.time}</span>
+                    </td>
+
+                    {/* KOLOM 2: PELANGGAN & LOKASI (TANPA IKON MAPS MERAH) */}
+                    <td className="py-3.5 px-4 align-top">
+                      <span className="font-bold text-slate-900 block text-xs">{order.customerName}</span>
+                      <span className="text-[10px] text-slate-400 block">{order.customerPhone}</span>
+                      <span className="text-[10px] text-slate-500 block mt-0.5 line-clamp-1 max-w-[180px]">
+                        {order.customerAddress}
+                      </span>
+                    </td>
+
+                    {/* KOLOM 3: ITEM PESANAN */}
+                    <td className="py-3.5 px-4 align-top">
+                      <div className="flex items-start gap-2.5">
+                        <ProductThumb src={order.image} alt={order.product} fallbackText={order.fallback} />
+                        <div className="min-w-0">
+                          <span className="font-bold text-slate-800 block text-xs whitespace-nowrap">
+                            {order.product}
                           </span>
-                        </td>
+                          <span className="text-[10px] text-slate-400 block whitespace-nowrap">
+                            {order.productNote}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
 
-                        {/* 5. STATUS */}
-                        <td className="py-4 px-3">
-                          {item.statusType === 'konfirmasi' && (
-                            <span className="bg-red-100 text-red-700 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
-                              ● {item.statusTag}
-                            </span>
-                          )}
-                          {item.statusType === 'diproses' && (
-                            <span className="bg-slate-200 text-slate-700 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
-                              ● {item.statusTag}
-                            </span>
-                          )}
-                          {item.statusType === 'diantar' && (
-                            <span className="bg-sky-100 text-sky-700 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
-                              ● {item.statusTag}
-                            </span>
-                          )}
-                          {item.statusType === 'selesai' && (
-                            <span className="bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
-                              ● {item.statusTag}
-                            </span>
-                          )}
-                          {item.statusType === 'dibatalkan' && (
-                            <span className="bg-red-50 text-red-600 px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
-                              ● {item.statusTag}
-                            </span>
-                          )}
-                        </td>
+                    {/* KOLOM 4: TAGIHAN & BAYAR */}
+                    <td className="py-3.5 px-3 align-top whitespace-nowrap">
+                      <span className="font-bold text-slate-900 block text-xs">{order.total}</span>
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-bold border mt-1 ${order.paymentBg}`}>
+                        ✓ {order.paymentLabel} • {order.paymentStatus}
+                      </span>
+                    </td>
 
-                        {/* 6. KURIR PENGANTAR */}
-                        <td className="py-4 px-3">
-                          {item.isKurirButton ? (
-                            <button className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-xl text-[11px] font-semibold shadow-sm transition-all">
-                              👤 {item.kurirText}
-                            </button>
-                          ) : item.kurirNama ? (
-                            <div>
-                              <p className="font-bold text-slate-800">{item.kurirNama}</p>
-                              <p className="text-[10px] text-slate-400">{item.kurirSub}</p>
-                            </div>
-                          ) : (
-                            <span className="text-slate-400">-</span>
-                          )}
-                        </td>
+                    {/* KOLOM 5: STATUS */}
+                    <td className="py-3.5 px-3 align-top whitespace-nowrap">
+                      <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold border ${order.statusBg}`}>
+                        {order.statusLabel}
+                      </span>
+                    </td>
 
-                        {/* 7. AKSI */}
-                        <td className="py-4 px-3 text-right">
-                          <div className="flex items-center justify-end gap-1.5 text-slate-400">
-                            <button className="p-1 hover:text-blue-600 transition-colors">✔</button>
-                            <button className="p-1 hover:text-blue-600 transition-colors">👁</button>
-                            <button className="p-1 hover:text-blue-600 transition-colors">⋮</button>
+                    {/* KOLOM 6: KURIR PENGANTAR */}
+                    <td className="py-3.5 px-4 align-top whitespace-nowrap">
+                      {order.courier ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 font-bold text-[10px] flex items-center justify-center shrink-0">
+                            {order.courier.slice(0, 2).toUpperCase()}
                           </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                          <div>
+                            <span className="font-bold text-slate-800 block text-xs">{order.courier}</span>
+                            <span className="text-[10px] text-slate-400 block">{order.courierDetail}</span>
+                          </div>
+                        </div>
+                      ) : order.status === 'konfirmasi' ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedOrder(order);
+                            setShowAssignModal(true);
+                          }}
+                          className="bg-[#2563EB] hover:bg-blue-700 text-white text-[10px] font-semibold px-3 py-1.5 rounded-xl shadow-sm transition active:scale-95 cursor-pointer flex items-center gap-1"
+                        >
+                          <User className="w-3 h-3" />
+                          <span>Tugaskan Kurir</span>
+                        </button>
+                      ) : (
+                        <span className="text-slate-300 italic text-xs">-</span>
+                      )}
+                    </td>
+
+                    {/* KOLOM 7: AKSI */}
+                    <td className="py-3.5 px-4 align-top text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-1.5">
+                        {order.status === 'konfirmasi' && (
+                          <button
+                            type="button"
+                            onClick={() => handleConfirmOrder(order.id)}
+                            title="Konfirmasi Pesanan"
+                            className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl transition cursor-pointer border border-blue-100"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedOrder(order);
+                            setShowDetailModal(true);
+                          }}
+                          title="Lihat Detail Pesanan"
+                          className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-xl transition cursor-pointer border border-slate-200"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-slate-400 font-medium">
+                    Tidak ada pesanan yang sesuai dengan filter pencarian.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Table Footer / Pagination */}
+        <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+          <div className="flex items-center gap-2">
+            <span>Menampilkan <strong>1-{filteredOrders.length}</strong> dari <strong>48</strong> pesanan</span>
+            <span className="text-slate-300">•</span>
+            <span>Baris per halaman:</span>
+            <select className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-semibold focus:outline-none">
+              <option value="10">10</option>
+              <option value="20">20</option>
+              <option value="50">50</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <button type="button" disabled className="p-1.5 rounded-lg border border-slate-200 text-slate-300 disabled:opacity-50">
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button type="button" className="w-8 h-8 rounded-lg bg-[#2563EB] text-white font-bold text-xs flex items-center justify-center">
+              1
+            </button>
+            <button type="button" className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs flex items-center justify-center">
+              2
+            </button>
+            <button type="button" className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs flex items-center justify-center">
+              3
+            </button>
+            <span className="px-1 text-slate-400">...</span>
+            <button type="button" className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs flex items-center justify-center">
+              5
+            </button>
+            <button type="button" className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition">
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* MODAL TUGASKAN KURIR */}
+      {showAssignModal && selectedOrder && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <h3 className="font-bold text-slate-900 text-base">
+                Tugaskan Kurir untuk {selectedOrder.id}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowAssignModal(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            {/* FOOTER PAGINASI */}
-            <div className="flex flex-col sm:flex-row items-center justify-between pt-3 border-t border-slate-100 gap-3 text-xs text-slate-500">
-              <p>Menampilkan <span className="font-bold text-slate-800">1-7</span> dari <span className="font-bold text-slate-800">48</span> pesanan</p>
-
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1">
-                  <span>Baris per halaman:</span>
-                  <select className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-0.5 text-xs font-semibold text-slate-700">
-                    <option>10</option>
-                    <option>25</option>
-                    <option>50</option>
-                  </select>
+            <form onSubmit={handleAssignCourier} className="space-y-4 text-xs">
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Pelanggan:</span>
+                  <strong className="text-slate-800">{selectedOrder.customerName}</strong>
                 </div>
-
-                <div className="flex items-center gap-1">
-                  <button className="w-7 h-7 rounded-lg bg-blue-600 text-white font-bold text-xs flex items-center justify-center">
-                    1
-                  </button>
-                  <button className="w-7 h-7 rounded-lg text-slate-600 hover:bg-slate-100 text-xs flex items-center justify-center">
-                    2
-                  </button>
-                  <button className="w-7 h-7 rounded-lg text-slate-600 hover:bg-slate-100 text-xs flex items-center justify-center">
-                    3
-                  </button>
-                  <span className="text-slate-400">...</span>
-                  <button className="w-7 h-7 rounded-lg text-slate-600 hover:bg-slate-100 text-xs flex items-center justify-center">
-                    5
-                  </button>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Item Pesanan:</span>
+                  <strong className="text-slate-800">{selectedOrder.product}</strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Alamat:</span>
+                  <span className="text-slate-700 text-[11px] truncate max-w-[200px]">{selectedOrder.customerAddress}</span>
                 </div>
               </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Pilih Kurir Standby Depo</label>
+                <select
+                  value={selectedCourierName}
+                  onChange={(e) => setSelectedCourierName(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-blue-500 font-semibold"
+                >
+                  <option value="Pak Budi Santoso">Pak Budi Santoso (Motor 01 - Standby Depo)</option>
+                  <option value="Mas Doni Wijaya">Mas Doni Wijaya (Motor 02 - Standby Depo)</option>
+                  <option value="Pak Agus Prasetyo">Pak Agus Prasetyo (Motor 03 - Standby Depo)</option>
+                  <option value="Rian Irawan">Rian Irawan (Motor 04 - Standby Depo)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Catatan Khusus Pengiriman</label>
+                <textarea
+                  placeholder="Contoh: Titipkan di pos satpam / Naik ke lantai 2"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-blue-500 h-20"
+                ></textarea>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAssignModal(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 font-semibold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-[#2563EB] text-white font-semibold hover:bg-blue-700 transition shadow-sm cursor-pointer"
+                >
+                  Konfirmasi Penugasan
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DETAIL PESANAN */}
+      {showDetailModal && selectedOrder && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <div>
+                <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
+                  <span>Detail Pesanan {selectedOrder.id}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${selectedOrder.statusBg}`}>
+                    {selectedOrder.statusLabel}
+                  </span>
+                </h3>
+                <span className="text-[11px] text-slate-400">{selectedOrder.time}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDetailModal(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
+                <div className="flex items-center gap-1.5 font-bold text-slate-800 mb-1">
+                  <User className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Informasi Pelanggan</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                  <div>
+                    <span className="text-slate-400 block">Nama:</span>
+                    <strong className="text-slate-800">{selectedOrder.customerName}</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block">No. HP:</span>
+                    <strong className="text-slate-800">{selectedOrder.customerPhone}</strong>
+                  </div>
+                </div>
+                <div className="pt-1 text-[11px]">
+                  <span className="text-slate-400 block">Alamat Pengiriman:</span>
+                  <span className="text-slate-700 font-medium">{selectedOrder.customerAddress}</span>
+                </div>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
+                <div className="flex items-center gap-1.5 font-bold text-slate-800 mb-1">
+                  <Droplets className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Rincian Produk Galon</span>
+                </div>
+                <div className="flex justify-between items-center text-[11px]">
+                  <span className="font-bold text-slate-800">{selectedOrder.product}</span>
+                  <span className="font-bold text-slate-900">{selectedOrder.total}</span>
+                </div>
+                <span className="text-[10px] text-slate-400 block">{selectedOrder.productNote}</span>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex justify-between items-center text-[11px]">
+                <div>
+                  <span className="text-slate-400 block">Metode Pembayaran:</span>
+                  <strong className="text-slate-800">{selectedOrder.paymentLabel}</strong>
+                </div>
+                <span className={`px-2.5 py-1 rounded-md font-bold text-[10px] border ${selectedOrder.paymentBg}`}>
+                  {selectedOrder.paymentStatus}
+                </span>
+              </div>
+            </div>
+
+            <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs">
+              <button
+                type="button"
+                onClick={() => alert('Mencetak struk transaksi...')}
+                className="px-3.5 py-2 rounded-xl border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <Printer className="w-3.5 h-3.5 text-slate-500" />
+                <span>Cetak Struk</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowDetailModal(false)}
+                className="px-4 py-2 rounded-xl bg-[#2563EB] text-white font-semibold hover:bg-blue-700 transition cursor-pointer shadow-sm"
+              >
+                Tutup
+              </button>
             </div>
           </div>
         </div>
-      </main>
-    </div>
+      )}
+
+    </main>
   );
 }

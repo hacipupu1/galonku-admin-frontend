@@ -1,118 +1,152 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import {
+  RotateCw,
+  ShoppingBag,
+  Wallet,
+  Droplets,
+  Truck,
+  Filter,
+  Download,
+  Plus,
+  X,
+  CheckCircle2,
+} from 'lucide-react';
 
-// Data 5 Pesanan Terbaru Sesuai Gambar Figma
-const ordersData = [
-  {
-    id: 'o1',
-    noOrder: '#ORD-8824',
-    waktu: 'Baru saja (1 mnt lalu)',
-    nama: 'Fia Salsa',
-    hp: '0812-9844-3211',
-    alamat: 'Kost Sakura No. 4, Kebayoran',
-    qty: '2x',
-    produk: 'Aqua 19L Refill',
-    tipeProduk: 'Tukar Galon',
-    total: 'Rp 36.000',
-    subTotal: 'Gratis Ongkir',
-    metode: 'QRIS Instan',
-    statusText: 'Diproses Depo',
-    statusType: 'diproses',
-    isActionAssign: true,
-  },
-  {
-    id: 'o2',
-    noOrder: '#ORD-8823',
-    waktu: '5 mnt lalu',
-    nama: 'Bpk. Hendra Gunawan',
-    hp: '0857-1120-9941',
-    alamat: 'Jl. Cendrawasih 3 No. 8B',
-    qty: '1x',
-    produk: 'Le Minerale 15L',
-    tipeProduk: 'Galon Baru',
-    total: 'Rp 17.000',
-    subTotal: 'Lunas',
-    metode: 'Transfer BCA',
-    statusText: 'Diantar (Mas Doni)',
-    statusType: 'diantar',
-    isActionAssign: false,
-  },
-  {
-    id: 'o3',
-    noOrder: '#ORD-8822',
-    waktu: '12 mnt lalu',
-    nama: 'Ibu Rina Kartika',
-    hp: '0813-8877-4401',
-    alamat: 'Apartemen Gandaria Lt. 14',
-    qty: '3x',
-    produk: 'Aqua 19L Refill',
-    tipeProduk: 'Tukar Galon',
-    total: 'Rp 54.000',
-    subTotal: 'Bayar di Tempat',
-    metode: 'COD Tunai',
-    statusText: 'Diantar (Pak Budi)',
-    statusType: 'diantar',
-    isActionAssign: false,
-  },
-  {
-    id: 'o4',
-    noOrder: '#ORD-8821',
-    waktu: '18 mnt lalu',
-    nama: 'Kedai Kopi Senja',
-    hp: '0821-4560-1289',
-    alamat: 'Ruko Permata Blok B-3',
-    qty: '3x',
-    produk: 'Aqua 19L Refill',
-    tipeProduk: 'Tukar Galon',
-    total: 'Rp 58.000',
-    subTotal: 'Bayar di Tempat',
-    metode: 'COD Tunai',
-    statusText: 'Selesai Diterima',
-    statusType: 'selesai',
-    isActionAssign: false,
-  },
-  {
-    id: 'o5',
-    noOrder: '#ORD-8820',
-    waktu: '30 mnt lalu',
-    nama: 'Klinik Gigi Medika',
-    hp: '0811-9233-0012',
-    alamat: 'Jl. Radio Dalam No. 44',
-    qty: '4x',
-    produk: 'Aqua 19L Refill',
-    tipeProduk: 'Tukar Galon',
-    total: 'Rp 72.000',
-    subTotal: 'Lunas',
-    metode: 'QRIS Statis',
-    statusText: 'Selesai Diterima',
-    statusType: 'selesai',
-    isActionAssign: false,
-  },
-];
+// Sub-komponen Gambar Galon Mini dengan Fallback
+function GalonThumb({ src, alt, fallbackText }: { src: string; alt: string; fallbackText: string }) {
+  const [hasError, setHasError] = useState(false);
 
-export default function LaporanKeuanganPage() {
-  const [chartPeriod, setChartPeriod] = useState<'hari' | '7hari' | '30hari'>('hari');
-  const [orderFilter, setOrderFilter] = useState<'semua' | 'perlu-ditugaskan' | 'diantar'>('semua');
+  return (
+    <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 p-1 flex items-center justify-center shrink-0 shadow-sm">
+      {!hasError ? (
+        <img
+          src={src}
+          alt={alt}
+          className="max-h-full max-w-full object-contain"
+          onError={() => setHasError(true)}
+        />
+      ) : (
+        <span className="font-bold text-[9px] text-blue-600 uppercase">{fallbackText}</span>
+      )}
+    </div>
+  );
+}
 
-  const filteredOrders = ordersData.filter((item) => {
-    if (orderFilter === 'perlu-ditugaskan') return item.statusType === 'diproses';
-    if (orderFilter === 'diantar') return item.statusType === 'diantar';
+export default function RingkasanOperasionalPage() {
+  const router = useRouter();
+
+  // STATE INTERAKTIF
+  const [chartTab, setChartTab] = useState<'hari' | '7hari' | '30hari'>('hari');
+  const [orderTab, setOrderTab] = useState<'semua' | 'ditugaskan' | 'diantar'>('semua');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showRestokModal, setShowRestokModal] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
+
+  // Data Mock Live Orders
+  const [orders] = useState([
+    {
+      id: '#ORD-8824',
+      time: 'baru saja',
+      customerName: 'Ria Ika',
+      customerPhone: '0812-9944-3211',
+      customerAddress: 'Komp. Srikandi No. 4, Kebayoran',
+      product: '2x Aqua 19L Refill',
+      productSub: 'Tukar Galon',
+      total: 'Rp 36.000',
+      totalSub: 'Gratis Ongkir',
+      paymentMethod: 'QRIS Instan',
+      status: 'diproses',
+      statusLabel: '• Diproses Depo',
+      statusBg: 'bg-amber-50 text-amber-700 border-amber-200',
+    },
+    {
+      id: '#ORD-8823',
+      time: '5 mnt lalu',
+      customerName: 'Bpk. Hendra Gunawan',
+      customerPhone: '0817-1122-9988',
+      customerAddress: 'Jl. Cendrawasih 3 No. 82',
+      product: '1x Le Minerale 15L',
+      productSub: 'Galon Baru',
+      total: 'Rp 17.000',
+      totalSub: 'Lunas',
+      paymentMethod: 'Transfer BCA',
+      status: 'diantar',
+      statusLabel: '• Diantar (Mas Doni)',
+      statusBg: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+    },
+    {
+      id: '#ORD-8822',
+      time: '12 mnt lalu',
+      customerName: 'Ibu Rina Kartika',
+      customerPhone: '0813-8817-0101',
+      customerAddress: 'Apartemen Gandaria Lt. 14',
+      product: '3x Aqua 19L Refill',
+      productSub: 'Tukar Galon',
+      total: 'Rp 54.000',
+      totalSub: 'Bayar di Tempat',
+      paymentMethod: 'COD Tunai',
+      status: 'diantar',
+      statusLabel: '• Diantar (Pak Budi)',
+      statusBg: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+    },
+    {
+      id: '#ORD-8821',
+      time: '18 mnt lalu',
+      customerName: 'Kedai Kopi Senja',
+      customerPhone: '0821-4560-1289',
+      customerAddress: 'Ruko Permata Blok B-3',
+      product: '3x Aqua 19L Refill',
+      productSub: 'Tukar Galon',
+      total: 'Rp 54.000',
+      totalSub: 'Bayar di Tempat',
+      paymentMethod: 'COD Tunai',
+      status: 'selesai',
+      statusLabel: '• Selesai Diterima',
+      statusBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    },
+    {
+      id: '#ORD-8820',
+      time: '30 mnt lalu',
+      customerName: 'Klinik Gigi Medika',
+      customerPhone: '0815-9233-0012',
+      customerAddress: 'Jl. Radio Dalam No. 44',
+      product: '4x Aqua 19L Refill',
+      productSub: 'Tukar Galon',
+      total: 'Rp 72.000',
+      totalSub: 'Lunas',
+      paymentMethod: 'QRIS Instan',
+      status: 'selesai',
+      statusLabel: '• Selesai Diterima',
+      statusBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    },
+  ]);
+
+  const filteredOrders = orders.filter((o) => {
+    if (orderTab === 'ditugaskan') return o.status === 'diproses';
+    if (orderTab === 'diantar') return o.status === 'diantar';
     return true;
   });
 
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    setTimeout(() => setIsRefreshing(false), 600);
+  };
+
   return (
-    <div className="w-full space-y-6">
-      {/* 1. Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <main className="w-full bg-[#F8FAFC] min-h-screen p-6 pt-4 font-sans text-slate-800">
+      
+      {/* 1. HEADER HALAMAN */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-[#0052FF] mb-1">
-            <span className="bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-100">
-              Depo Kebayoran Lama
-            </span>
-            <span className="text-slate-400">• ID: DEPO-JKT-04</span>
+          <div className="text-[11px] font-bold text-blue-600 uppercase tracking-wider mb-0.5 h-4">
+            Depo Kebayoran Lama • ID DEPO: JKT-04
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight leading-tight">
             Ringkasan Operasional Hari Ini
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
@@ -120,139 +154,158 @@ export default function LaporanKeuanganPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-semibold shadow-sm flex items-center gap-2 transition-all">
-            <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-            </svg>
-            Filter Tampilan
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            className="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold px-3.5 py-2.5 rounded-xl shadow-sm flex items-center gap-2 transition cursor-pointer"
+          >
+            <Filter className="w-3.5 h-3.5 text-slate-500" />
+            
           </button>
-          <button className="bg-[#0052FF] hover:bg-blue-700 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow-sm flex items-center gap-2 transition-all">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Refresh Data
+          <button
+            type="button"
+            onClick={handleRefresh}
+            className="bg-[#2563EB] hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-sm flex items-center gap-2 transition active:scale-95 cursor-pointer"
+          >
+            <RotateCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span>Refresh Data</span>
           </button>
         </div>
       </div>
 
-      {/* 2. Top Stat Cards (4 Cards) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Pesanan Hari Ini */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-start justify-between">
+      {/* 2. TOP 4 KPI CARDS */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {/* Card 1: Total Pesanan */}
+        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
           <div>
-            <p className="text-[10px] font-bold text-slate-400 tracking-wider uppercase">
-              TOTAL PESANAN HARI INI
-            </p>
-            <div className="flex items-baseline gap-1.5 mt-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">TOTAL PESANAN HARI INI</span>
+              <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
+                <ShoppingBag className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="flex items-baseline gap-2 mt-1">
               <span className="text-2xl font-bold text-slate-900">48</span>
               <span className="text-xs font-medium text-slate-500">Pesanan</span>
             </div>
-            <p className="text-[10px] text-emerald-600 font-semibold mt-2 flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-lg w-fit">
-              ↑ +12% vs kemarin (42 pesanan)
-            </p>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#0052FF] flex items-center justify-center shrink-0">
-            🛍️
-          </div>
-        </div>
-
-        {/* Total Pendapatan */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-start justify-between">
-          <div>
-            <p className="text-[10px] font-bold text-slate-400 tracking-wider uppercase">
-              TOTAL PENDAPATAN
-            </p>
-            <p className="text-2xl font-bold text-slate-900 mt-2">Rp 864.000</p>
-            <p className="text-[10px] text-emerald-600 font-semibold mt-2 flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-lg w-fit">
-              ↑ +8.5% melebihi target harian
-            </p>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-            💵
+          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center text-[11px]">
+            <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md font-semibold">
+              ↗ +12% vs kemarin (42 pesanan)
+            </span>
           </div>
         </div>
 
-        {/* Sisa Stok Galon */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-start justify-between">
+        {/* Card 2: Total Pendapatan */}
+        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
           <div>
-            <p className="text-[10px] font-bold text-slate-400 tracking-wider uppercase">
-              SISA STOK GALON
-            </p>
-            <div className="flex items-baseline gap-1.5 mt-2">
-              <span className="text-2xl font-bold text-amber-600">12</span>
-              <span className="text-xs font-medium text-slate-500">Galon Terisi</span>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">TOTAL PENDAPATAN</span>
+              <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
+                <Wallet className="w-4 h-4" />
+              </div>
             </div>
-            <p className="text-[10px] text-red-600 font-semibold mt-2 flex items-center gap-1 bg-red-50 px-2 py-0.5 rounded-lg w-fit">
-              ⚠️ Perlu Restok Segera (&lt;20% limit)
-            </p>
+            <div className="mt-1">
+              <span className="text-2xl font-bold text-slate-900">Rp 864.000</span>
+            </div>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-red-50 text-red-500 flex items-center justify-center shrink-0">
-            🛢️
+          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center text-[11px]">
+            <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md font-semibold">
+              ↗ +8.5% melampaui target harian
+            </span>
           </div>
         </div>
 
-        {/* Kurir Bertugas */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-start justify-between">
+        {/* Card 3: Sisa Stok Galon */}
+        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
           <div>
-            <p className="text-[10px] font-bold text-slate-400 tracking-wider uppercase">
-              KURIR BERTUGAS
-            </p>
-            <div className="flex items-baseline gap-1.5 mt-2">
-              <span className="text-2xl font-bold text-slate-900">5 / 6</span>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">SISA STOK GALON</span>
+              <div className="p-2.5 bg-red-50 text-red-600 rounded-xl">
+                <Droplets className="w-4 h-4" />
+              </div>
             </div>
-            <p className="text-[10px] text-blue-600 font-semibold mt-2 flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded-lg w-fit">
-              🛵 18 menit Rata-rata waktu sampai
-            </p>
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="text-2xl font-bold text-red-600">12</span>
+              <span className="text-xs font-semibold text-slate-600">Galon Tersisa</span>
+            </div>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center shrink-0">
-            🛵
+          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px]">
+            <span className="text-red-600 font-semibold flex items-center gap-1">
+              ⚠️ Perlu Restok Segera
+            </span>
+            <span className="text-slate-400">(&lt; 20 unit)</span>
+          </div>
+        </div>
+
+        {/* Card 4: Kurir Bertugas (RATA-RATA WAKTU DISAJIKAN SEJAJAR DENGAN RAPI) */}
+        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">KURIR BERTUGAS</span>
+              <div className="p-2.5 bg-cyan-50 text-cyan-600 rounded-xl">
+                <Truck className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="flex items-baseline gap-1 mt-1">
+              <span className="text-2xl font-bold text-slate-900">5</span>
+              <span className="text-sm font-semibold text-slate-400">/ 6</span>
+            </div>
+          </div>
+          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center gap-2 text-[11px]">
+            <span className="text-cyan-700 bg-cyan-50 px-2 py-1 rounded-md font-semibold whitespace-nowrap flex items-center gap-1 shrink-0">
+              ⚡ 18 mnt
+            </span>
+            <span className="text-slate-500 font-medium whitespace-nowrap">Rata-rata waktu sampai</span>
           </div>
         </div>
       </div>
 
-      {/* 3. Top Section (Grafik & Kategori di Kiri, Stok & Kurir di Kanan) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Kolom Kiri (8/12) */}
-        <div className="lg:col-span-8 space-y-6">
-          {/* Card Grafik */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <h3 className="font-bold text-slate-800 text-base">
-                  Grafik Tren Pesanan &amp; Pendapatan
-                </h3>
-                <span className="bg-blue-50 text-[#0052FF] text-[10px] font-bold px-2.5 py-0.5 rounded-full">
-                  Live Sync
-                </span>
+      {/* 3. MIDDLE AREA: GRAFIK & WIDGET KANAN */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        
+        {/* LEFT COLUMN */}
+        <div className="lg:col-span-2 space-y-6">
+          
+          {/* GRAFIK TREN PESANAN */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-bold text-slate-900">Grafik Tren Pesanan &amp; Pendapatan</h2>
+                  <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
+                    Live Sync
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Distribusi lonjakan pengantaran galon jam sibuk (08:00 - 18:00 WIB)
+                </p>
               </div>
-              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs font-medium">
+
+              <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 self-start sm:self-auto">
                 <button
-                  onClick={() => setChartPeriod('hari')}
-                  className={`px-3 py-1 rounded-lg transition-all ${
-                    chartPeriod === 'hari'
-                      ? 'bg-white text-[#0052FF] shadow-sm font-semibold'
-                      : 'text-slate-500 hover:text-slate-700'
+                  type="button"
+                  onClick={() => setChartTab('hari')}
+                  className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                    chartTab === 'hari' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-900'
                   }`}
                 >
                   Hari Ini
                 </button>
                 <button
-                  onClick={() => setChartPeriod('7hari')}
-                  className={`px-3 py-1 rounded-lg transition-all ${
-                    chartPeriod === '7hari'
-                      ? 'bg-white text-[#0052FF] shadow-sm font-semibold'
-                      : 'text-slate-500 hover:text-slate-700'
+                  type="button"
+                  onClick={() => setChartTab('7hari')}
+                  className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                    chartTab === '7hari' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-900'
                   }`}
                 >
                   7 Hari
                 </button>
                 <button
-                  onClick={() => setChartPeriod('30hari')}
-                  className={`px-3 py-1 rounded-lg transition-all ${
-                    chartPeriod === '30hari'
-                      ? 'bg-white text-[#0052FF] shadow-sm font-semibold'
-                      : 'text-slate-500 hover:text-slate-700'
+                  type="button"
+                  onClick={() => setChartTab('30hari')}
+                  className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                    chartTab === '30hari' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-900'
                   }`}
                 >
                   30 Hari
@@ -260,316 +313,308 @@ export default function LaporanKeuanganPage() {
               </div>
             </div>
 
-            <p className="text-xs text-slate-400">
-              Distribusi muatan pengantaran galon jam sibuk (08:00 - 18:00 WIB)
-            </p>
-
-            {/* SVG Visual Chart */}
-            <div className="relative h-48 w-full pt-8">
-              <div className="absolute left-[42%] top-0 -translate-x-1/2 bg-slate-900 text-white text-[11px] px-3 py-1.5 rounded-xl shadow-xl z-10 text-center">
-                <p className="font-bold whitespace-nowrap">13:00 • Puncak Pesanan</p>
-                <p className="text-slate-300 text-[10px] whitespace-nowrap">
-                  9 Galon / Jam • Rp 162.000
-                </p>
+            {/* AREA CHART SVG */}
+            <div className="relative w-full h-[220px] pt-6">
+              <div className="absolute left-[36%] top-1 -translate-x-1/2 bg-[#1E293B] text-white text-[10px] font-medium px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-1.5 z-10">
+                <span className="w-2 h-2 rounded-full bg-blue-400"></span>
+                <span><strong>13:00 Puncak Pesanan</strong> • 9 Galon / jam • Rp 162.000</span>
               </div>
 
-              <svg
-                className="w-full h-32 overflow-hidden"
-                viewBox="0 0 500 100"
-                preserveAspectRatio="none"
-              >
-                <rect x="16" y="65" width="8" height="35" rx="3" fill="#E2E8F0" />
-                <rect x="62" y="55" width="8" height="45" rx="3" fill="#E2E8F0" />
-                <rect x="108" y="45" width="8" height="55" rx="3" fill="#E2E8F0" />
-                <rect x="154" y="50" width="8" height="50" rx="3" fill="#E2E8F0" />
-                <rect x="200" y="55" width="8" height="45" rx="3" fill="#E2E8F0" />
-                <rect x="246" y="25" width="8" height="75" rx="3" fill="#0052FF" />
-                <rect x="292" y="70" width="8" height="30" rx="3" fill="#CBD5E1" />
-                <rect x="338" y="30" width="8" height="70" rx="3" fill="#0052FF" opacity="0.6" />
-                <rect x="384" y="60" width="8" height="40" rx="3" fill="#CBD5E1" />
-                <rect x="430" y="50" width="8" height="50" rx="3" fill="#CBD5E1" />
-                <rect x="476" y="65" width="8" height="35" rx="3" fill="#E2E8F0" />
+              <svg className="w-full h-full overflow-visible" viewBox="0 0 600 160" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.3" />
+                    <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.0" />
+                  </linearGradient>
+                </defs>
 
                 <path
-                  d="M 20,65 C 40,55 50,50 66,55 C 80,60 100,45 112,45 C 130,45 145,50 158,50 C 175,50 190,55 204,55 C 220,55 235,25 250,25 C 265,25 280,70 296,70 C 315,70 330,30 342,30 C 360,30 375,60 388,60 C 405,60 420,50 434,50 C 450,50 465,65 480,65"
-                  fill="none"
-                  stroke="#0052FF"
-                  strokeWidth="3.5"
-                  strokeLinecap="round"
+                  d="M 20 120 C 70 100, 110 80, 150 75 C 190 70, 220 20, 260 20 C 300 20, 330 110, 370 110 C 420 110, 460 50, 500 45 C 540 40, 570 30, 580 25 L 580 160 L 20 160 Z"
+                  fill="url(#areaGradient)"
                 />
+
+                <rect x="50" y="100" width="8" height="40" fill="#3B82F6" opacity="0.3" rx="2" />
+                <rect x="110" y="80" width="8" height="60" fill="#3B82F6" opacity="0.4" rx="2" />
+                <rect x="170" y="70" width="8" height="70" fill="#3B82F6" opacity="0.5" rx="2" />
+                <rect x="230" y="25" width="10" height="115" fill="#2563EB" rx="3" />
+                <rect x="290" y="90" width="8" height="50" fill="#3B82F6" opacity="0.4" rx="2" />
+                <rect x="350" y="105" width="8" height="35" fill="#3B82F6" opacity="0.3" rx="2" />
+                <rect x="410" y="50" width="8" height="90" fill="#00C49F" opacity="0.7" rx="2" />
+                <rect x="470" y="40" width="8" height="100" fill="#00C49F" opacity="0.8" rx="2" />
+
                 <path
-                  d="M 20,65 C 40,55 50,50 66,55 C 80,60 100,45 112,45 C 130,45 145,50 158,50 C 175,50 190,55 204,55 C 220,55 235,25 250,25 C 265,25 280,70 296,70 C 315,70 330,30 342,30 C 360,30 375,60 388,60 C 405,60 420,50 434,50 C 450,50 465,65 480,65 L 480,100 L 20,100 Z"
-                  fill="rgba(0, 82, 255, 0.08)"
+                  d="M 20 120 C 70 100, 110 80, 150 75 C 190 70, 220 20, 260 20 C 300 20, 330 110, 370 110 C 420 110, 460 50, 500 45 C 540 40, 570 30, 580 25"
+                  fill="none"
+                  stroke="#2563EB"
+                  strokeWidth="3"
                 />
-                <circle cx="250" cy="25" r="5" fill="#0052FF" />
-                <circle cx="250" cy="25" r="8" fill="rgba(0, 82, 255, 0.3)" />
+
+                <circle cx="260" cy="20" r="4" fill="#2563EB" stroke="#FFFFFF" strokeWidth="2" />
+                <circle cx="500" cy="45" r="4" fill="#2563EB" stroke="#FFFFFF" strokeWidth="2" />
               </svg>
 
-              <div className="flex justify-between text-[10px] text-slate-400 mt-2 border-t border-slate-100 pt-2 px-1">
+              <div className="flex justify-between text-[10px] font-semibold text-slate-400 mt-2 px-1">
                 <span>08:00</span>
-                <span>09:00</span>
+                <span>09:30</span>
                 <span>10:00</span>
                 <span>11:00</span>
                 <span>12:00</span>
-                <span className="font-bold text-[#0052FF] bg-blue-50 px-1.5 py-0.5 rounded">
-                  13:00
-                </span>
+                <span className="font-bold text-blue-600">13:00</span>
                 <span>14:00</span>
                 <span>15:00</span>
-                <span>16:00</span>
-                <span>17:00</span>
+                <span>16:30</span>
+                <span>17:30</span>
                 <span>18:00</span>
               </div>
             </div>
 
-            {/* Sub Cards Grafik */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-slate-100 text-xs">
-              <div className="bg-slate-50/80 p-3 rounded-xl border border-slate-100 flex items-center gap-3">
-                <div className="w-1.5 h-8 bg-[#0052FF] rounded-full shrink-0"></div>
-                <div>
-                  <p className="text-[11px] text-slate-400">Aqua 19L Dominan</p>
-                  <p className="font-bold text-slate-800 text-xs mt-0.5">58.3% Total Order</p>
-                </div>
+            <div className="grid grid-cols-3 gap-3 mt-5 pt-4 border-t border-slate-100 text-xs">
+              <div className="bg-slate-50 p-3 rounded-xl">
+                <span className="text-[10px] font-bold text-slate-400 uppercase block">Aqua 19L Dominan</span>
+                <span className="font-bold text-slate-800">58.3% Total Order</span>
               </div>
-              <div className="bg-slate-50/80 p-3 rounded-xl border border-slate-100 flex items-center gap-3">
-                <div className="w-1.5 h-8 bg-cyan-400 rounded-full shrink-0"></div>
-                <div>
-                  <p className="text-[11px] text-slate-400">Rute Pengiriman</p>
-                  <p className="font-bold text-slate-800 text-xs mt-0.5">Cepat Radius 2.4 KM</p>
-                </div>
+              <div className="bg-slate-50 p-3 rounded-xl">
+                <span className="text-[10px] font-bold text-slate-400 uppercase block">Rute Pengiriman Cepat</span>
+                <span className="font-bold text-blue-600">Radius 2.4 KM</span>
               </div>
-              <div className="bg-slate-50/80 p-3 rounded-xl border border-slate-100 flex items-center gap-3">
-                <div className="w-1.5 h-8 bg-emerald-500 rounded-full shrink-0"></div>
-                <div>
-                  <p className="text-[11px] text-slate-400">Pembayaran Non-Tunai</p>
-                  <p className="font-bold text-slate-800 text-xs mt-0.5">82% Via QRIS &amp; Transfer</p>
-                </div>
+              <div className="bg-slate-50 p-3 rounded-xl">
+                <span className="text-[10px] font-bold text-slate-400 uppercase block">Pembayaran Non-Tunai</span>
+                <span className="font-bold text-emerald-600">82% Via QRIS &amp; Transfer</span>
               </div>
             </div>
           </div>
 
-          {/* Ringkasan Kategori Galon Terjual Hari Ini */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
+          {/* RINGKASAN KATEGORI */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
               <div>
-                <h3 className="font-bold text-slate-800 text-base">
-                  Ringkasan Kategori Galon Terjual Hari Ini
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Total akumulasi 48 galon terjual dari 4 merek utama
-                </p>
+                <h2 className="text-base font-bold text-slate-900">Ringkasan Kategori Galon Terjual Hari Ini</h2>
+                <p className="text-xs text-slate-400 mt-0.5">Total akumulasi 48 galon terjual dari 4 varian utama</p>
               </div>
-              <span className="text-xs font-bold text-[#0052FF]">100% Tercapai</span>
+              <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-md">
+                100% Tercatat
+              </span>
             </div>
 
-            <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden flex">
-              <div className="bg-[#0052FF] h-full" style={{ width: '58%' }}></div>
-              <div className="bg-sky-400 h-full" style={{ width: '25%' }}></div>
-              <div className="bg-teal-400 h-full" style={{ width: '10%' }}></div>
-              <div className="bg-red-400 h-full" style={{ width: '7%' }}></div>
+            <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden flex mb-4">
+              <div className="h-full bg-blue-600" style={{ width: '58%' }}></div>
+              <div className="h-full bg-cyan-500" style={{ width: '25%' }}></div>
+              <div className="h-full bg-emerald-500" style={{ width: '10%' }}></div>
+              <div className="h-full bg-red-500" style={{ width: '7%' }}></div>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-              <div className="bg-blue-50/60 p-3 rounded-xl border border-blue-100/50">
-                <p className="font-bold text-blue-700">● Aqua 19L</p>
-                <p className="text-base font-extrabold text-slate-800 mt-1">
-                  28 <span className="text-xs font-normal text-slate-500">galon</span>
-                </p>
-                <p className="text-[11px] text-slate-400">Rp 504.000 (58%)</p>
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <div className="flex items-center gap-1.5 font-bold text-slate-800 mb-1">
+                  <span className="w-2 h-2 rounded-full bg-blue-600"></span> Aqua 19L
+                </div>
+                <div className="font-extrabold text-sm text-slate-900">28 <span className="text-xs font-normal text-slate-400">galon</span></div>
+                <div className="text-[10px] text-slate-400 mt-0.5">Rp 504.000 (58%)</div>
               </div>
-              <div className="bg-sky-50/60 p-3 rounded-xl border border-sky-100/50">
-                <p className="font-bold text-sky-700">● Le Minerale 15L</p>
-                <p className="text-base font-extrabold text-slate-800 mt-1">
-                  12 <span className="text-xs font-normal text-slate-500">galon</span>
-                </p>
-                <p className="text-[11px] text-slate-400">Rp 204.000 (25%)</p>
+
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <div className="flex items-center gap-1.5 font-bold text-slate-800 mb-1">
+                  <span className="w-2 h-2 rounded-full bg-cyan-500"></span> Le Minerale 15L
+                </div>
+                <div className="font-extrabold text-sm text-slate-900">12 <span className="text-xs font-normal text-slate-400">galon</span></div>
+                <div className="text-[10px] text-slate-400 mt-0.5">Rp 204.000 (25%)</div>
               </div>
-              <div className="bg-teal-50/60 p-3 rounded-xl border border-teal-100/50">
-                <p className="font-bold text-teal-700">● Cleo 19L</p>
-                <p className="text-base font-extrabold text-slate-800 mt-1">
-                  5 <span className="text-xs font-normal text-slate-500">galon</span>
-                </p>
-                <p className="text-[11px] text-slate-400">Rp 90.000 (10%)</p>
+
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <div className="flex items-center gap-1.5 font-bold text-slate-800 mb-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Cleo 19L
+                </div>
+                <div className="font-extrabold text-sm text-slate-900">5 <span className="text-xs font-normal text-slate-400">galon</span></div>
+                <div className="text-[10px] text-slate-400 mt-0.5">Rp 80.000 (10%)</div>
               </div>
-              <div className="bg-red-50/60 p-3 rounded-xl border border-red-100/50">
-                <p className="font-bold text-red-700">● Vit 19L</p>
-                <p className="text-base font-extrabold text-slate-800 mt-1">
-                  3 <span className="text-xs font-normal text-slate-500">galon</span>
-                </p>
-                <p className="text-[11px] text-slate-400">Rp 66.000 (7%)</p>
+
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <div className="flex items-center gap-1.5 font-bold text-slate-800 mb-1">
+                  <span className="w-2 h-2 rounded-full bg-red-500"></span> Vit 19L
+                </div>
+                <div className="font-extrabold text-sm text-slate-900">3 <span className="text-xs font-normal text-slate-400">galon</span></div>
+                <div className="text-[10px] text-slate-400 mt-0.5">Rp 45.000 (7%)</div>
               </div>
             </div>
           </div>
+
         </div>
 
-        {/* Kolom Kanan (4/12) */}
-        <div className="lg:col-span-4 space-y-6">
-          {/* Stok Galon Menipis */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-base">📦</span>
-                <div>
-                  <h3 className="font-bold text-slate-800 text-sm">Stok Galon Menipis</h3>
-                  <p className="text-[10px] text-slate-400">Depo Pusat Kebayoran</p>
-                </div>
-              </div>
-              <span className="bg-red-50 text-red-600 text-[10px] font-bold px-2 py-0.5 rounded-full border border-red-100">
-                4 Varian
-              </span>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/80 border border-slate-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-white p-1 border border-slate-100 flex items-center justify-center font-bold text-blue-600 text-xs shrink-0">
-                    AQ
+        {/* RIGHT COLUMN */}
+        <div className="space-y-6">
+          
+          {/* BOX STOK GALON MENIPIS (SEJAJAR DAN RAPI TANPA BANYAK BARS) */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-red-50 text-red-600 rounded-xl">
+                    <Droplets className="w-4 h-4" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-slate-800 text-xs">Aqua 19L</h4>
-                    <p className="text-[10px] text-slate-400">Air Mineral Alami</p>
+                    <h2 className="text-sm font-bold text-slate-900">Stok Galon Menipis</h2>
+                    <p className="text-[10px] text-slate-400">Depo Pusat Kebayoran</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <span className="text-xs font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-md">
-                    Sisa 5 galon
-                  </span>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Status Kritis</p>
-                </div>
+                <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
+                  4 Variasi
+                </span>
               </div>
 
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/80 border border-slate-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-white p-1 border border-slate-100 flex items-center justify-center font-bold text-teal-600 text-xs shrink-0">
-                    LM
+              {/* Items List dengan layout flex rapat */}
+              <div className="space-y-2.5 mt-4 text-xs">
+                
+                {/* Item 1 */}
+                <div className="p-2.5 bg-slate-50/80 rounded-xl flex items-center justify-between gap-2 border border-slate-100">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <GalonThumb src="/aqua.png" alt="Aqua 19L" fallbackText="Aqua" />
+                    <div className="truncate">
+                      <h4 className="font-bold text-slate-800 text-xs truncate">Aqua 19L</h4>
+                      <p className="text-[10px] text-slate-400 truncate">Isi Mineral Alami</p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="font-bold text-slate-800 text-xs">Le Minerale 15L</h4>
-                    <p className="text-[10px] text-slate-400">Galon Sekali Pakai</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="text-xs font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-md">
-                    Sisa 4 galon
+                  <span className="text-[10px] font-bold text-red-600 bg-red-100/70 px-2.5 py-1 rounded-md whitespace-nowrap shrink-0 text-center">
+                    Sisa 4 galon • Kritis
                   </span>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Mendekati limit</p>
                 </div>
-              </div>
 
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/80 border border-slate-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-white p-1 border border-slate-100 flex items-center justify-center font-bold text-sky-600 text-xs shrink-0">
-                    CL
+                {/* Item 2 */}
+                <div className="p-2.5 bg-slate-50/80 rounded-xl flex items-center justify-between gap-2 border border-slate-100">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <GalonThumb src="/leminerale.png" alt="Le Minerale 15L" fallbackText="Le M" />
+                    <div className="truncate">
+                      <h4 className="font-bold text-slate-800 text-xs truncate">Le Minerale 15L</h4>
+                      <p className="text-[10px] text-slate-400 truncate">Galon Sekali Pakai</p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="font-bold text-slate-800 text-xs">Cleo 19L</h4>
-                    <p className="text-[10px] text-slate-400">Pure Demineralized</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="text-xs font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-md">
-                    Sisa 2 galon
+                  <span className="text-[10px] font-bold text-orange-600 bg-orange-100/70 px-2.5 py-1 rounded-md whitespace-nowrap shrink-0 text-center">
+                    Sisa 4 galon • Batas
                   </span>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Sangat Kritis</p>
                 </div>
-              </div>
 
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/80 border border-slate-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-white p-1 border border-slate-100 flex items-center justify-center font-bold text-blue-500 text-xs shrink-0">
-                    VT
+                {/* Item 3 */}
+                <div className="p-2.5 bg-slate-50/80 rounded-xl flex items-center justify-between gap-2 border border-slate-100">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <GalonThumb src="/cleo.png" alt="Cleo 19L" fallbackText="Cleo" />
+                    <div className="truncate">
+                      <h4 className="font-bold text-slate-800 text-xs truncate">Cleo 19L</h4>
+                      <p className="text-[10px] text-slate-400 truncate">Pure Demineralized</p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="font-bold text-slate-800 text-xs">Vit 19L</h4>
-                    <p className="text-[10px] text-slate-400">Air Mineral Higienis</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="text-xs font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-md">
-                    Sisa 1 galon
+                  <span className="text-[10px] font-bold text-red-600 bg-red-100/70 px-2.5 py-1 rounded-md whitespace-nowrap shrink-0 text-center">
+                    Sisa 2 galon • Sangat Kritis
                   </span>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Segera Habis!</p>
                 </div>
+
+                {/* Item 4 */}
+                <div className="p-2.5 bg-slate-50/80 rounded-xl flex items-center justify-between gap-2 border border-slate-100">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <GalonThumb src="/vit.png" alt="Vit 19L" fallbackText="Vit" />
+                    <div className="truncate">
+                      <h4 className="font-bold text-slate-800 text-xs truncate">Vit 19L</h4>
+                      <p className="text-[10px] text-slate-400 truncate">Air Mineral Higienis</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold text-red-600 bg-red-100/70 px-2.5 py-1 rounded-md whitespace-nowrap shrink-0 text-center">
+                    Sisa 1 galon • Segera Habis!
+                  </span>
+                </div>
+
               </div>
             </div>
 
-            <button className="w-full py-2.5 bg-[#0052FF] hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-500/20">
-              + Order Restok Galon ke Pabrik
+            <button
+              type="button"
+              onClick={() => setShowRestokModal(true)}
+              className="w-full mt-4 bg-[#2563EB] hover:bg-blue-700 text-white text-xs font-semibold py-2.5 rounded-xl shadow-sm transition active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ Order Restok Galon ke Pabrik</span>
             </button>
           </div>
 
-          {/* Status Kurir GalonKu */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-slate-800 text-sm">Status Kurir GalonKu</h3>
-                <p className="text-[10px] text-slate-400">Armada motor beroperasi</p>
+          {/* BOX STATUS KURIR GALONKU */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
+                  <Truck className="w-4 h-4" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-slate-900">Status Kurir GalonKu</h2>
+                  <p className="text-[10px] text-slate-400">Armada motor beroperasi</p>
+                </div>
               </div>
-              <span className="text-xs font-bold text-[#0052FF] cursor-pointer hover:underline">
-                Kelola (4)
-              </span>
+              {/* LINK RUTE DIPERBAIKI MENJADI /monitoring/kurir */}
+              <Link
+                href="/monitoring/kurir"
+                className="text-[11px] font-semibold text-blue-600 hover:underline"
+              >
+                Kelola (6)
+              </Link>
             </div>
 
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/80 border border-slate-100">
+            <div className="space-y-2.5 text-xs">
+              <div className="p-2.5 bg-slate-50 rounded-xl flex items-center justify-between border border-slate-100">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-full bg-blue-600 text-white font-bold text-xs flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold text-[10px] flex items-center justify-center">
                     PB
                   </div>
                   <div>
-                    <h4 className="font-bold text-slate-800 text-xs">Pak Budi Santoso</h4>
-                    <p className="text-[10px] text-slate-400">#ORD-8821 • No. 12</p>
+                    <h4 className="font-bold text-slate-800">Pak Budi Santoso</h4>
+                    <p className="text-[10px] text-slate-400">#ORD-8821 • Jl. Mawar No. 12</p>
                   </div>
                 </div>
-                <span className="px-2 py-0.5 rounded-full bg-sky-50 text-sky-600 font-bold text-[10px]">
-                  ● Di Jalan
+                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                  Di Jalan
                 </span>
               </div>
 
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/80 border border-slate-100">
+              <div className="p-2.5 bg-slate-50 rounded-xl flex items-center justify-between border border-slate-100">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-full bg-cyan-600 text-white font-bold text-xs flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-full bg-cyan-100 text-cyan-700 font-bold text-[10px] flex items-center justify-center">
                     MD
                   </div>
                   <div>
-                    <h4 className="font-bold text-slate-800 text-xs">Mas Doni Wijaya</h4>
-                    <p className="text-[10px] text-slate-400">#ORD-8820 • Heights</p>
+                    <h4 className="font-bold text-slate-800">Mas Doni Wijaya</h4>
+                    <p className="text-[10px] text-slate-400">#ORD-8822 • Gandaria Heights</p>
                   </div>
                 </div>
-                <span className="px-2 py-0.5 rounded-full bg-sky-50 text-sky-600 font-bold text-[10px]">
-                  ● Di Jalan
+                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                  Di Jalan
                 </span>
               </div>
 
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/80 border border-slate-100">
+              <div className="p-2.5 bg-slate-50 rounded-xl flex items-center justify-between border border-slate-100">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[10px] flex items-center justify-center">
                     AG
                   </div>
                   <div>
-                    <h4 className="font-bold text-slate-800 text-xs">Pak Agus Prasetyo</h4>
+                    <h4 className="font-bold text-slate-800">Pak Agus Prasetyo</h4>
                     <p className="text-[10px] text-slate-400">Siap kirim 3 galon berikutnya</p>
                   </div>
                 </div>
-                <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 font-bold text-[10px]">
-                  ● Standby Depo
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                  Standby Depo
                 </span>
               </div>
             </div>
           </div>
+
         </div>
+
       </div>
 
-      {/* 4. FULL WIDTH SECTION: PESANAN TERBARU MASUK (LEBAR PENUH 100% DI BAWAH PAK AGUS) */}
-      <div className="w-full bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* 4. TABEL LIVE ORDERS */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mb-6">
+        <div className="p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="font-bold text-slate-800 text-base">
-                Pesanan Terbaru Masuk (Live Orders)
-              </h3>
-              <span className="bg-emerald-50 text-emerald-600 text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 border border-emerald-100">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Real-Time Queue
+              <h2 className="font-bold text-slate-900 text-base">Pesanan Terbaru Masuk (Live Orders)</h2>
+              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                Real-Time Queue
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
@@ -577,185 +622,248 @@ export default function LaporanKeuanganPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl text-xs font-medium">
-              <button
-                onClick={() => setOrderFilter('semua')}
-                className={`px-3 py-1.5 rounded-lg transition-all ${
-                  orderFilter === 'semua'
-                    ? 'bg-white text-[#0052FF] shadow-sm font-semibold'
-                    : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                Semua
-              </button>
-              <button
-                onClick={() => setOrderFilter('perlu-ditugaskan')}
-                className={`px-3 py-1.5 rounded-lg transition-all ${
-                  orderFilter === 'perlu-ditugaskan'
-                    ? 'bg-white text-[#0052FF] shadow-sm font-semibold'
-                    : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                Perlu Ditugaskan (2)
-              </button>
-              <button
-                onClick={() => setOrderFilter('diantar')}
-                className={`px-3 py-1.5 rounded-lg transition-all ${
-                  orderFilter === 'diantar'
-                    ? 'bg-white text-[#0052FF] shadow-sm font-semibold'
-                    : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                Diantar (3)
-              </button>
-            </div>
-
-            <button className="bg-slate-50 border border-slate-200 text-slate-600 px-3.5 py-1.5 rounded-xl text-xs font-semibold hover:bg-slate-100 flex items-center gap-1.5">
-              <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              Ekspor CSV
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
+            <button
+              type="button"
+              onClick={() => setOrderTab('semua')}
+              className={`text-xs font-semibold px-3 py-1.5 rounded-xl transition cursor-pointer whitespace-nowrap ${
+                orderTab === 'semua' ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:bg-slate-50'
+              }`}
+            >
+              Semua
+            </button>
+            <button
+              type="button"
+              onClick={() => setOrderTab('ditugaskan')}
+              className={`text-xs font-semibold px-3 py-1.5 rounded-xl transition cursor-pointer whitespace-nowrap ${
+                orderTab === 'ditugaskan' ? 'bg-blue-50 text-blue-600' : 'text-slate-500 hover:bg-slate-50'
+              }`}
+            >
+              Perlu Ditugaskan (3)
+            </button>
+            <button
+              type="button"
+              onClick={() => setOrderTab('diantar')}
+              className={`text-xs font-semibold px-3 py-1.5 rounded-xl transition cursor-pointer whitespace-nowrap ${
+                orderTab === 'diantar' ? 'bg-cyan-50 text-cyan-600' : 'text-slate-500 hover:bg-slate-50'
+              }`}
+            >
+              Diantar (2)
+            </button>
+            <button
+              type="button"
+              className="border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold px-3 py-1.5 rounded-xl flex items-center gap-1 transition cursor-pointer ml-2"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Ekspor CSV</span>
             </button>
           </div>
         </div>
 
-        {/* Tabel Lebar Penuh Fit 100% Tanpa Scrollbar Horizontal */}
-        <div className="w-full overflow-x-auto">
+        <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-slate-100 text-slate-400 font-bold uppercase text-[10px] tracking-wider">
-                <th className="py-3 px-3">NO. ORDER &amp; TEPAT WAKTU</th>
-                <th className="py-3 px-3">PELANGGAN</th>
-                <th className="py-3 px-3">PRODUK GALON</th>
-                <th className="py-3 px-3">TOTAL BAYAR</th>
-                <th className="py-3 px-3">METODE BAYAR</th>
-                <th className="py-3 px-3">STATUS PENGANTARAN</th>
-                <th className="py-3 px-3 text-right">AKSI CEPAT</th>
+              <tr className="border-b border-slate-100 bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                <th className="py-3 px-5">NO. ORDER &amp; TEPAT WAKTU</th>
+                <th className="py-3 px-5">PELANGGAN</th>
+                <th className="py-3 px-5">PRODUK GALON</th>
+                <th className="py-3 px-5">TOTAL BAYAR</th>
+                <th className="py-3 px-5">METODE BAYAR</th>
+                <th className="py-3 px-5">STATUS PENGANTARAN</th>
+                <th className="py-3 px-5 text-right">AKSI CEPAT</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700 text-xs">
-              {filteredOrders.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-6 text-center text-slate-400 text-xs">
-                    Tidak ada pesanan untuk kategori ini.
+            <tbody className="divide-y divide-slate-100 text-xs">
+              {filteredOrders.map((order) => (
+                <tr key={order.id} className="hover:bg-slate-50/80 transition">
+                  <td className="py-4 px-5 align-top">
+                    <span className="font-bold text-slate-900 block">{order.id}</span>
+                    <span className="text-[10px] text-slate-400">{order.time}</span>
+                  </td>
+
+                  <td className="py-4 px-5 align-top">
+                    <span className="font-bold text-slate-800 block">{order.customerName}</span>
+                    <span className="text-[10px] text-slate-400 block">{order.customerPhone}</span>
+                    <span className="text-[10px] text-slate-500 block line-clamp-1">{order.customerAddress}</span>
+                  </td>
+
+                  <td className="py-4 px-5 align-top">
+                    <div className="flex items-center gap-1.5 font-bold text-slate-800">
+                      <Droplets className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                      <span>{order.product}</span>
+                    </div>
+                    <span className="text-[10px] text-slate-400 block ml-5">{order.productSub}</span>
+                  </td>
+
+                  <td className="py-4 px-5 align-top">
+                    <span className="font-bold text-slate-900 block">{order.total}</span>
+                    <span className="text-[10px] text-emerald-600 font-medium block">{order.totalSub}</span>
+                  </td>
+
+                  <td className="py-4 px-5 align-top">
+                    <span className="inline-block px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-semibold">
+                      {order.paymentMethod}
+                    </span>
+                  </td>
+
+                  <td className="py-4 px-5 align-top">
+                    <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold border ${order.statusBg}`}>
+                      {order.statusLabel}
+                    </span>
+                  </td>
+
+                  <td className="py-4 px-5 align-top text-right">
+                    {order.status === 'diproses' ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedOrder(order.id);
+                          setShowAssignModal(true);
+                        }}
+                        className="bg-[#2563EB] hover:bg-blue-700 text-white text-[11px] font-semibold px-3 py-1.5 rounded-xl transition shadow-sm cursor-pointer"
+                      >
+                        Tugaskan Kurir
+                      </button>
+                    ) : (
+                      /* ROUTE LINK KETAUGASKAN KURIR DIBERSIHKAN KE /monitoring/kurir */
+                      <button
+                        type="button"
+                        onClick={() => router.push('/monitoring/kurir')}
+                        className="border border-slate-200 hover:bg-slate-50 text-slate-600 text-[11px] font-semibold px-3 py-1.5 rounded-xl transition cursor-pointer"
+                      >
+                        Detail
+                      </button>
+                    )}
                   </td>
                 </tr>
-              ) : (
-                filteredOrders.map((order) => (
-                  <tr key={order.id} className="hover:bg-slate-50/80 transition-colors">
-                    {/* 1. NO. ORDER & TEPAT WAKTU */}
-                    <td className="py-3.5 px-3">
-                      <p className="font-bold text-[#0052FF]">{order.noOrder}</p>
-                      <p className="text-[10px] text-slate-400 mt-0.5 whitespace-nowrap">{order.waktu}</p>
-                    </td>
-
-                    {/* 2. PELANGGAN */}
-                    <td className="py-3.5 px-3">
-                      <p className="font-bold text-slate-800">{order.nama}</p>
-                      <p className="text-[10px] text-slate-400">{order.hp}</p>
-                      <p className="text-[10px] text-slate-400 truncate max-w-[180px]">
-                        {order.alamat}
-                      </p>
-                    </td>
-
-                    {/* 3. PRODUK GALON */}
-                    <td className="py-3.5 px-3">
-                      <div className="flex items-center gap-1.5">
-                        <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0">
-                          {order.qty}
-                        </span>
-                        <span className="font-bold text-slate-800 whitespace-nowrap">{order.produk}</span>
-                      </div>
-                      <p className="text-[10px] text-slate-400 mt-0.5">{order.tipeProduk}</p>
-                    </td>
-
-                    {/* 4. TOTAL BAYAR */}
-                    <td className="py-3.5 px-3">
-                      <p className="font-bold text-slate-800 whitespace-nowrap">{order.total}</p>
-                      <p className="text-[10px] text-emerald-600 font-medium whitespace-nowrap">
-                        {order.subTotal}
-                      </p>
-                    </td>
-
-                    {/* 5. METODE BAYAR */}
-                    <td className="py-3.5 px-3">
-                      <span className="inline-block whitespace-nowrap bg-slate-100 border border-slate-200/80 text-slate-700 px-2.5 py-1 rounded-lg text-[11px] font-bold">
-                        {order.metode}
-                      </span>
-                    </td>
-
-                    {/* 6. STATUS PENGANTARAN */}
-                    <td className="py-3.5 px-3">
-                      {order.statusType === 'diproses' && (
-                        <span className="inline-flex items-center gap-1.5 whitespace-nowrap bg-amber-100/80 text-amber-800 px-3 py-1 rounded-full text-[11px] font-bold">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                          {order.statusText}
-                        </span>
-                      )}
-                      {order.statusType === 'diantar' && (
-                        <span className="inline-flex items-center gap-1.5 whitespace-nowrap bg-sky-100/80 text-sky-800 px-3 py-1 rounded-full text-[11px] font-bold">
-                          <span className="w-1.5 h-1.5 rounded-full bg-sky-500"></span>
-                          {order.statusText}
-                        </span>
-                      )}
-                      {order.statusType === 'selesai' && (
-                        <span className="inline-flex items-center gap-1.5 whitespace-nowrap bg-emerald-100/80 text-emerald-800 px-3 py-1 rounded-full text-[11px] font-bold">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                          {order.statusText}
-                        </span>
-                      )}
-                    </td>
-
-                    {/* 7. AKSI CEPAT */}
-                    <td className="py-3.5 px-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {order.isActionAssign ? (
-                          <button className="bg-[#0052FF] hover:bg-blue-700 text-white px-3.5 py-1.5 rounded-xl text-[11px] font-semibold shadow-sm transition-all whitespace-nowrap">
-                            Tugaskan Kurir
-                          </button>
-                        ) : (
-                          <button className="bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 px-3.5 py-1.5 rounded-xl text-[11px] font-semibold transition-all whitespace-nowrap">
-                            Detail
-                          </button>
-                        )}
-                        <button className="text-slate-400 hover:text-slate-600 p-1">
-                          ⋮
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
+              ))}
             </tbody>
           </table>
         </div>
+      </div>
 
-        {/* Pagination Footer */}
-        <div className="flex flex-col sm:flex-row items-center justify-between pt-3 border-t border-slate-100 gap-3 text-xs text-slate-500">
-          <p>
-            Menampilkan <span className="font-bold text-slate-800">5</span> dari{' '}
-            <span className="font-bold text-slate-800">48</span> pesanan hari ini
-          </p>
-          <div className="flex items-center gap-1">
-            <button className="px-3 py-1 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 text-[11px]">
-              Sebelumnya
-            </button>
-            <button className="w-7 h-7 rounded-lg bg-[#0052FF] text-white font-bold text-xs flex items-center justify-center">
-              1
-            </button>
-            <button className="w-7 h-7 rounded-lg text-slate-600 hover:bg-slate-100 text-xs flex items-center justify-center">
-              2
-            </button>
-            <button className="w-7 h-7 rounded-lg text-slate-600 hover:bg-slate-100 text-xs flex items-center justify-center">
-              3
-            </button>
-            <button className="px-3 py-1 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-[11px]">
-              Selanjutnya
-            </button>
+      {/* MODAL TUGASKAN KURIR */}
+      {showAssignModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <h3 className="font-bold text-slate-900 text-base">Tugaskan Kurir untuk {selectedOrder}</h3>
+              <button
+                type="button"
+                onClick={() => setShowAssignModal(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                setShowAssignModal(false);
+                alert(`Order ${selectedOrder} berhasil ditugaskan!`);
+              }}
+              className="space-y-4 text-xs"
+            >
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Pilih Kurir Standby</label>
+                <select className="w-full border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-blue-500">
+                  <option value="agus">Pak Agus Prasetyo (Standby Depo JKT-04)</option>
+                  <option value="raynar">Raynar Putra M. (Standby Depo MHG-03)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Catatan Tambahan untuk Kurir</label>
+                <textarea
+                  placeholder="Contoh: Bawa kembalian Rp 50.000 / Naik ke lantai 3"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-blue-500 h-20"
+                ></textarea>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAssignModal(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 font-semibold text-slate-600 hover:bg-slate-50 transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition shadow-sm"
+                >
+                  Konfirmasi Penugasan
+                </button>
+              </div>
+            </form>
           </div>
         </div>
-      </div>
-    </div>
+      )}
+
+      {/* MODAL PESAN RESTOK PABRIK */}
+      {showRestokModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <h3 className="font-bold text-slate-900 text-base">Pesan Restok Galon ke Pabrik</h3>
+              <button
+                type="button"
+                onClick={() => setShowRestokModal(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                setShowRestokModal(false);
+                alert('Order restok ke pabrik berhasil dibuat!');
+              }}
+              className="space-y-4 text-xs"
+            >
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Merek Galon</label>
+                <select className="w-full border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-blue-500">
+                  <option value="aqua">Aqua 19L</option>
+                  <option value="leminerale">Le Minerale 15L</option>
+                  <option value="cleo">Cleo 19L</option>
+                  <option value="vit">Vit 19L</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Jumlah Unit Galon</label>
+                <input
+                  type="number"
+                  defaultValue={40}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-blue-500"
+                  required
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowRestokModal(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 font-semibold text-slate-600 hover:bg-slate-50 transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition shadow-sm"
+                >
+                  Kirim Order Restok
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+    </main>
   );
 }
