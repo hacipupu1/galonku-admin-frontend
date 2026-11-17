@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
-  CalendarDays,
   CheckCircle2,
   Package,
   Plus,
@@ -17,7 +17,10 @@ import {
   WalletCards,
 } from "lucide-react";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+
 type Product = {
+  id?: number;
   name: string;
   description: string;
   image: string;
@@ -27,7 +30,17 @@ type Product = {
   status: "Kritis" | "Rendah" | "Tersedia";
 };
 
-const products: Product[] = [
+type Order = {
+  id: string;
+  customer: string;
+  product: string;
+  time: string;
+  price: string;
+  priceNumber?: number;
+  status: string;
+};
+
+const defaultProducts: Product[] = [
   {
     name: "Aqua 19 Liter",
     description: "Air Mineral Pegunungan",
@@ -66,13 +79,14 @@ const products: Product[] = [
   },
 ];
 
-const orders = [
+const defaultOrders: Order[] = [
   {
     id: "#ORD-9021",
     customer: "Fia Salsabila",
     product: "Aqua 19L (3 Galon)",
     time: "10:48",
     price: "Rp 54.000",
+    priceNumber: 54000,
     status: "Diantar",
   },
   {
@@ -81,6 +95,7 @@ const orders = [
     product: "Le Minerale 15L (2 Galon)",
     time: "10:35",
     price: "Rp 34.000",
+    priceNumber: 34000,
     status: "Diproses",
   },
   {
@@ -89,6 +104,7 @@ const orders = [
     product: "Cleo 19L (5 Galon)",
     time: "10:12",
     price: "Rp 80.000",
+    priceNumber: 80000,
     status: "Selesai",
   },
   {
@@ -97,17 +113,143 @@ const orders = [
     product: "Vit 19L (2 Galon)",
     time: "09:55",
     price: "Rp 30.000",
+    priceNumber: 30000,
     status: "Selesai",
   },
 ];
 
-export default function DashboardPage() {
-  const [refreshing, setRefreshing] = useState(false);
+function formatRupiah(amount: number): string {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(amount || 0);
+}
 
-  const handleRefresh = () => {
+export default function DashboardPage() {
+  const router = useRouter();
+  const [refreshing, setRefreshing] = useState(false);
+  const [isConnected, setIsConnected] = useState(true);
+  const [products, setProducts] = useState<Product[]>(defaultProducts);
+  const [orders, setOrders] = useState<Order[]>(defaultOrders);
+  const [hasDbOrders, setHasDbOrders] = useState(false);
+
+  const fetchDashboardData = async () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 900);
+    const token = localStorage.getItem("token");
+    const headers: HeadersInit = {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+
+    try {
+      const [prodRes, ordRes] = await Promise.allSettled([
+        fetch(`${API_URL}/products`, { headers }),
+        fetch(`${API_URL}/orders`, { headers }),
+      ]);
+
+      let connected = false;
+
+      if (prodRes.status === "fulfilled" && prodRes.value.ok) {
+        connected = true;
+        const prodJson = await prodRes.value.json();
+        const rawProducts = Array.isArray(prodJson) ? prodJson : prodJson.data || [];
+
+        if (rawProducts.length > 0) {
+          const mappedProducts: Product[] = rawProducts.map((p: any) => {
+            const stock = Number(p.stock ?? 0);
+            const priceNum = Number(p.price ?? 0);
+            const maxStock = Number(p.maxStock ?? p.max_stock ?? 20);
+            const rawImg = p.imageUrl || p.image_url || p.image || "";
+            const fullImage = rawImg
+              ? rawImg.startsWith("http") || rawImg.startsWith("/")
+                ? rawImg
+                : `http://localhost:5000/uploads/${rawImg}`
+              : "/products/aqua-19l.png";
+
+            let status: "Kritis" | "Rendah" | "Tersedia" = "Tersedia";
+            if (stock <= 2) status = "Kritis";
+            else if (stock <= 4) status = "Rendah";
+
+            return {
+              id: p.id,
+              name: p.name,
+              description: p.description || "Air Mineral Pegunungan",
+              image: fullImage,
+              price: formatRupiah(priceNum),
+              stock,
+              maxStock,
+              status,
+            };
+          });
+          setProducts(mappedProducts);
+        }
+      }
+
+      if (ordRes.status === "fulfilled" && ordRes.value.ok) {
+        connected = true;
+        const ordJson = await ordRes.value.json();
+        const rawOrders = Array.isArray(ordJson) ? ordJson : ordJson.data || [];
+
+        if (rawOrders.length > 0) {
+          const mappedOrders: Order[] = rawOrders.map((o: any) => {
+            const priceNum = Number(o.total_price ?? o.totalAmount ?? o.total ?? o.price ?? 0);
+            const createdDate = o.created_at || o.createdAt;
+            const timeStr = createdDate
+              ? new Date(createdDate).toLocaleTimeString("id-ID", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "10:00";
+
+            const rawStatus = String(o.status || "Diproses").toLowerCase();
+            let displayStatus = o.status || "Diproses";
+            if (rawStatus === "pending" || rawStatus === "processing") displayStatus = "Diproses";
+            else if (rawStatus === "delivering" || rawStatus === "shipping") displayStatus = "Diantar";
+            else if (rawStatus === "completed" || rawStatus === "done" || rawStatus === "delivered")
+              displayStatus = "Selesai";
+
+            return {
+              id: o.order_code || `#ORD-${o.id}`,
+              customer: o.customer_name || o.customerName || "Pelanggan GalonKu",
+              product: o.product_name || "Aqua 19L (2 Galon)",
+              time: timeStr,
+              price: formatRupiah(priceNum),
+              priceNumber: priceNum,
+              status: displayStatus,
+            };
+          });
+          setOrders(mappedOrders);
+          setHasDbOrders(true);
+        }
+      }
+
+      setIsConnected(connected);
+    } catch {
+      setIsConnected(false);
+    } finally {
+      setTimeout(() => setRefreshing(false), 500);
+    }
   };
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+    fetchDashboardData();
+  }, [router]);
+
+  const summary = useMemo(() => {
+    const totalStock = products.reduce((acc, item) => acc + item.stock, 0);
+    const totalOrders = hasDbOrders ? orders.length : 48;
+    const totalRevenue = hasDbOrders
+      ? formatRupiah(orders.reduce((acc, item) => acc + (item.priceNumber || 0), 0))
+      : "Rp 864.000";
+
+    return { totalStock, totalOrders, totalRevenue };
+  }, [products, orders, hasDbOrders]);
 
   return (
     <div className="space-y-4">
@@ -129,15 +271,25 @@ export default function DashboardPage() {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={handleRefresh}
+              onClick={fetchDashboardData}
               className="flex h-10 items-center gap-2 rounded-xl bg-[#F0F3FF] px-3.5 text-xs font-bold text-[#26334C] transition hover:bg-[#E6EBFF]"
             >
               <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
               Refresh Data
             </button>
-            <div className="flex h-10 items-center gap-2 rounded-xl bg-[#C5F8D0] px-3.5 text-xs font-bold text-[#16752C]">
-              <span className="h-2 w-2 rounded-full bg-[#28A745]" />
-              Sinkron: Aktif
+            <div
+              className={`flex h-10 items-center gap-2 rounded-xl px-3.5 text-xs font-bold ${
+                isConnected
+                  ? "bg-[#C5F8D0] text-[#16752C]"
+                  : "bg-[#FFE0E0] text-[#D93636]"
+              }`}
+            >
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  isConnected ? "bg-[#28A745]" : "bg-[#D93636]"
+                }`}
+              />
+              {isConnected ? "Sinkron: Aktif" : "Sinkron: Terputus"}
             </div>
           </div>
         </div>
@@ -151,7 +303,9 @@ export default function DashboardPage() {
             <div>
               <p className="text-xs font-medium text-[#596378]">Total Pesanan</p>
               <div className="mt-1 flex items-baseline gap-1.5">
-                <span className="text-2xl font-extrabold text-[#0052FF]">48</span>
+                <span className="text-2xl font-extrabold text-[#0052FF]">
+                  {summary.totalOrders}
+                </span>
                 <span className="text-[10px] text-[#6C7588]">transaksi</span>
               </div>
             </div>
@@ -161,9 +315,12 @@ export default function DashboardPage() {
           </div>
           <div className="flex items-center justify-between bg-[#F2F1FF] px-5 py-2 text-[10px]">
             <span className="flex items-center gap-1 font-semibold text-[#257143]">
-              <ArrowUpRight size={12} /> +12% <span className="font-normal text-[#687289]">vs kemarin (42 pesanan)</span>
+              <ArrowUpRight size={12} /> +12%{" "}
+              <span className="font-normal text-[#687289]">vs kemarin (42 pesanan)</span>
             </span>
-            <button className="font-bold text-[#087D86]">Detail →</button>
+            <Link href="/orders" className="font-bold text-[#087D86]">
+              Detail →
+            </Link>
           </div>
         </div>
 
@@ -173,7 +330,9 @@ export default function DashboardPage() {
             <div>
               <p className="text-xs font-medium text-[#596378]">Pendapatan Bersih</p>
               <div className="mt-1">
-                <span className="text-2xl font-extrabold text-[#131B2E]">Rp 864.000</span>
+                <span className="text-2xl font-extrabold text-[#131B2E]">
+                  {summary.totalRevenue}
+                </span>
               </div>
             </div>
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#BCECF6] text-[#087D86]">
@@ -182,9 +341,12 @@ export default function DashboardPage() {
           </div>
           <div className="flex items-center justify-between bg-[#F1FBF4] px-5 py-2 text-[10px]">
             <span className="flex items-center gap-1 font-semibold text-[#257143]">
-              <CheckCircle2 size={12} /> +8.5% <span className="font-normal text-[#687289]">melampaui target harian</span>
+              <CheckCircle2 size={12} /> +8.5%{" "}
+              <span className="font-normal text-[#687289]">melampaui target harian</span>
             </span>
-            <button className="font-bold text-[#087D86]">Laporan →</button>
+            <Link href="/reports" className="font-bold text-[#087D86]">
+              Laporan →
+            </Link>
           </div>
         </div>
 
@@ -194,7 +356,9 @@ export default function DashboardPage() {
             <div>
               <p className="text-xs font-medium text-[#596378]">Status Stock Galon</p>
               <div className="mt-1 flex items-baseline gap-1.5">
-                <span className="text-2xl font-extrabold text-[#D93636]">12</span>
+                <span className="text-2xl font-extrabold text-[#D93636]">
+                  {summary.totalStock}
+                </span>
                 <span className="text-[10px] text-[#6C7588]">galon terisi</span>
               </div>
             </div>
@@ -204,9 +368,12 @@ export default function DashboardPage() {
           </div>
           <div className="flex items-center justify-between bg-[#FFF0F0] px-5 py-2 text-[10px]">
             <span className="flex items-center gap-1 font-semibold text-[#D93636]">
-              <Boxes size={12} /> Perlu Restok Segera <span className="font-normal text-[#687289]">(&lt; 20 unit)</span>
+              <Boxes size={12} /> Perlu Restok Segera{" "}
+              <span className="font-normal text-[#687289]">(&lt; 20 unit)</span>
             </span>
-            <button className="font-bold text-[#D93636]">Restok →</button>
+            <Link href="/products" className="font-bold text-[#D93636]">
+              Restok →
+            </Link>
           </div>
         </div>
       </section>
@@ -219,13 +386,22 @@ export default function DashboardPage() {
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-extrabold text-[#131B2E]">Grafik Pesanan</h2>
-                <span className="rounded bg-[#EEF0FF] px-2 py-0.5 text-[9px] font-bold text-[#0052FF]">Realtime</span>
+                <span className="rounded bg-[#EEF0FF] px-2 py-0.5 text-[9px] font-bold text-[#0052FF]">
+                  Realtime
+                </span>
               </div>
-              <p className="mt-0.5 text-[10px] text-[#6C7588]">Fluktuasi lonjakan pesanan jam kerja per 2 jam (08:00 - 18:00)</p>
+              <p className="mt-0.5 text-[10px] text-[#6C7588]">
+                Fluktuasi lonjakan pesanan jam kerja per 2 jam (08:00 - 18:00)
+              </p>
             </div>
             <div className="flex rounded-xl bg-[#F0F1FF] p-1">
               {["Hari Ini", "Mingguan", "Bulanan"].map((item, idx) => (
-                <button key={item} className={`rounded-lg px-2.5 py-1 text-[9px] font-bold ${idx === 0 ? "bg-white text-[#0052FF] shadow-sm" : "text-[#626C80]"}`}>
+                <button
+                  key={item}
+                  className={`rounded-lg px-2.5 py-1 text-[9px] font-bold ${
+                    idx === 0 ? "bg-white text-[#0052FF] shadow-sm" : "text-[#626C80]"
+                  }`}
+                >
                   {item}
                 </button>
               ))}
@@ -256,27 +432,45 @@ export default function DashboardPage() {
                   <stop offset="100%" stopColor="#0052FF" stopOpacity="0.03" />
                 </linearGradient>
               </defs>
-              <path d="M0 185 C70 170 95 135 160 125 C230 115 280 42 360 36 C420 31 455 94 510 76 C590 50 650 70 800 42 L800 215 L0 215 Z" fill="url(#chartArea)" />
-              <path d="M0 185 C70 170 95 135 160 125 C230 115 280 42 360 36 C420 31 455 94 510 76 C590 50 650 70 800 42" fill="none" stroke="#0052FF" strokeWidth="4" strokeLinecap="round" />
+              <path
+                d="M0 185 C70 170 95 135 160 125 C230 115 280 42 360 36 C420 31 455 94 510 76 C590 50 650 70 800 42 L800 215 L0 215 Z"
+                fill="url(#chartArea)"
+              />
+              <path
+                d="M0 185 C70 170 95 135 160 125 C230 115 280 42 360 36 C420 31 455 94 510 76 C590 50 650 70 800 42"
+                fill="none"
+                stroke="#0052FF"
+                strokeWidth="4"
+                strokeLinecap="round"
+              />
             </svg>
           </div>
         </div>
 
         {/* Pesanan Terbaru */}
-        <div className="rounded-2xl border border-[#EEF0F5] bg-white p-5 flex flex-col justify-between">
+        <div className="flex flex-col justify-between rounded-2xl border border-[#EEF0F5] bg-white p-5">
           <div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-extrabold text-[#131B2E]">Pesanan Terbaru</h2>
-                <span className="rounded bg-[#DDF0FF] px-2 py-0.5 text-[9px] font-bold text-[#0052FF]">Live Feed</span>
+                <span className="rounded bg-[#DDF0FF] px-2 py-0.5 text-[9px] font-bold text-[#0052FF]">
+                  Live Feed
+                </span>
               </div>
-              <button className="text-[10px] font-bold text-[#0052FF]">Lihat Semua →</button>
+              <Link href="/orders" className="text-[10px] font-bold text-[#0052FF]">
+                Lihat Semua →
+              </Link>
             </div>
-            <p className="mt-0.5 text-[10px] text-[#6C7588]">5 antrean pesanan terakhir masuk dari aplikasi konsumen</p>
+            <p className="mt-0.5 text-[10px] text-[#6C7588]">
+              5 antrean pesanan terakhir masuk dari aplikasi konsumen
+            </p>
 
             <div className="mt-3 space-y-2">
-              {orders.map((ord) => (
-                <div key={ord.id} className="flex items-center justify-between rounded-xl bg-[#F4F6FD] p-2.5">
+              {orders.slice(0, 4).map((ord) => (
+                <div
+                  key={ord.id}
+                  className="flex items-center justify-between rounded-xl bg-[#F4F6FD] p-2.5"
+                >
                   <div className="flex items-center gap-2.5">
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-[#0052FF]">
                       <Package size={16} />
@@ -284,14 +478,22 @@ export default function DashboardPage() {
                     <div>
                       <div className="flex items-center gap-1.5 text-xs font-bold text-[#131B2E]">
                         <span>{ord.id}</span>
-                        <span className="text-[9px] font-normal text-[#7A8498]">• {ord.time}</span>
+                        <span className="text-[9px] font-normal text-[#7A8498]">{ord.time}</span>
                       </div>
                       <p className="text-[10px] text-[#69738A]">{ord.customer}</p>
                       <p className="text-[10px] font-semibold text-[#087D86]">{ord.product}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${ord.status === "Diantar" ? "bg-[#C9F4F7] text-[#087D86]" : ord.status === "Diproses" ? "bg-[#DCE7FF] text-[#164FC1]" : "bg-[#BDF6C9] text-[#16752C]"}`}>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${
+                        ord.status === "Diantar"
+                          ? "bg-[#C9F4F7] text-[#087D86]"
+                          : ord.status === "Diproses"
+                          ? "bg-[#DCE7FF] text-[#164FC1]"
+                          : "bg-[#BDF6C9] text-[#16752C]"
+                      }`}
+                    >
                       ● {ord.status}
                     </span>
                     <p className="mt-1 text-xs font-bold text-[#131B2E]">{ord.price}</p>
@@ -302,8 +504,15 @@ export default function DashboardPage() {
           </div>
 
           <div className="mt-3 flex items-center justify-between rounded-xl bg-[#EEF1FF] p-3 text-[#131B2E]">
-            <span className="text-[10px] font-semibold">Masuk antrean baru? Segera tugaskan kurir</span>
-            <button className="rounded-lg bg-[#0052FF] px-3 py-1.5 text-[10px] font-bold text-white hover:bg-[#0047DE]">Dispatch Kurir</button>
+            <span className="text-[10px] font-semibold">
+              Masuk antrean baru? Segera tugaskan kurir
+            </span>
+            <Link
+              href="/orders"
+              className="rounded-lg bg-[#0052FF] px-3 py-1.5 text-[10px] font-bold text-white hover:bg-[#0047DE]"
+            >
+              Dispatch Kurir
+            </Link>
           </div>
         </div>
       </section>
@@ -314,25 +523,48 @@ export default function DashboardPage() {
           <div>
             <div className="flex items-center gap-2">
               <Boxes size={18} className="text-[#0052FF]" />
-              <h2 className="text-base font-extrabold text-[#131B2E]">Status Stok Galon Fisik di Depo</h2>
+              <h2 className="text-base font-extrabold text-[#131B2E]">
+                Status Stok Galon Fisik di Depo
+              </h2>
             </div>
-            <p className="mt-0.5 text-[10px] text-[#69738A]">Ketersediaan galon isi siap dikirim berdasarkan inventaris rak fisik Depo JKT-04</p>
+            <p className="mt-0.5 text-[10px] text-[#69738A]">
+              Ketersediaan galon isi siap dikirim berdasarkan inventaris rak fisik Depo JKT-04
+            </p>
           </div>
-          <button className="flex items-center gap-1.5 rounded-xl bg-[#0052FF] px-4 py-2 text-xs font-bold text-white hover:bg-[#0047DE]">
+          <Link
+            href="/products"
+            className="flex items-center gap-1.5 rounded-xl bg-[#0052FF] px-4 py-2 text-xs font-bold text-white hover:bg-[#0047DE]"
+          >
             <Plus size={15} /> Pesan Restok Pabrik
-          </button>
+          </Link>
         </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {products.map((p) => (
-            <div key={p.name} className="rounded-2xl border border-[#E9ECF8] bg-[#F4F5FF] p-3">
-              <div className="flex justify-between items-center text-[10px] font-bold mb-2">
-                <span className={`px-2 py-0.5 rounded-full ${p.status === "Tersedia" ? "bg-[#CFF7F6] text-[#087D86]" : "bg-[#FFE0E0] text-[#D93636]"}`}>
+            <div
+              key={p.id || p.name}
+              className="rounded-2xl border border-[#E9ECF8] bg-[#F4F5FF] p-3"
+            >
+              <div className="mb-2 flex items-center justify-between text-[10px] font-bold">
+                <span
+                  className={`rounded-full px-2 py-0.5 ${
+                    p.status === "Tersedia"
+                      ? "bg-[#CFF7F6] text-[#087D86]"
+                      : "bg-[#FFE0E0] text-[#D93636]"
+                  }`}
+                >
                   ● {p.status}: {p.stock} Sisa
                 </span>
               </div>
               <div className="flex h-28 items-center justify-center rounded-xl bg-white p-2">
-                <img src={p.image} alt={p.name} className="h-24 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                <img
+                  src={p.image}
+                  alt={p.name}
+                  className="h-24 object-contain"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
+                />
               </div>
               <div className="mt-2 text-center">
                 <h3 className="text-sm font-bold text-[#131B2E]">{p.name}</h3>
@@ -343,8 +575,15 @@ export default function DashboardPage() {
                 <span className="font-bold text-[#131B2E]">{p.price}</span>
               </div>
               <div className="mt-2 flex items-center justify-between gap-2 border-t border-[#E0E4F0] pt-2 text-[10px]">
-                <span className="font-bold text-[#087D86]">Tersedia: {p.stock}/{p.maxStock} Rak</span>
-                <button className="rounded-lg bg-[#DCE6FF] px-2.5 py-1 font-bold text-[#0052FF] hover:bg-[#CEDCFF]">+ Restok</button>
+                <span className="font-bold text-[#087D86]">
+                  Tersedia: {p.stock}/{p.maxStock} Rak
+                </span>
+                <Link
+                  href="/products"
+                  className="rounded-lg bg-[#DCE6FF] px-2.5 py-1 font-bold text-[#0052FF] hover:bg-[#CEDCFF]"
+                >
+                  + Restok
+                </Link>
               </div>
             </div>
           ))}
@@ -361,16 +600,26 @@ export default function DashboardPage() {
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-xs font-bold text-[#131B2E]">Armada Pengantaran Aktif</h3>
-                <span className="rounded-md bg-[#C5F8D0] px-2 py-0.5 text-[9px] font-bold text-[#16752C]">4 Kurir Beroperasi</span>
+                <span className="rounded-md bg-[#C5F8D0] px-2 py-0.5 text-[9px] font-bold text-[#16752C]">
+                  4 Kurir Beroperasi
+                </span>
               </div>
               <p className="text-[10px] text-[#69738A]">
-                Budi Pratama (8 galon), Joko Susilo (6 galon), Ahmad D. (4 galon), Indra (Standby di Depo)
+                Budi Pratama (8 galon), Joko Susilo (6 galon), Ahmad D. (4 galon), Indra (Standby di
+                Depo)
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Link href="/monitoring" className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-[#293246] hover:bg-slate-50">Live Map GPS</Link>
-            <button className="rounded-xl bg-[#0052FF] px-3 py-2 text-xs font-bold text-white hover:bg-[#0047DE]">Panggil Kurir Standby</button>
+            <Link
+              href="/monitoring"
+              className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-[#293246] hover:bg-slate-50"
+            >
+              Live Map GPS
+            </Link>
+            <button className="rounded-xl bg-[#0052FF] px-3 py-2 text-xs font-bold text-white hover:bg-[#0047DE]">
+              Panggil Kurir Standby
+            </button>
           </div>
         </div>
       </section>

@@ -1,86 +1,111 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 
-// Data Inventaris Produk & Varian Sesuai Wireframe
-const initialProducts = [
-  {
-    id: 'p1',
-    nama: 'Aqua 19 Liter Refill',
-    deskripsi: 'Air Mineral Pegunungan Alami',
-    sku: 'GLN-AQUA-19L',
-    tipe: 'Galon Tukar Refill',
-    hargaJual: 18000,
-    hargaModal: 14200,
-    stokTerisi: 35,
-    stokStatusText: 'Aman (70%)',
-    stokColorPct: '70%',
-    stokBarClass: 'bg-emerald-500',
-    botolKosong: '18 Botol',
-    status: 'Tersedia',
-    typeStatus: 'tersedia',
-    image: '/aqua.png',
-  },
-  {
-    id: 'p2',
-    nama: 'Le Minerale 15 Liter',
-    deskripsi: 'Galon Sekali Pakai Tanpa Tukar',
-    sku: 'GLN-LMN-15L',
-    tipe: 'Bebas BPA / Sekali Pakai',
-    hargaJual: 17000,
-    hargaModal: 13800,
-    stokTerisi: 25,
-    stokStatusText: 'Optimal (50%)',
-    stokColorPct: '50%',
-    stokBarClass: 'bg-teal-500',
-    botolKosong: '- (Non-Refill)',
-    status: 'Tersedia',
-    typeStatus: 'tersedia',
-    image: '/leminerale.png',
-  },
-  {
-    id: 'p3',
-    nama: 'Cleo 19 Liter Refill',
-    deskripsi: 'Pure Water Demineral 0 ppm',
-    sku: 'GLN-CLE-19L',
-    tipe: 'Galon Tukar Refill',
-    hargaJual: 16500,
-    hargaModal: 13000,
-    stokTerisi: 15,
-    stokStatusText: 'Menipis (30%)',
-    stokColorPct: '30%',
-    stokBarClass: 'bg-red-500',
-    botolKosong: '14 Botol',
-    status: 'Stok Kritis',
-    typeStatus: 'kritis',
-    image: '/cleo.png',
-  },
-  {
-    id: 'p4',
-    nama: 'Vit 19 Liter Refill',
-    deskripsi: 'Air Mineral Higienis Terjangkau',
-    sku: 'GLN-VIT-19L',
-    tipe: 'Galon Tukar Refill',
-    hargaJual: 15000,
-    hargaModal: 11500,
-    stokTerisi: 10,
-    stokStatusText: 'Sisa 20%',
-    stokColorPct: '20%',
-    stokBarClass: 'bg-red-500',
-    botolKosong: '10 Botol',
-    status: 'Stok Kritis',
-    typeStatus: 'kritis',
-    image: '/aqua.png', // Fallback galon
-  },
-];
+interface ProductUI {
+  id: string | number;
+  nama: string;
+  deskripsi: string;
+  sku: string;
+  tipe: string;
+  hargaJual: number;
+  hargaModal: number;
+  stokTerisi: number;
+  stokStatusText: string;
+  stokColorPct: string;
+  stokBarClass: string;
+  botolKosong: string;
+  status: 'Tersedia' | 'Stok Kritis';
+  typeStatus: 'tersedia' | 'kritis';
+  image: string;
+}
 
 export default function ProductsPage() {
+  const [products, setProducts] = useState<ProductUI[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<'semua' | 'refill' | 'sekalipakai' | 'kritis'>('semua');
   const [searchQuery, setSearchQuery] = useState('');
 
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+        const res = await fetch('http://localhost:5000/api/products', {
+          headers: token
+            ? {
+                Authorization: `Bearer ${token}`,
+              }
+            : {},
+        });
+
+        const json = await res.json();
+        const rawList = Array.isArray(json) ? json : json.data || [];
+
+        const mappedProducts: ProductUI[] = rawList.map((item: any) => {
+          const nama: string = item.name || item.nama || 'Produk Galon';
+          const isSekaliPakai =
+            nama.toLowerCase().includes('le minerale') ||
+            nama.includes('15') ||
+            (item.type && item.type.toLowerCase().includes('sekali pakai'));
+
+          const tipe =
+            item.type || (isSekaliPakai ? 'Bebas BPA / Sekali Pakai' : 'Galon Tukar Refill');
+
+          const deskripsi =
+            item.description ||
+            (isSekaliPakai
+              ? 'Galon Sekali Pakai Tanpa Tukar'
+              : 'Air Mineral Pegunungan Alami');
+
+          const sku =
+            item.sku ||
+            `GLN-${nama.replace(/[^a-zA-Z0-9]/g, '').substring(0, 4).toUpperCase()}-${item.id}`;
+
+          const hargaJual = Number(item.price ?? item.hargaJual ?? 0);
+          const hargaModal = Number(item.costPrice ?? item.hargaModal ?? Math.round(hargaJual * 0.8));
+          const stokTerisi = Number(item.stock ?? item.stokTerisi ?? 0);
+
+          const maxCapacity = 50;
+          const pct = Math.min(100, Math.round((stokTerisi / maxCapacity) * 100));
+          const isKritis = stokTerisi <= 15;
+
+          return {
+            id: item.id,
+            nama,
+            deskripsi,
+            sku,
+            tipe,
+            hargaJual,
+            hargaModal,
+            stokTerisi,
+            stokStatusText: isKritis ? `Menipis (${pct}%)` : `Aman (${pct}%)`,
+            stokColorPct: `${pct}%`,
+            stokBarClass: isKritis
+              ? 'bg-red-500'
+              : pct >= 70
+              ? 'bg-emerald-500'
+              : 'bg-teal-500',
+            botolKosong: isSekaliPakai ? '- (Non-Refill)' : `${Math.max(0, maxCapacity - stokTerisi)} Botol`,
+            status: isKritis ? 'Stok Kritis' : 'Tersedia',
+            typeStatus: isKritis ? 'kritis' : 'tersedia',
+            image: item.imageUrl || item.image || '/aqua.png',
+          };
+        });
+
+        setProducts(mappedProducts);
+      } catch (error) {
+        console.error('Gagal mengambil data produk:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
+
   // Filter Data Produk Sesuai Tab & Pencarian
-  const filteredProducts = initialProducts.filter((p) => {
+  const filteredProducts = products.filter((p) => {
     const matchesSearch =
       p.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -94,15 +119,27 @@ export default function ProductsPage() {
     return true; // 'semua'
   });
 
+  // Statistik Dinamis dari Database
+  const totalGalonTerisi = products.reduce((sum, item) => sum + item.stokTerisi, 0);
+  const produkKritis = products.filter((item) => item.typeStatus === 'kritis');
+  const totalNilaiInventaris = products.reduce(
+    (sum, item) => sum + item.hargaJual * item.stokTerisi,
+    0
+  );
+  const totalModalInventaris = products.reduce(
+    (sum, item) => sum + item.hargaModal * item.stokTerisi,
+    0
+  );
+  const countRefill = products.filter((p) => p.tipe.includes('Refill')).length;
+  const countSekaliPakai = products.filter((p) => p.tipe.includes('Sekali Pakai')).length;
+
   return (
     <div className="flex min-h-screen bg-[#F8FAFC] text-slate-800 font-sans antialiased">
       {/* ==================== SIDEBAR ==================== */}
-     
 
       {/* ==================== MAIN CONTENT ==================== */}
       <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         {/* Top Header */}
-      
 
         {/* Content Body */}
         <div className="p-8 space-y-6">
@@ -117,8 +154,6 @@ export default function ProductsPage() {
                 Monitoring ketersediaan pasokan galon, inventaris botol kosong, dan penyesuaian harga jual.
               </p>
             </div>
-
-            
           </div>
 
           {/* ==================== 4 STATS CARDS ROW ==================== */}
@@ -128,12 +163,18 @@ export default function ProductsPage() {
               <div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">TOTAL GALON TERISI</p>
                 <div className="flex items-baseline gap-1 mt-1">
-                  <span className="text-2xl font-extrabold text-slate-900">85</span>
+                  <span className="text-2xl font-extrabold text-slate-900">
+                    {loading ? '...' : totalGalonTerisi}
+                  </span>
                   <span className="text-xs font-medium text-slate-500">Galon</span>
                 </div>
-                <div className="mt-2 text-[10px] text-slate-400 space-y-0.5">
-                  <p><span className="font-semibold text-slate-600">Aqua: 35</span> • LeMin: 25</p>
-                  <p><span className="font-semibold text-slate-600">Cleo: 15</span> • Vit: 10</p>
+                <div className="mt-2 text-[10px] text-slate-400 flex flex-wrap gap-x-2 gap-y-0.5">
+                  {products.slice(0, 4).map((p) => (
+                    <span key={p.id}>
+                      <span className="font-semibold text-slate-600">{p.nama.split(' ')[0]}:</span>{' '}
+                      {p.stokTerisi}
+                    </span>
+                  ))}
                 </div>
               </div>
               <div className="w-9 h-9 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
@@ -166,14 +207,22 @@ export default function ProductsPage() {
               <div>
                 <p className="text-[10px] font-bold text-red-500 uppercase tracking-wider">STOK KRITIS / MENIPIS</p>
                 <div className="flex items-baseline gap-1 mt-1">
-                  <span className="text-2xl font-extrabold text-red-600">2</span>
+                  <span className="text-2xl font-extrabold text-red-600">
+                    {loading ? '...' : produkKritis.length}
+                  </span>
                   <span className="text-xs font-medium text-slate-500">Varian</span>
                 </div>
                 <div className="mt-3 flex items-center gap-1.5 text-[10px]">
-                  <span className="text-red-600 font-semibold">VIT 19L & Cleo 19L</span>
-                  <span className="px-2 py-0.5 rounded-md bg-red-50 text-red-600 font-semibold border border-red-100">
-                    Perlu PO
+                  <span className="text-red-600 font-semibold truncate max-w-[120px]">
+                    {produkKritis.length > 0
+                      ? produkKritis.map((p) => p.nama.split(' ')[0]).join(' & ')
+                      : 'Semua Stok Aman'}
                   </span>
+                  {produkKritis.length > 0 && (
+                    <span className="px-2 py-0.5 rounded-md bg-red-50 text-red-600 font-semibold border border-red-100">
+                      Perlu PO
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="w-9 h-9 rounded-full bg-red-50 text-red-500 flex items-center justify-center shrink-0">
@@ -186,10 +235,14 @@ export default function ProductsPage() {
               <div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">TOTAL NILAI INVENTARIS</p>
                 <div className="flex items-baseline gap-1 mt-1">
-                  <span className="text-xl font-extrabold text-slate-900">Rp 1.620.000</span>
+                  <span className="text-xl font-extrabold text-slate-900">
+                    {loading ? '...' : `Rp ${totalNilaiInventaris.toLocaleString('id-ID')}`}
+                  </span>
                 </div>
                 <div className="mt-3 flex items-center gap-2 text-[10px]">
-                  <span className="text-slate-400">Modal: Rp 1.350.000</span>
+                  <span className="text-slate-400">
+                    Modal: Rp {totalModalInventaris.toLocaleString('id-ID')}
+                  </span>
                   <span className="text-emerald-600 font-bold">+22.3% Margin</span>
                 </div>
               </div>
@@ -203,8 +256,18 @@ export default function ProductsPage() {
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
             {/* Search Box */}
             <div className="relative w-full sm:w-80">
-              <svg className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              <svg
+                className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
               </svg>
               <input
                 type="text"
@@ -226,7 +289,7 @@ export default function ProductsPage() {
                     : 'bg-white border border-slate-100 text-slate-600 hover:bg-slate-50'
                 }`}
               >
-                Semua Produk (4)
+                Semua Produk ({products.length})
               </button>
               <button
                 onClick={() => setActiveTab('refill')}
@@ -236,7 +299,7 @@ export default function ProductsPage() {
                     : 'bg-white border border-slate-100 text-slate-600 hover:bg-slate-50'
                 }`}
               >
-                Refill 19L (3)
+                Refill 19L ({countRefill})
               </button>
               <button
                 onClick={() => setActiveTab('sekalipakai')}
@@ -246,7 +309,7 @@ export default function ProductsPage() {
                     : 'bg-white border border-slate-100 text-slate-600 hover:bg-slate-50'
                 }`}
               >
-                Sekali Pakai (1)
+                Sekali Pakai ({countSekaliPakai})
               </button>
               <button
                 onClick={() => setActiveTab('kritis')}
@@ -256,7 +319,7 @@ export default function ProductsPage() {
                     : 'bg-white border border-slate-100 text-slate-600 hover:bg-slate-50'
                 }`}
               >
-                Perlu Restok (2)
+                Perlu Restok ({produkKritis.length})
               </button>
             </div>
           </div>
@@ -290,7 +353,13 @@ export default function ProductsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredProducts.length === 0 ? (
+                  {loading ? (
+                    <tr>
+                      <td colSpan={8} className="py-8 text-center text-slate-400 text-xs">
+                        Memuat data produk dari database...
+                      </td>
+                    </tr>
+                  ) : filteredProducts.length === 0 ? (
                     <tr>
                       <td colSpan={8} className="py-8 text-center text-slate-400 text-xs">
                         Tidak ada varian produk yang cocok dengan pencarian ini.
@@ -308,7 +377,6 @@ export default function ProductsPage() {
                                 alt={p.nama}
                                 className="max-h-full max-w-full object-contain"
                                 onError={(e) => {
-                                  // Fallback jika file gambar tidak ditemukan
                                   (e.target as HTMLElement).style.display = 'none';
                                 }}
                               />
@@ -358,9 +426,7 @@ export default function ProductsPage() {
                         </td>
 
                         {/* 6. BOTOL KOSONG */}
-                        <td className="py-4 px-3 font-semibold text-slate-700">
-                          {p.botolKosong}
-                        </td>
+                        <td className="py-4 px-3 font-semibold text-slate-700">{p.botolKosong}</td>
 
                         {/* 7. STATUS */}
                         <td className="py-4 px-3">
@@ -395,9 +461,14 @@ export default function ProductsPage() {
 
             {/* Table Footer */}
             <div className="flex flex-col sm:flex-row items-center justify-between pt-2 border-t border-slate-100 text-xs text-slate-500 gap-2">
-              <p>Menampilkan {filteredProducts.length} dari {initialProducts.length} varian produk galon depo</p>
+              <p>
+                Menampilkan {filteredProducts.length} dari {products.length} varian produk galon depo
+              </p>
               <p className="font-bold text-slate-800">
-                Estimasi Omset Hari Ini: <span className="text-blue-600 text-sm font-extrabold">Rp 1.442.500</span>
+                Estimasi Omset Hari Ini:{' '}
+                <span className="text-blue-600 text-sm font-extrabold">
+                  Rp {totalNilaiInventaris.toLocaleString('id-ID')}
+                </span>
               </p>
             </div>
           </div>
@@ -558,7 +629,6 @@ export default function ProductsPage() {
               </div>
             </div>
           </div>
-
         </div>
       </main>
     </div>
