@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Search,
   Filter,
@@ -15,12 +15,10 @@ import {
   Droplets,
   CreditCard,
   User,
-  Printer,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
 
-// Sub-komponen Gambar Thumbnail Galon Mini
 function ProductThumb({ src, alt, fallbackText }: { src: string; alt: string; fallbackText: string }) {
   const [hasError, setHasError] = useState(false);
 
@@ -40,7 +38,6 @@ function ProductThumb({ src, alt, fallbackText }: { src: string; alt: string; fa
   );
 }
 
-// Tipe Data TypeScript untuk Pesanan
 interface OrderItem {
   id: string;
   time: string;
@@ -106,7 +103,7 @@ export default function ManajemenPesananPage() {
       paymentBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
       status: 'diproses',
       statusLabel: '• Diproses Depo',
-      statusBg: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+      statusBg: 'bg-[#EEF2FF] text-[#4338CA] border-indigo-200',
       courier: 'Pak Budi K.',
       courierDetail: 'Motor 01 (Siap Angkut)',
     },
@@ -194,7 +191,7 @@ export default function ManajemenPesananPage() {
       paymentBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
       status: 'diproses',
       statusLabel: '• Diproses Depo',
-      statusBg: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+      statusBg: 'bg-[#EEF2FF] text-[#4338CA] border-indigo-200',
       courier: null,
       courierDetail: 'Jadwalkan',
     },
@@ -227,10 +224,19 @@ export default function ManajemenPesananPage() {
   const [selectedGallon, setSelectedGallon] = useState('semua');
   const [selectedPayment, setSelectedPayment] = useState('semua');
 
+  // STATE FITUR PAGINATION
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(3); // Default 3 agar data contoh terbagi 3 halaman
+
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<OrderItem | null>(null);
   const [selectedCourierName, setSelectedCourierName] = useState('Pak Budi Santoso');
+
+  // Reset ke halaman 1 jika user mengubah pencarian/filter
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedGallon, selectedPayment, activeTab]);
 
   const handleConfirmOrder = (orderId: string) => {
     setOrders((prev) =>
@@ -240,7 +246,7 @@ export default function ManajemenPesananPage() {
             ...o,
             status: 'diproses',
             statusLabel: '• Diproses Depo',
-            statusBg: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+            statusBg: 'bg-[#EEF2FF] text-[#4338CA] border-indigo-200',
           };
         }
         return o;
@@ -272,6 +278,7 @@ export default function ManajemenPesananPage() {
     alert(`Kurir ${selectedCourierName} berhasil ditugaskan untuk ${selectedOrder.id}!`);
   };
 
+  // Filter Data Utama
   const filteredOrders = orders.filter((o) => {
     let matchTab = true;
     if (activeTab === 'konfirmasi') matchTab = o.status === 'konfirmasi';
@@ -299,11 +306,19 @@ export default function ManajemenPesananPage() {
     return matchTab && matchGallon && matchPayment && matchSearch;
   });
 
+  // LOGIKA PEMBAGIAN HALAMAN (SLICING PAGINATION)
+  const totalItems = filteredOrders.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+  const paginatedOrders = filteredOrders.slice(startIndex, startIndex + itemsPerPage);
+
   const handleResetFilter = () => {
     setSearchQuery('');
     setSelectedGallon('semua');
     setSelectedPayment('semua');
     setActiveTab('semua');
+    setCurrentPage(1);
   };
 
   return (
@@ -335,7 +350,7 @@ export default function ManajemenPesananPage() {
         </div>
       </div>
 
-      {/* 2. TOP 4 KPI CARDS */}
+      {/* 2. TOP KPI CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
           <div>
@@ -414,7 +429,7 @@ export default function ManajemenPesananPage() {
         </div>
       </div>
 
-      {/* 3. TABS FILTER STATUS PESANAN */}
+      {/* 3. TABS STATUS */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-4 scrollbar-none">
         <button
           type="button"
@@ -562,7 +577,7 @@ export default function ManajemenPesananPage() {
         </div>
       </div>
 
-      {/* 5. TABEL MANAJEMEN PESANAN (7 KOLOM SEPERTI WIREFRAME) */}
+      {/* 5. TABEL UTAMA MANAJEMEN PESANAN */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-6">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -578,8 +593,8 @@ export default function ManajemenPesananPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs">
-              {filteredOrders.length > 0 ? (
-                filteredOrders.map((order) => (
+              {paginatedOrders.length > 0 ? (
+                paginatedOrders.map((order) => (
                   <tr key={order.id} className="hover:bg-slate-50/80 transition">
                     
                     {/* KOLOM 1: NO. ORDER & WAKTU */}
@@ -596,7 +611,7 @@ export default function ManajemenPesananPage() {
                       <span className="text-[10px] text-slate-400 block mt-0.5">{order.time}</span>
                     </td>
 
-                    {/* KOLOM 2: PELANGGAN & LOKASI (TANPA IKON MAPS MERAH) */}
+                    {/* KOLOM 2: PELANGGAN & LOKASI */}
                     <td className="py-3.5 px-4 align-top">
                       <span className="font-bold text-slate-900 block text-xs">{order.customerName}</span>
                       <span className="text-[10px] text-slate-400 block">{order.customerPhone}</span>
@@ -624,7 +639,7 @@ export default function ManajemenPesananPage() {
                     <td className="py-3.5 px-3 align-top whitespace-nowrap">
                       <span className="font-bold text-slate-900 block text-xs">{order.total}</span>
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-bold border mt-1 ${order.paymentBg}`}>
-                        ✓ {order.paymentLabel} • {order.paymentStatus}
+                        ✓ {order.paymentLabel} - {order.paymentStatus}
                       </span>
                     </td>
 
@@ -705,37 +720,64 @@ export default function ManajemenPesananPage() {
           </table>
         </div>
 
-        {/* Table Footer / Pagination */}
+        {/* FOOTER TABEL: SLIDE & CONTROL PAGINATION */}
         <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <div className="flex items-center gap-2">
-            <span>Menampilkan <strong>1-{filteredOrders.length}</strong> dari <strong>48</strong> pesanan</span>
+            <span>
+              Menampilkan <strong>{totalItems === 0 ? 0 : startIndex + 1}-{endIndex}</strong> dari <strong>{totalItems}</strong> pesanan
+            </span>
             <span className="text-slate-300">•</span>
             <span>Baris per halaman:</span>
-            <select className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-semibold focus:outline-none">
+            <select
+              value={itemsPerPage}
+              onChange={(e) => {
+                setItemsPerPage(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-semibold focus:outline-none cursor-pointer"
+            >
+              <option value="3">3</option>
+              <option value="5">5</option>
               <option value="10">10</option>
               <option value="20">20</option>
-              <option value="50">50</option>
             </select>
           </div>
 
+          {/* TOMBOL-TOMBOL NAVIGASI HALAMAN */}
           <div className="flex items-center gap-1">
-            <button type="button" disabled className="p-1.5 rounded-lg border border-slate-200 text-slate-300 disabled:opacity-50">
+            {/* Tombol Sebelumnya */}
+            <button
+              type="button"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <button type="button" className="w-8 h-8 rounded-lg bg-[#2563EB] text-white font-bold text-xs flex items-center justify-center">
-              1
-            </button>
-            <button type="button" className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs flex items-center justify-center">
-              2
-            </button>
-            <button type="button" className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs flex items-center justify-center">
-              3
-            </button>
-            <span className="px-1 text-slate-400">...</span>
-            <button type="button" className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs flex items-center justify-center">
-              5
-            </button>
-            <button type="button" className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition">
+
+            {/* Angka Halaman Dinamis */}
+            {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((pageNum) => (
+              <button
+                key={pageNum}
+                type="button"
+                onClick={() => setCurrentPage(pageNum)}
+                className={`w-8 h-8 rounded-lg font-bold text-xs flex items-center justify-center transition cursor-pointer ${
+                  currentPage === pageNum
+                    ? 'bg-[#2563EB] text-white shadow-sm'
+                    : 'border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold'
+                }`}
+              >
+                {pageNum}
+              </button>
+            ))}
+
+            {/* Tombol Selanjutnya */}
+            <button
+              type="button"
+              disabled={currentPage === totalPages || totalPages === 0}
+              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+              className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            >
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
@@ -760,56 +802,37 @@ export default function ManajemenPesananPage() {
             </div>
 
             <form onSubmit={handleAssignCourier} className="space-y-4 text-xs">
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Pelanggan:</span>
-                  <strong className="text-slate-800">{selectedOrder.customerName}</strong>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Item Pesanan:</span>
-                  <strong className="text-slate-800">{selectedOrder.product}</strong>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Alamat:</span>
-                  <span className="text-slate-700 text-[11px] truncate max-w-[200px]">{selectedOrder.customerAddress}</span>
-                </div>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                <span className="text-slate-500 block">Pelanggan: <strong>{selectedOrder.customerName}</strong></span>
+                <span className="text-slate-500 block mt-0.5">Alamat: {selectedOrder.customerAddress}</span>
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Pilih Kurir Standby Depo</label>
+                <label className="block text-slate-700 font-semibold mb-1">Pilih Armada Kurir</label>
                 <select
                   value={selectedCourierName}
                   onChange={(e) => setSelectedCourierName(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-blue-500 font-semibold"
+                  className="w-full border border-slate-200 rounded-xl p-2.5 text-xs font-medium focus:outline-none focus:border-blue-500"
                 >
-                  <option value="Pak Budi Santoso">Pak Budi Santoso (Motor 01 - Standby Depo)</option>
-                  <option value="Mas Doni Wijaya">Mas Doni Wijaya (Motor 02 - Standby Depo)</option>
-                  <option value="Pak Agus Prasetyo">Pak Agus Prasetyo (Motor 03 - Standby Depo)</option>
-                  <option value="Rian Irawan">Rian Irawan (Motor 04 - Standby Depo)</option>
+                  <option value="Pak Budi K.">Pak Budi K. - Motor 01 (Siap)</option>
+                  <option value="Rian Irawan">Rian Irawan - Motor 02 (Siap)</option>
+                  <option value="Deni Setiawan">Deni Setiawan - Motor 03 (Standby)</option>
                 </select>
               </div>
 
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Catatan Khusus Pengiriman</label>
-                <textarea
-                  placeholder="Contoh: Titipkan di pos satpam / Naik ke lantai 2"
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-blue-500 h-20"
-                ></textarea>
-              </div>
-
-              <div className="pt-2 flex items-center justify-end gap-2">
+              <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowAssignModal(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 font-semibold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-semibold cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-[#2563EB] text-white font-semibold hover:bg-blue-700 transition shadow-sm cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-sm cursor-pointer"
                 >
-                  Konfirmasi Penugasan
+                  Simpan &amp; Tugaskan
                 </button>
               </div>
             </form>
@@ -823,13 +846,10 @@ export default function ManajemenPesananPage() {
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
               <div>
-                <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
-                  <span>Detail Pesanan {selectedOrder.id}</span>
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${selectedOrder.statusBg}`}>
-                    {selectedOrder.statusLabel}
-                  </span>
+                <h3 className="font-bold text-slate-900 text-base">
+                  Detail Pesanan {selectedOrder.id}
                 </h3>
-                <span className="text-[11px] text-slate-400">{selectedOrder.time}</span>
+                <span className="text-[10px] text-slate-400">Waktu: {selectedOrder.time}</span>
               </div>
               <button
                 type="button"
@@ -841,64 +861,40 @@ export default function ManajemenPesananPage() {
             </div>
 
             <div className="space-y-4 text-xs">
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
-                <div className="flex items-center gap-1.5 font-bold text-slate-800 mb-1">
-                  <User className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Informasi Pelanggan</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-[11px]">
-                  <div>
-                    <span className="text-slate-400 block">Nama:</span>
-                    <strong className="text-slate-800">{selectedOrder.customerName}</strong>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block">No. HP:</span>
-                    <strong className="text-slate-800">{selectedOrder.customerPhone}</strong>
-                  </div>
-                </div>
-                <div className="pt-1 text-[11px]">
-                  <span className="text-slate-400 block">Alamat Pengiriman:</span>
-                  <span className="text-slate-700 font-medium">{selectedOrder.customerAddress}</span>
-                </div>
+              <div className="p-3 bg-blue-50/50 border border-blue-100 rounded-xl">
+                <span className="font-bold text-blue-900 block mb-1">Informasi Pelanggan</span>
+                <p className="text-slate-700 font-semibold">{selectedOrder.customerName} ({selectedOrder.customerPhone})</p>
+                <p className="text-slate-500 mt-0.5">{selectedOrder.customerAddress}</p>
               </div>
 
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
-                <div className="flex items-center gap-1.5 font-bold text-slate-800 mb-1">
-                  <Droplets className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Rincian Produk Galon</span>
-                </div>
-                <div className="flex justify-between items-center text-[11px]">
-                  <span className="font-bold text-slate-800">{selectedOrder.product}</span>
+              <div className="border border-slate-100 rounded-xl p-3 space-y-2">
+                <span className="font-bold text-slate-900 block">Item Produk</span>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold text-slate-800">{selectedOrder.product}</p>
+                    <p className="text-[10px] text-slate-400">{selectedOrder.productNote}</p>
+                  </div>
                   <span className="font-bold text-slate-900">{selectedOrder.total}</span>
                 </div>
-                <span className="text-[10px] text-slate-400 block">{selectedOrder.productNote}</span>
               </div>
 
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex justify-between items-center text-[11px]">
+              <div className="flex justify-between items-center pt-2">
                 <div>
-                  <span className="text-slate-400 block">Metode Pembayaran:</span>
-                  <strong className="text-slate-800">{selectedOrder.paymentLabel}</strong>
+                  <span className="text-slate-400 block text-[10px]">Metode Pembayaran</span>
+                  <span className="font-semibold text-slate-700">{selectedOrder.paymentLabel} ({selectedOrder.paymentStatus})</span>
                 </div>
-                <span className={`px-2.5 py-1 rounded-md font-bold text-[10px] border ${selectedOrder.paymentBg}`}>
-                  {selectedOrder.paymentStatus}
-                </span>
+                <div>
+                  <span className="text-slate-400 block text-[10px]">Kurir</span>
+                  <span className="font-semibold text-slate-700">{selectedOrder.courier || '-'}</span>
+                </div>
               </div>
             </div>
 
-            <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs">
-              <button
-                type="button"
-                onClick={() => alert('Mencetak struk transaksi...')}
-                className="px-3.5 py-2 rounded-xl border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 transition flex items-center gap-1.5 cursor-pointer"
-              >
-                <Printer className="w-3.5 h-3.5 text-slate-500" />
-                <span>Cetak Struk</span>
-              </button>
-
+            <div className="mt-6 pt-4 border-t border-slate-100 flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setShowDetailModal(false)}
-                className="px-4 py-2 rounded-xl bg-[#2563EB] text-white font-semibold hover:bg-blue-700 transition cursor-pointer shadow-sm"
+                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-semibold cursor-pointer"
               >
                 Tutup
               </button>
