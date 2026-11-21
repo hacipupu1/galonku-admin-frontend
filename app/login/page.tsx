@@ -1,5 +1,6 @@
-"use client";
+'use client';
 
+import { GoogleOAuthProvider, useGoogleLogin } from '@react-oauth/google';
 import { FormEvent, useState } from "react";
 import {
   UserRound,
@@ -12,7 +13,9 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-export default function LoginPage() {
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+
+function LoginFormContent() {
   const router = useRouter();
 
   const [username, setUsername] = useState("");
@@ -24,6 +27,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
+  // 1. Login Email & Password ke Backend MySQL
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
@@ -37,25 +41,80 @@ export default function LoginPage() {
 
     setLoading(true);
 
-    await new Promise((resolve) => setTimeout(resolve, 900));
+    try {
+      const res = await fetch(`${API_URL}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: username.trim(),
+          password,
+        }),
+      });
 
-    if (
-      username.trim().toLowerCase() === "admin@galonku.id" &&
-      password === "admin123"
-    ) {
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        setError(data.message || "Username atau kata sandi salah.");
+        setLoading(false);
+        return;
+      }
+
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
       setSuccess(true);
 
       setTimeout(() => {
         router.push("/dashboard");
       }, 500);
-    } else {
-      setError("Username atau kata sandi salah.");
+    } catch (err) {
+      setError("Gagal terhubung ke server backend (localhost:5000).");
       setLoading(false);
     }
   };
 
+  // 2. Login dengan Google OAuth (Tombol Kustom Setara)
+  const handleGoogleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setError("");
+      setSuccess(false);
+      setLoading(true);
+
+      try {
+        const res = await fetch(`${API_URL}/auth/google`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            accessToken: tokenResponse.access_token,
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+          setError(data.message || "Autentikasi Google gagal.");
+          setLoading(false);
+          return;
+        }
+
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+        setSuccess(true);
+
+        setTimeout(() => {
+          router.push("/dashboard");
+        }, 500);
+      } catch (err) {
+        setError("Gagal terhubung ke server backend (localhost:5000).");
+        setLoading(false);
+      }
+    },
+    onError: () => {
+      setError("Login dengan Google dibatalkan atau gagal.");
+    },
+  });
+
   return (
-    <main className="login-page">
+    <main className="login-page" style={{ zoom: "55%", minHeight: "100vh" }}>
       {/* =====================================================
           BRAND KIRI ATAS
       ====================================================== */}
@@ -85,12 +144,7 @@ export default function LoginPage() {
       ====================================================== */}
       <section className="login-wrapper">
         <div className="login-card">
-          {/* =================================================
-              LOGO / RIDER
-              Dibuat lebih besar dan tidak ter-zoom.
-              object-fit: contain memastikan seluruh gambar
-              tetap terlihat.
-          ================================================== */}
+          {/* LOGO / RIDER */}
           <div className="rider-circle">
             <img
               src="/login-galonku.png"
@@ -99,9 +153,7 @@ export default function LoginPage() {
             />
           </div>
 
-          {/* =================================================
-              TITLE
-          ================================================== */}
+          {/* TITLE */}
           <div className="login-heading">
             <h1>GalonKu Admin</h1>
 
@@ -110,9 +162,7 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* =================================================
-              FORM
-          ================================================== */}
+          {/* FORM */}
           <form onSubmit={handleLogin} className="login-form">
             {/* USERNAME */}
             <div className="field-group">
@@ -261,11 +311,59 @@ export default function LoginPage() {
                 </>
               )}
             </button>
+
+            {/* PEMISAH "atau" */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "14px",
+                margin: "6px 0",
+              }}
+            >
+              <div style={{ flex: 1, height: "1px", backgroundColor: "#e2e8f0" }} />
+              <span style={{ fontSize: "14px", color: "#94a3b8", fontWeight: 500 }}>
+                atau
+              </span>
+              <div style={{ flex: 1, height: "1px", backgroundColor: "#e2e8f0" }} />
+            </div>
+
+            {/* TOMBOL GOOGLE SETARA (FULL WIDTH & TINGGI SAMA) */}
+            <button
+              type="button"
+              onClick={() => handleGoogleLogin()}
+              disabled={loading || success}
+              className="login-button"
+              style={{
+                background: "#ffffff",
+                color: "#1e293b",
+                border: "1.5px solid #cbd5e1",
+                boxShadow: "0 2px 6px rgba(15, 23, 42, 0.04)",
+              }}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  fill="#4285F4"
+                  d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17Z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.11-6.72-4.96H1.29v3.14C3.26 21.3 7.31 24 12 24Z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.28 14.24c-.24-.72-.38-1.49-.38-2.24s.14-1.52.38-2.24V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.99-3.14Z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.99 3.14c.95-2.85 3.6-4.96 6.72-4.96Z"
+                />
+              </svg>
+              <span>Masuk dengan Google</span>
+            </button>
           </form>
 
-          {/* =================================================
-              DRIVER LINK
-          ================================================== */}
+          {/* DRIVER LINK */}
           <div className="access-link">
             <span>Butuh akses kurir lapangan?</span>
 
@@ -275,9 +373,7 @@ export default function LoginPage() {
             </button>
           </div>
 
-          {/* =================================================
-              VERSION
-          ================================================== */}
+          {/* VERSION */}
           <div className="card-version">
             <span>
               GalonKu v4.12.0 (Build 2026.04)
@@ -318,5 +414,13 @@ export default function LoginPage() {
         </div>
       </footer>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ""}>
+      <LoginFormContent />
+    </GoogleOAuthProvider>
   );
 }

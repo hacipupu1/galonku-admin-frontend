@@ -1,37 +1,28 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
-  Bell,
-  CalendarDays,
   CheckCircle2,
-  ChevronDown,
-  ClipboardList,
-  Clock3,
-  CreditCard,
-  LayoutDashboard,
-  Menu,
   Package,
   Plus,
   RefreshCw,
-  Search,
-  Settings2,
   ShoppingCart,
   Truck,
-  UserRound,
-  WalletCards,
-  X,
   ArrowUpRight,
   AlertTriangle,
   Boxes,
-  MapPinned,
-  LogOut,
-  ChevronRight,
-  CircleDollarSign,
   Activity,
+  WalletCards,
+  X,
+  UserCheck,
 } from "lucide-react";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+
 type Product = {
+  id?: number;
   name: string;
   description: string;
   image: string;
@@ -41,7 +32,93 @@ type Product = {
   status: "Kritis" | "Rendah" | "Tersedia";
 };
 
-const products: Product[] = [
+type Order = {
+  id: string;
+  rawId?: number | string;
+  customer: string;
+  product: string;
+  image?: string;
+  time: string;
+  price: string;
+  priceNumber?: number;
+  status: string;
+  courier?: string;
+};
+
+type ChartRange = "Hari Ini" | "Mingguan" | "Bulanan";
+
+const CHART_CONFIG: Record<
+  ChartRange,
+  {
+    subtitle: string;
+    peakLabel: string;
+    peakValue: string;
+    peakSub: string;
+    avgDelivery: string;
+    completionRate: string;
+    path: string;
+    areaPath: string;
+    points: { x: number; y: number; label: string; count: number }[];
+  }
+> = {
+  "Hari Ini": {
+    subtitle: "Fluktuasi lonjakan pesanan jam kerja per 2 jam (08:00 - 18:00)",
+    peakLabel: "Jam Puncak (Peak)",
+    peakValue: "11:00 - 13:00",
+    peakSub: "(15 pesanan)",
+    avgDelivery: "22.4 Menit",
+    completionRate: "96.8% Sukses",
+    path: "M0 185 C70 170 95 135 160 125 C230 115 280 42 360 36 C420 31 455 94 510 76 C590 50 650 70 800 42",
+    areaPath:
+      "M0 185 C70 170 95 135 160 125 C230 115 280 42 360 36 C420 31 455 94 510 76 C590 50 650 70 800 42 L800 215 L0 215 Z",
+    points: [
+      { x: 0, y: 185, label: "08:00", count: 4 },
+      { x: 160, y: 125, label: "10:00", count: 9 },
+      { x: 360, y: 36, label: "12:00", count: 15 },
+      { x: 510, y: 76, label: "14:00", count: 11 },
+      { x: 650, y: 62, label: "16:00", count: 12 },
+      { x: 800, y: 42, label: "18:00", count: 14 },
+    ],
+  },
+  Mingguan: {
+    subtitle: "Rekap volume pengantaran galon harian (Senin - Minggu)",
+    peakLabel: "Hari Tersibuk",
+    peakValue: "Sabtu & Minggu",
+    peakSub: "(64 pesanan/hari)",
+    avgDelivery: "24.1 Menit",
+    completionRate: "97.4% Sukses",
+    path: "M0 150 C110 140 150 95 260 105 C370 115 430 60 540 50 C650 40 710 25 800 28",
+    areaPath:
+      "M0 150 C110 140 150 95 260 105 C370 115 430 60 540 50 C650 40 710 25 800 28 L800 215 L0 215 Z",
+    points: [
+      { x: 0, y: 150, label: "Sen", count: 38 },
+      { x: 160, y: 122, label: "Sel", count: 44 },
+      { x: 320, y: 102, label: "Rab", count: 47 },
+      { x: 480, y: 65, label: "Kam", count: 53 },
+      { x: 640, y: 38, label: "Jum", count: 59 },
+      { x: 800, y: 28, label: "Sab", count: 64 },
+    ],
+  },
+  Bulanan: {
+    subtitle: "Tren pertumbuhan pesanan refill Depo JKT-04 per minggu",
+    peakLabel: "Minggu Tertinggi",
+    peakValue: "Minggu ke-4",
+    peakSub: "(342 pesanan)",
+    avgDelivery: "21.8 Menit",
+    completionRate: "98.1% Sukses",
+    path: "M0 175 C180 155 240 120 400 95 C560 70 640 45 800 22",
+    areaPath:
+      "M0 175 C180 155 240 120 400 95 C560 70 640 45 800 22 L800 215 L0 215 Z",
+    points: [
+      { x: 0, y: 175, label: "Minggu 1", count: 245 },
+      { x: 266, y: 122, label: "Minggu 2", count: 289 },
+      { x: 533, y: 72, label: "Minggu 3", count: 318 },
+      { x: 800, y: 22, label: "Minggu 4", count: 342 },
+    ],
+  },
+};
+
+const defaultProducts: Product[] = [
   {
     name: "Aqua 19 Liter",
     description: "Air Mineral Pegunungan",
@@ -80,14 +157,16 @@ const products: Product[] = [
   },
 ];
 
-const orders = [
+const defaultOrders: Order[] = [
   {
     id: "#ORD-9021",
     customer: "Fia Salsabila",
     product: "Aqua 19L (3 Galon)",
     time: "10:48",
     price: "Rp 54.000",
+    priceNumber: 54000,
     status: "Diantar",
+    courier: "Budi Pratama",
   },
   {
     id: "#ORD-9020",
@@ -95,7 +174,9 @@ const orders = [
     product: "Le Minerale 15L (2 Galon)",
     time: "10:35",
     price: "Rp 34.000",
+    priceNumber: 34000,
     status: "Diproses",
+    courier: "Joko Susilo",
   },
   {
     id: "#ORD-9019",
@@ -103,7 +184,9 @@ const orders = [
     product: "Cleo 19L (5 Galon)",
     time: "10:12",
     price: "Rp 80.000",
+    priceNumber: 80000,
     status: "Selesai",
+    courier: "Ahmad D.",
   },
   {
     id: "#ORD-9018",
@@ -111,889 +194,816 @@ const orders = [
     product: "Vit 19L (2 Galon)",
     time: "09:55",
     price: "Rp 30.000",
+    priceNumber: 30000,
     status: "Selesai",
+    courier: "Budi Pratama",
   },
 ];
 
-const menuItems = [
-  {
-    label: "Dashboard",
-    icon: LayoutDashboard,
-    active: true,
-  },
-  {
-    label: "Manajemen Pesanan",
-    icon: ClipboardList,
-    active: false,
-  },
-  {
-    label: "Produk & Stok",
-    icon: Package,
-    active: false,
-  },
-  {
-    label: "Monitoring Pengantaran",
-    icon: Truck,
-    active: false,
-  },
-  {
-    label: "Laporan Keuangan",
-    icon: CreditCard,
-    active: false,
-  },
-];
-
-function formatToday() {
-  return "Hari ini, 24 Mei";
+function formatRupiah(amount: number): string {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(amount || 0);
 }
 
-function ProductCard({ product }: { product: Product }) {
-  const percentage = Math.max(
-    5,
-    Math.min(100, (product.stock / product.maxStock) * 100),
-  );
+// Helper mencocokkan nama produk di pesanan dengan foto produk backend/lokal
+function resolveGalonImage(productText: string, productList: Product[]): string {
+  const lower = productText.toLowerCase();
 
-  const isAvailable = product.status === "Tersedia";
+  const matched = productList.find((p) => {
+    const brandKeyword = p.name.toLowerCase().split(" ")[0];
+    return (
+      lower.includes(p.name.toLowerCase()) ||
+      (brandKeyword.length >= 3 && lower.includes(brandKeyword))
+    );
+  });
 
-  return (
-    <div className="group rounded-2xl border border-[#E9ECF8] bg-[#F0F1FF] p-3 transition duration-200 hover:-translate-y-0.5 hover:shadow-lg">
-      <div className="relative">
-        <div className="absolute right-0 top-0 z-10">
-          <span
-            className={`inline-flex rounded-full px-3 py-1 text-[10px] font-bold ${
-              isAvailable
-                ? "bg-[#CFF7F6] text-[#087D86]"
-                : "bg-[#FFE0E0] text-[#D93636]"
-            }`}
-          >
-            {product.status}: {product.stock} Sisa
-          </span>
-        </div>
-
-        <div className="flex h-[145px] items-center justify-center rounded-2xl bg-white">
-          <img
-            src={product.image}
-            alt={product.name}
-            className="h-[125px] w-[125px] object-contain transition duration-200 group-hover:scale-[1.03]"
-            onError={(event) => {
-              event.currentTarget.style.display = "none";
-            }}
-          />
-        </div>
-      </div>
-
-      <div className="mt-3 text-center">
-        <h3 className="text-[16px] font-bold tracking-[-0.02em] text-[#131B2E]">
-          {product.name}
-        </h3>
-
-        <p className="mt-1 text-[11px] leading-4 text-[#69738A]">
-          {product.description}
-        </p>
-      </div>
-
-      <div className="mt-5 flex items-center justify-between">
-        <span className="text-[11px] text-[#69738A]">
-          Harga Refill
-        </span>
-
-        <span className="text-[13px] font-bold text-[#131B2E]">
-          {product.price}
-        </span>
-      </div>
-
-      <div className="mt-2 h-[7px] overflow-hidden rounded-full bg-[#DDE2F0]">
-        <div
-          className={`h-full rounded-full transition-all ${
-            isAvailable ? "bg-[#36C7D3]" : "bg-[#E53232]"
-          }`}
-          style={{ width: `${percentage}%` }}
-        />
-      </div>
-
-      <div className="mt-3 flex items-center justify-between gap-2">
-        <span
-          className={`text-[10px] font-bold ${
-            isAvailable ? "text-[#087D86]" : "text-[#D93636]"
-          }`}
-        >
-          Tersedia: {product.stock} / {product.maxStock} Rak
-        </span>
-
-        <button
-          type="button"
-          className="shrink-0 rounded-lg bg-[#DCE6FF] px-3 py-1.5 text-[10px] font-bold text-[#0052FF] transition hover:bg-[#CEDCFF]"
-        >
-          + Restok
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function OrderStatus({ status }: { status: string }) {
-  const styles =
-    status === "Diantar"
-      ? "bg-[#C9F4F7] text-[#087D86]"
-      : status === "Diproses"
-        ? "bg-[#DCE7FF] text-[#164FC1]"
-        : "bg-[#BDF6C9] text-[#16752C]";
-
-  return (
-    <span className={`rounded-full px-2.5 py-1 text-[9px] font-bold ${styles}`}>
-      {status}
-    </span>
-  );
+  if (matched?.image) return matched.image;
+  if (lower.includes("minerale")) return "/products/le-minerale-15l.png";
+  if (lower.includes("cleo")) return "/products/cleo-19l.png";
+  if (lower.includes("vit")) return "/products/vit-19l.png";
+  return "/products/aqua-19l.png";
 }
 
 export default function DashboardPage() {
-  const [search, setSearch] = useState("");
-  const [mobileSidebar, setMobileSidebar] = useState(false);
+  const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
+  const [isConnected, setIsConnected] = useState(true);
+  const [products, setProducts] = useState<Product[]>(defaultProducts);
+  const [orders, setOrders] = useState<Order[]>(defaultOrders);
+  const [hasDbOrders, setHasDbOrders] = useState(false);
 
-  const filteredOrders = useMemo(() => {
-    const query = search.trim().toLowerCase();
+  // State Interaktif Baru
+  const [chartRange, setChartRange] = useState<ChartRange>("Hari Ini");
+  const [hoveredPoint, setHoveredPoint] = useState<{
+    label: string;
+    count: number;
+  } | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [standbyCalled, setStandbyCalled] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const [failedOrderImages, setFailedOrderImages] = useState<Record<string, boolean>>({});
 
-    if (!query) {
-      return orders;
-    }
-
-    return orders.filter(
-      (order) =>
-        order.id.toLowerCase().includes(query) ||
-        order.customer.toLowerCase().includes(query) ||
-        order.product.toLowerCase().includes(query),
-    );
-  }, [search]);
-
-  const handleRefresh = () => {
-    setRefreshing(true);
-
-    window.setTimeout(() => {
-      setRefreshing(false);
-    }, 900);
+  const showToast = (message: string) => {
+    setToast(message);
+    setTimeout(() => setToast(null), 3000);
   };
 
+  const fetchDashboardData = async () => {
+    setRefreshing(true);
+    const token = localStorage.getItem("token");
+    const headers: HeadersInit = {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+
+    try {
+      const [prodRes, ordRes] = await Promise.allSettled([
+        fetch(`${API_URL}/products`, { headers }),
+        fetch(`${API_URL}/orders`, { headers }),
+      ]);
+
+      let connected = false;
+      let latestProductList = products;
+
+      if (prodRes.status === "fulfilled" && prodRes.value.ok) {
+        connected = true;
+        const prodJson = await prodRes.value.json();
+        const rawProducts = Array.isArray(prodJson) ? prodJson : prodJson.data || [];
+
+        if (rawProducts.length > 0) {
+          const mappedProducts: Product[] = rawProducts.map((p: any) => {
+            const stock = Number(p.stock ?? 0);
+            const priceNum = Number(p.price ?? 0);
+            const maxStock = Number(p.maxStock ?? p.max_stock ?? 20);
+            const rawImg = p.imageUrl || p.image_url || p.image || "";
+            const fullImage = rawImg
+              ? rawImg.startsWith("http") || rawImg.startsWith("/")
+                ? rawImg
+                : `http://localhost:5000/uploads/${rawImg}`
+              : "/products/aqua-19l.png";
+
+            let status: "Kritis" | "Rendah" | "Tersedia" = "Tersedia";
+            if (stock <= 2) status = "Kritis";
+            else if (stock <= 4) status = "Rendah";
+
+            return {
+              id: p.id,
+              name: p.name,
+              description: p.description || "Air Mineral Pegunungan",
+              image: fullImage,
+              price: formatRupiah(priceNum),
+              stock,
+              maxStock,
+              status,
+            };
+          });
+          latestProductList = mappedProducts;
+          setProducts(mappedProducts);
+        }
+      }
+
+      if (ordRes.status === "fulfilled" && ordRes.value.ok) {
+        connected = true;
+        const ordJson = await ordRes.value.json();
+        const rawOrders = Array.isArray(ordJson) ? ordJson : ordJson.data || [];
+
+        if (rawOrders.length > 0) {
+          const mappedOrders: Order[] = rawOrders.map((o: any) => {
+            const priceNum = Number(o.total_price ?? o.totalAmount ?? o.total ?? o.price ?? 0);
+            const createdDate = o.created_at || o.createdAt;
+            const timeStr = createdDate
+              ? new Date(createdDate).toLocaleTimeString("id-ID", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "10:00";
+
+            const rawStatus = String(o.status || "Diproses").toLowerCase();
+            let displayStatus = o.status || "Diproses";
+            if (rawStatus === "pending" || rawStatus === "processing") displayStatus = "Diproses";
+            else if (rawStatus === "delivering" || rawStatus === "shipping") displayStatus = "Diantar";
+            else if (rawStatus === "completed" || rawStatus === "done" || rawStatus === "delivered")
+              displayStatus = "Selesai";
+
+            const productName = o.product_name || o.productName || "Aqua 19L (2 Galon)";
+            const rawOrderImg = o.product_image || o.image_url || o.image || "";
+            const resolvedImage = rawOrderImg
+              ? rawOrderImg.startsWith("http") || rawOrderImg.startsWith("/")
+                ? rawOrderImg
+                : `http://localhost:5000/uploads/${rawOrderImg}`
+              : resolveGalonImage(productName, latestProductList);
+
+            return {
+              id: o.order_code || `#ORD-${o.id}`,
+              rawId: o.id,
+              customer: o.customer_name || o.customerName || "Pelanggan GalonKu",
+              product: productName,
+              image: resolvedImage,
+              time: timeStr,
+              price: formatRupiah(priceNum),
+              priceNumber: priceNum,
+              status: displayStatus,
+              courier: o.courier_name || o.courier || "Budi Pratama",
+            };
+          });
+          setOrders(mappedOrders);
+          setHasDbOrders(true);
+        }
+      }
+
+      setIsConnected(connected);
+    } catch {
+      setIsConnected(false);
+    } finally {
+      setTimeout(() => setRefreshing(false), 500);
+    }
+  };
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+    fetchDashboardData();
+  }, [router]);
+
+  // Interaksi 1: Ubah status pesanan langsung (Diproses -> Diantar -> Selesai)
+  const handleCycleOrderStatus = async (order: Order, nextStatus?: string) => {
+    const flow = ["Diproses", "Diantar", "Selesai"];
+    const currentIndex = flow.indexOf(order.status);
+    const updatedStatus = nextStatus || flow[(currentIndex + 1) % flow.length];
+
+    setOrders((prev) =>
+      prev.map((item) => (item.id === order.id ? { ...item, status: updatedStatus } : item))
+    );
+    if (selectedOrder?.id === order.id) {
+      setSelectedOrder({ ...order, status: updatedStatus });
+    }
+    showToast(`Status ${order.id} diubah menjadi "${updatedStatus}"`);
+
+    // Sinkronkan ke backend jika terhubung
+    if (order.rawId) {
+      const token = localStorage.getItem("token");
+      try {
+        await fetch(`${API_URL}/orders/${order.rawId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ status: updatedStatus }),
+        });
+      } catch {
+        // Tetap simpan perubahan lokal jika offline
+      }
+    }
+  };
+
+  // Interaksi 2: Quick Restok (+5 Galon) langsung dari kartu produk
+  const handleQuickRestock = async (product: Product, addQty = 5) => {
+    const newStock = product.stock + addQty;
+    const newStatus: "Kritis" | "Rendah" | "Tersedia" =
+      newStock <= 2 ? "Kritis" : newStock <= 4 ? "Rendah" : "Tersedia";
+
+    setProducts((prev) =>
+      prev.map((p) =>
+        (p.id && p.id === product.id) || p.name === product.name
+          ? { ...p, stock: newStock, status: newStatus }
+          : p
+      )
+    );
+    showToast(`+${addQty} stok ditambahkan ke ${product.name} (Total: ${newStock})`);
+
+    if (product.id) {
+      const token = localStorage.getItem("token");
+      try {
+        await fetch(`${API_URL}/products/${product.id}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ stock: newStock }),
+        });
+      } catch {
+        // Tetap simpan state UI jika API patch belum tersedia
+      }
+    }
+  };
+
+  const summary = useMemo(() => {
+    const totalStock = products.reduce((acc, item) => acc + item.stock, 0);
+    const isLowStock = totalStock < 20;
+    const totalOrders = hasDbOrders ? orders.length : 48;
+    const totalRevenue = hasDbOrders
+      ? formatRupiah(orders.reduce((acc, item) => acc + (item.priceNumber || 0), 0))
+      : "Rp 864.000";
+
+    return { totalStock, isLowStock, totalOrders, totalRevenue };
+  }, [products, orders, hasDbOrders]);
+
+  const activeChart = CHART_CONFIG[chartRange];
+
   return (
-    <div className="min-h-screen bg-[#F7F8FC] text-[#131B2E]">
-      {/* MOBILE OVERLAY */}
-      {mobileSidebar && (
-        <button
-          type="button"
-          aria-label="Tutup menu"
-          className="fixed inset-0 z-40 bg-black/20 lg:hidden"
-          onClick={() => setMobileSidebar(false)}
-        />
+    <div className="space-y-4">
+      {/* Notifikasi Toast Interaktif */}
+      {toast && (
+        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-xl bg-[#131B2E] px-4 py-3 text-xs font-bold text-white shadow-xl">
+          <CheckCircle2 size={16} className="text-[#28A745]" />
+          <span>{toast}</span>
+        </div>
       )}
 
-      {/* SIDEBAR */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-[248px] flex-col border-r border-[#E9ECF4] bg-white transition-transform duration-300 lg:translate-x-0 ${
-          mobileSidebar ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        {/* BRAND */}
-        <div className="flex h-[72px] items-center border-b border-[#EEF0F5] px-6">
+      {/* 1. BANNER OPERASIONAL */}
+      <section className="rounded-2xl border border-[#EEF0F5] bg-white p-5 shadow-sm">
+        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
           <div>
-            <div className="text-[18px] font-extrabold tracking-[-0.04em] text-[#0052FF]">
-              GalonKu Admin
+            <div className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-wider text-[#087D86]">
+              <Activity size={15} />
+              Monitoring Operasional Realtime
             </div>
-
-            <div className="mt-0.5 text-[10px] font-medium text-[#6F7890]">
-              Portal Manajemen &amp; Operasional
-            </div>
+            <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-[#131B2E]">
+              Ringkasan Operasional Hari Ini
+            </h1>
+            <p className="mt-0.5 text-xs text-[#6D768A]">
+              Update terkini aktivitas refill dan inventaris Depo Kebayoran Lama (JKT-04)
+            </p>
           </div>
 
-          <button
-            type="button"
-            aria-label="Tutup menu"
-            className="ml-auto rounded-lg p-2 text-[#6F7890] hover:bg-[#F3F5FA] lg:hidden"
-            onClick={() => setMobileSidebar(false)}
-          >
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                fetchDashboardData();
+                showToast("Data dashboard berhasil diperbarui");
+              }}
+              className="flex h-10 items-center gap-2 rounded-xl bg-[#F0F3FF] px-3.5 text-xs font-bold text-[#26334C] transition hover:bg-[#E6EBFF]"
+            >
+              <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
+              Refresh Data
+            </button>
+            <div
+              className={`flex h-10 items-center gap-2 rounded-xl px-3.5 text-xs font-bold ${
+                isConnected
+                  ? "bg-[#C5F8D0] text-[#16752C]"
+                  : "bg-[#FFE0E0] text-[#D93636]"
+              }`}
+            >
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  isConnected ? "bg-[#28A745]" : "bg-[#D93636]"
+                }`}
+              />
+              {isConnected ? "Sinkron: Aktif" : "Sinkron: Terputus"}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 2. RINGKASAN STATISTIK */}
+      <section className="grid gap-4 md:grid-cols-3">
+        {/* Total Pesanan */}
+        <div className="overflow-hidden rounded-2xl border border-[#EEF0F5] bg-white">
+          <div className="flex items-start justify-between p-5">
+            <div>
+              <p className="text-xs font-medium text-[#596378]">Total Pesanan</p>
+              <div className="mt-1 flex items-baseline gap-1.5">
+                <span className="text-2xl font-extrabold text-[#0052FF]">
+                  {summary.totalOrders}
+                </span>
+                <span className="text-[10px] text-[#6C7588]">transaksi</span>
+              </div>
+            </div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#DDE7FF] text-[#0052FF]">
+              <ShoppingCart size={18} />
+            </div>
+          </div>
+          <div className="flex items-center justify-between bg-[#F2F1FF] px-5 py-2 text-[10px]">
+            <span className="flex items-center gap-1 font-semibold text-[#257143]">
+              <ArrowUpRight size={12} /> +12%{" "}
+              <span className="font-normal text-[#687289]">vs kemarin (42 pesanan)</span>
+            </span>
+            <Link href="/orders" className="font-bold text-[#087D86] hover:underline">
+              Detail →
+            </Link>
+          </div>
         </div>
 
-        {/* MENU */}
-        <div className="flex-1 overflow-y-auto px-4 py-6">
-          <p className="px-3 text-[10px] font-extrabold uppercase tracking-[0.08em] text-[#737C91]">
-            Menu Utama
-          </p>
+        {/* Pendapatan Bersih */}
+        <div className="overflow-hidden rounded-2xl border border-[#EEF0F5] bg-white">
+          <div className="flex items-start justify-between p-5">
+            <div>
+              <p className="text-xs font-medium text-[#596378]">Pendapatan Bersih</p>
+              <div className="mt-1">
+                <span className="text-2xl font-extrabold text-[#131B2E]">
+                  {summary.totalRevenue}
+                </span>
+              </div>
+            </div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#BCECF6] text-[#087D86]">
+              <WalletCards size={18} />
+            </div>
+          </div>
+          <div className="flex items-center justify-between bg-[#F1FBF4] px-5 py-2 text-[10px]">
+            <span className="flex items-center gap-1 font-semibold text-[#257143]">
+              <CheckCircle2 size={12} /> +8.5%{" "}
+              <span className="font-normal text-[#687289]">melampaui target harian</span>
+            </span>
+            <Link href="/reports" className="font-bold text-[#087D86] hover:underline">
+              Laporan →
+            </Link>
+          </div>
+        </div>
 
-          <nav className="mt-4 space-y-1.5">
-            {menuItems.map((item) => {
-              const Icon = item.icon;
-
-              return (
-                <button
-                  key={item.label}
-                  type="button"
-                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-[14px] font-semibold transition ${
-                    item.active
-                      ? "bg-[#0052FF] text-white shadow-[0_8px_18px_rgba(0,82,255,0.18)]"
-                      : "text-[#293246] hover:bg-[#F1F4FB]"
+        {/* Status Stock Galon (Dinamis sesuai totalStock) */}
+        <div className="overflow-hidden rounded-2xl border border-[#EEF0F5] bg-white">
+          <div className="flex items-start justify-between p-5">
+            <div>
+              <p className="text-xs font-medium text-[#596378]">Status Stock Galon</p>
+              <div className="mt-1 flex items-baseline gap-1.5">
+                <span
+                  className={`text-2xl font-extrabold ${
+                    summary.isLowStock ? "text-[#D93636]" : "text-[#16752C]"
                   }`}
                 >
-                  <Icon size={18} strokeWidth={1.8} />
-                  <span>{item.label}</span>
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-
-        {/* USER */}
-        <div className="border-t border-[#EEF0F5] p-4">
-          <div className="flex items-center gap-3 rounded-xl bg-[#F1F3FF] px-3 py-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#0052FF] text-white">
-              <UserRound size={18} />
+                  {summary.totalStock}
+                </span>
+                <span className="text-[10px] text-[#6C7588]">galon terisi</span>
+              </div>
             </div>
-
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[12px] font-bold text-[#131B2E]">
-                Budi Santoso
-              </p>
-
-              <p className="text-[10px] text-[#687289]">
-                Super Admin
-              </p>
-            </div>
-
-            <button
-              type="button"
-              aria-label="Keluar"
-              className="rounded-lg p-1.5 text-[#536079] hover:bg-white"
+            <div
+              className={`flex h-10 w-10 items-center justify-center rounded-xl ${
+                summary.isLowStock
+                  ? "bg-[#FFE0E0] text-[#D93636]"
+                  : "bg-[#C5F8D0] text-[#16752C]"
+              }`}
             >
-              <LogOut size={17} />
-            </button>
+              {summary.isLowStock ? <AlertTriangle size={18} /> : <CheckCircle2 size={18} />}
+            </div>
           </div>
-        </div>
-      </aside>
-
-      {/* MAIN */}
-      <div className="lg:pl-[248px]">
-        {/* HEADER */}
-        <header className="sticky top-0 z-30 flex h-[72px] items-center justify-between border-b border-[#ECEEF4] bg-white/95 px-4 backdrop-blur md:px-6">
-          <button
-            type="button"
-            aria-label="Buka menu"
-            className="rounded-xl p-2 text-[#374258] hover:bg-[#F3F5FA] lg:hidden"
-            onClick={() => setMobileSidebar(true)}
+          <div
+            className={`flex items-center justify-between px-5 py-2 text-[10px] ${
+              summary.isLowStock ? "bg-[#FFF0F0]" : "bg-[#F1FBF4]"
+            }`}
           >
-            <Menu size={22} />
-          </button>
-
-          <div className="ml-auto flex items-center gap-2 md:gap-3">
-            {/* SEARCH */}
-            <div className="relative hidden w-[270px] md:block">
-              <Search
-                size={17}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7A849A]"
-              />
-
-              <input
-                type="search"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Cari pesanan, resi, kurir..."
-                className="h-11 w-full rounded-xl border border-transparent bg-[#F2F1FC] pl-10 pr-4 text-[12px] text-[#131B2E] outline-none transition placeholder:text-[#8A91A3] focus:border-[#0052FF] focus:bg-white"
-              />
-            </div>
-
-            {/* DATE */}
-            <button
-              type="button"
-              className="hidden h-11 items-center gap-2 rounded-xl bg-[#F2F1FC] px-4 text-[12px] font-bold text-[#293246] sm:flex"
+            <span
+              className={`flex items-center gap-1 font-semibold ${
+                summary.isLowStock ? "text-[#D93636]" : "text-[#16752C]"
+              }`}
             >
-              <CalendarDays size={16} className="text-[#0052FF]" />
-              {formatToday()}
-            </button>
-
-            {/* NOTIFICATION */}
-            <button
-              type="button"
-              aria-label="Notifikasi"
-              className="relative flex h-11 w-11 items-center justify-center rounded-xl hover:bg-[#F3F5FA]"
+              <Boxes size={12} />
+              {summary.isLowStock ? "Perlu Restok Segera" : "Stok Depo Aman"}{" "}
+              <span className="font-normal text-[#687289]">
+                ({summary.isLowStock ? "< 20 unit" : "siap kirim"})
+              </span>
+            </span>
+            <Link
+              href="/products"
+              className={`font-bold hover:underline ${
+                summary.isLowStock ? "text-[#D93636]" : "text-[#16752C]"
+              }`}
             >
-              <Bell size={20} />
-              <span className="absolute right-2.5 top-2 h-2 w-2 rounded-full bg-[#D93636]" />
-            </button>
-
-            {/* CREATE */}
-            <button
-              type="button"
-              className="hidden h-11 items-center gap-2 rounded-xl bg-[#0052FF] px-4 text-[12px] font-bold text-white shadow-[0_6px_14px_rgba(0,82,255,0.16)] transition hover:bg-[#0047DE] sm:flex"
-            >
-              <Plus size={17} />
-              Buat Pesanan
-            </button>
+              {summary.isLowStock ? "Restok →" : "Kelola →"}
+            </Link>
           </div>
-        </header>
+        </div>
+      </section>
 
-        {/* CONTENT */}
-        <main className="mx-auto max-w-[1500px] p-4 md:p-6">
-          {/* SEARCH MOBILE */}
-          <div className="mb-4 md:hidden">
-            <div className="relative">
-              <Search
-                size={17}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7A849A]"
-              />
-
-              <input
-                type="search"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Cari pesanan, resi, kurir..."
-                className="h-11 w-full rounded-xl border border-[#E6E9F1] bg-white pl-10 pr-4 text-[12px] outline-none focus:border-[#0052FF]"
-              />
+      {/* 3. GRAFIK & PESANAN TERBARU */}
+      <section className="grid gap-4 xl:grid-cols-[1.55fr_0.85fr]">
+        {/* Grafik Interaktif */}
+        <div className="rounded-2xl border border-[#EEF0F5] bg-white p-5">
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-extrabold text-[#131B2E]">Grafik Pesanan</h2>
+                <span className="rounded bg-[#EEF0FF] px-2 py-0.5 text-[9px] font-bold text-[#0052FF]">
+                  Realtime
+                </span>
+              </div>
+              <p className="mt-0.5 text-[10px] text-[#6C7588]">{activeChart.subtitle}</p>
+            </div>
+            <div className="flex rounded-xl bg-[#F0F1FF] p-1">
+              {(["Hari Ini", "Mingguan", "Bulanan"] as ChartRange[]).map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => {
+                    setChartRange(item);
+                    setHoveredPoint(null);
+                  }}
+                  className={`rounded-lg px-2.5 py-1 text-[9px] font-bold transition ${
+                    chartRange === item
+                      ? "bg-white text-[#0052FF] shadow-sm"
+                      : "text-[#626C80] hover:text-[#131B2E]"
+                  }`}
+                >
+                  {item}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* PAGE INTRO */}
-          <section className="rounded-2xl border border-[#EEF0F5] bg-white p-5 shadow-[0_2px_10px_rgba(19,27,46,0.02)] md:p-6">
-            <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-center">
-              <div>
-                <div className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.04em] text-[#087D86]">
-                  <Activity size={15} />
-                  Monitoring Operasional Realtime
-                </div>
-
-                <h1 className="mt-1 text-[22px] font-extrabold tracking-[-0.035em] text-[#131B2E] md:text-[24px]">
-                  Ringkasan Operasional Hari Ini
-                </h1>
-
-                <p className="mt-1 text-[11px] text-[#6D768A]">
-                  Update terkini aktivitas refill dan inventaris Depo
-                  Kebayoran Lama (JKT-04)
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  className="flex h-10 items-center gap-2 rounded-xl bg-[#F0F3FF] px-3 text-[11px] font-bold text-[#26334C]"
-                >
-                  <CalendarDays size={15} className="text-[#0052FF]" />
-                  Hari ini: 12 Agu 2026
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleRefresh}
-                  className="flex h-10 items-center gap-2 rounded-xl bg-[#F0F3FF] px-3 text-[11px] font-bold text-[#26334C] transition hover:bg-[#E6EBFF]"
-                >
-                  <RefreshCw
-                    size={15}
-                    className={refreshing ? "animate-spin" : ""}
-                  />
-                  Refresh Data
-                </button>
-
-                <div className="flex h-10 items-center gap-2 rounded-xl bg-[#C5F8D0] px-3 text-[11px] font-bold text-[#16752C]">
-                  <span className="h-2 w-2 rounded-full bg-[#28A745]" />
-                  Sinkron: Aktif
-                </div>
-              </div>
+          <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl bg-[#F1F1FF] p-3 text-center">
+            <div>
+              <p className="text-[9px] text-[#687289]">{activeChart.peakLabel}</p>
+              <p className="text-xs font-extrabold text-[#131B2E]">{activeChart.peakValue}</p>
+              <p className="text-[9px] text-[#687289]">{activeChart.peakSub}</p>
             </div>
-          </section>
-
-          {/* STAT CARDS */}
-          <section className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {/* TOTAL ORDER */}
-            <div className="overflow-hidden rounded-2xl border border-[#EEF0F5] bg-white">
-              <div className="flex items-start justify-between p-5">
-                <div>
-                  <p className="text-[12px] font-medium text-[#596378]">
-                    Total Pesanan
-                  </p>
-
-                  <div className="mt-1 flex items-end gap-2">
-                    <span className="text-[23px] font-extrabold text-[#0052FF]">
-                      48
-                    </span>
-
-                    <span className="mb-1 text-[10px] text-[#6C7588]">
-                      transaksi
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#DDE7FF] text-[#0052FF]">
-                  <ShoppingCart size={20} />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between bg-[#F2F1FF] px-5 py-2.5">
-                <span className="flex items-center gap-1 text-[10px] font-semibold text-[#257143]">
-                  <ArrowUpRight size={13} />
-                  +12%
-                  <span className="font-normal text-[#687289]">
-                    vs kemarin (42 pesanan)
-                  </span>
-                </span>
-
-                <button className="text-[10px] font-bold text-[#087D86]">
-                  Detail →
-                </button>
-              </div>
+            <div>
+              <p className="text-[9px] text-[#687289]">Rata-rata Pengiriman</p>
+              <p className="text-xs font-extrabold text-[#087D86]">{activeChart.avgDelivery}</p>
             </div>
-
-            {/* REVENUE */}
-            <div className="overflow-hidden rounded-2xl border border-[#EEF0F5] bg-white">
-              <div className="flex items-start justify-between p-5">
-                <div>
-                  <p className="text-[12px] font-medium text-[#596378]">
-                    Pendapatan Bersih
-                  </p>
-
-                  <div className="mt-1">
-                    <span className="text-[23px] font-extrabold text-[#131B2E]">
-                      Rp 864.000
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#BCECF6] text-[#087D86]">
-                  <WalletCards size={20} />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between bg-[#F1FBF4] px-5 py-2.5">
-                <span className="flex items-center gap-1 text-[10px] font-semibold text-[#257143]">
-                  <CheckCircle2 size={13} />
-                  +8.5%
-                  <span className="font-normal text-[#687289]">
-                    melampaui target harian
-                  </span>
-                </span>
-
-                <button className="text-[10px] font-bold text-[#087D86]">
-                  Laporan →
-                </button>
-              </div>
+            <div>
+              <p className="text-[9px] text-[#687289]">Tingkat Penyelesaian</p>
+              <p className="text-xs font-extrabold text-[#16752C]">
+                {activeChart.completionRate}
+              </p>
             </div>
+          </div>
 
-            {/* STOCK */}
-            <div className="overflow-hidden rounded-2xl border border-[#EEF0F5] bg-white">
-              <div className="flex items-start justify-between p-5">
-                <div>
-                  <p className="text-[12px] font-medium text-[#596378]">
-                    Status Stock Galon
-                  </p>
-
-                  <div className="mt-1 flex items-end gap-2">
-                    <span className="text-[23px] font-extrabold text-[#D93636]">
-                      12
-                    </span>
-
-                    <span className="mb-1 text-[10px] text-[#6C7588]">
-                      galon terisi
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FFE0E0] text-[#D93636]">
-                  <AlertTriangle size={20} />
-                </div>
+          <div className="relative mt-4 h-[220px] w-full">
+            {hoveredPoint && (
+              <div className="absolute right-3 top-2 z-10 rounded-lg bg-[#131B2E] px-2.5 py-1 text-[10px] font-bold text-white shadow">
+                {hoveredPoint.label}: {hoveredPoint.count} pesanan
               </div>
-
-              <div className="flex items-center justify-between bg-[#FFF0F0] px-5 py-2.5">
-                <span className="flex items-center gap-1 text-[10px] font-semibold text-[#D93636]">
-                  <Boxes size={13} />
-                  Perlu Restok Segera
-                  <span className="font-normal text-[#687289]">
-                    (&lt; 20 unit)
-                  </span>
-                </span>
-
-                <button className="text-[10px] font-bold text-[#D93636]">
-                  Restok →
-                </button>
-              </div>
-            </div>
-          </section>
-
-          {/* CHART + ORDERS */}
-          <section className="mt-4 grid gap-4 xl:grid-cols-[1.55fr_0.85fr]">
-            {/* CHART */}
-            <div className="rounded-2xl border border-[#EEF0F5] bg-white p-5 md:p-6">
-              <div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-[18px] font-extrabold tracking-[-0.03em]">
-                      Grafik Pesanan
-                    </h2>
-
-                    <span className="rounded-md bg-[#EEF0FF] px-2 py-1 text-[9px] font-bold text-[#0052FF]">
-                      Realtime
-                    </span>
-                  </div>
-
-                  <p className="mt-1 text-[10px] text-[#6C7588]">
-                    Fluktuasi lonjakan pesanan jam kerja per 2 jam (08:00
-                    - 18:00)
-                  </p>
-                </div>
-
-                <div className="flex rounded-xl bg-[#F0F1FF] p-1">
-                  {["Hari Ini", "Mingguan", "Bulanan"].map((item, index) => (
-                    <button
-                      key={item}
-                      type="button"
-                      className={`rounded-lg px-3 py-2 text-[9px] font-bold ${
-                        index === 0
-                          ? "bg-white text-[#0052FF] shadow-sm"
-                          : "text-[#626C80]"
-                      }`}
-                    >
-                      {item}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* CHART SUMMARY */}
-              <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl bg-[#F1F1FF] p-3">
-                <div>
-                  <p className="text-[9px] text-[#687289]">
-                    Jam Puncak (Peak)
-                  </p>
-                  <p className="mt-1 text-[11px] font-extrabold text-[#131B2E]">
-                    11:00 - 13:00
-                  </p>
-                  <p className="text-[9px] font-semibold text-[#131B2E]">
-                    (15 pesanan)
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-[9px] text-[#687289]">
-                    Rata-rata Pengiriman
-                  </p>
-                  <p className="mt-1 text-[11px] font-extrabold text-[#087D86]">
-                    22.4 Menit
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-[9px] text-[#687289]">
-                    Tingkat Penyelesaian
-                  </p>
-                  <p className="mt-1 text-[11px] font-extrabold text-[#16752C]">
-                    96.8% Sukses
-                  </p>
-                </div>
-              </div>
-
-              {/* CHART */}
-              <div className="relative mt-5 h-[260px] w-full overflow-hidden">
-                <div className="absolute left-0 right-0 top-[40px] border-t border-dashed border-[#DDE1EA]" />
-                <div className="absolute left-0 right-0 top-[90px] border-t border-dashed border-[#DDE1EA]" />
-                <div className="absolute left-0 right-0 top-[140px] border-t border-dashed border-[#DDE1EA]" />
-                <div className="absolute left-0 right-0 top-[190px] border-t border-dashed border-[#DDE1EA]" />
-
-                <svg
-                  viewBox="0 0 800 240"
-                  className="absolute inset-0 h-full w-full"
-                  preserveAspectRatio="none"
-                  aria-label="Grafik pesanan"
-                >
-                  <defs>
-                    <linearGradient
-                      id="chartArea"
-                      x1="0"
-                      y1="0"
-                      x2="0"
-                      y2="1"
-                    >
-                      <stop
-                        offset="0%"
-                        stopColor="#0052FF"
-                        stopOpacity="0.28"
-                      />
-                      <stop
-                        offset="100%"
-                        stopColor="#0052FF"
-                        stopOpacity="0.03"
-                      />
-                    </linearGradient>
-                  </defs>
-
-                  <path
-                    d="M0 185 C70 170 95 135 160 125 C230 115 280 42 360 36 C420 31 455 94 510 76 C590 50 650 70 800 42 L800 215 L0 215 Z"
-                    fill="url(#chartArea)"
-                  />
-
-                  <path
-                    d="M0 185 C70 170 95 135 160 125 C230 115 280 42 360 36 C420 31 455 94 510 76 C590 50 650 70 800 42"
-                    fill="none"
-                    stroke="#0052FF"
-                    strokeWidth="4"
-                    strokeLinecap="round"
-                  />
-
-                  <path
-                    d="M0 174 C70 162 100 144 160 150 C225 158 275 118 360 112 C430 106 470 123 520 116 C620 104 680 76 800 70"
-                    fill="none"
-                    stroke="#087D86"
-                    strokeWidth="2"
-                    strokeDasharray="6 6"
-                  />
-
+            )}
+            <svg viewBox="0 0 800 240" className="h-full w-full overflow-visible">
+              <defs>
+                <linearGradient id="chartArea" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#0052FF" stopOpacity="0.28" />
+                  <stop offset="100%" stopColor="#0052FF" stopOpacity="0.03" />
+                </linearGradient>
+              </defs>
+              <path d={activeChart.areaPath} fill="url(#chartArea)" />
+              <path
+                d={activeChart.path}
+                fill="none"
+                stroke="#0052FF"
+                strokeWidth="4"
+                strokeLinecap="round"
+              />
+              {activeChart.points.map((pt) => (
+                <g key={pt.label}>
                   <circle
-                    cx="160"
-                    cy="125"
-                    r="5"
+                    cx={pt.x}
+                    cy={pt.y}
+                    r={6}
                     fill="#FFFFFF"
                     stroke="#0052FF"
-                    strokeWidth="3"
+                    strokeWidth={3}
+                    className="cursor-pointer transition-transform hover:scale-125"
+                    onMouseEnter={() => setHoveredPoint({ label: pt.label, count: pt.count })}
+                    onMouseLeave={() => setHoveredPoint(null)}
                   />
-
-                  <circle
-                    cx="360"
-                    cy="36"
-                    r="5"
-                    fill="#FFFFFF"
-                    stroke="#0052FF"
-                    strokeWidth="3"
-                  />
-
-                  <circle
-                    cx="510"
-                    cy="76"
-                    r="5"
-                    fill="#FFFFFF"
-                    stroke="#0052FF"
-                    strokeWidth="3"
-                  />
-
-                  <circle
-                    cx="800"
-                    cy="42"
-                    r="5"
-                    fill="#FFFFFF"
-                    stroke="#0052FF"
-                    strokeWidth="3"
-                  />
-                </svg>
-
-                <div className="absolute left-0 right-0 bottom-3 flex justify-between px-2 text-[9px] text-[#69738A]">
-                  <span>08:00</span>
-                  <span>10:00</span>
-                  <span>12:00</span>
-                  <span>14:00</span>
-                  <span>16:00</span>
-                  <span>18:00</span>
-                </div>
-              </div>
-
-              <div className="flex flex-col justify-between gap-3 border-t border-[#EEF0F5] pt-4 text-[9px] text-[#596378] sm:flex-row sm:items-center">
-                <div className="flex items-center gap-4">
-                  <span className="flex items-center gap-1.5">
-                    <span className="h-2.5 w-2.5 rounded-full bg-[#0052FF]" />
-                    Hari Ini (Aktual)
-                  </span>
-
-                  <span className="flex items-center gap-1.5">
-                    <span className="h-0.5 w-4 border-t-2 border-dashed border-[#087D86]" />
-                    Rata-rata 7 Hari
-                  </span>
-                </div>
-
-                <span className="font-bold text-[#40495C]">
-                  Estimasi Tutup Buka: 21:00
-                </span>
-              </div>
-            </div>
-
-            {/* RECENT ORDERS */}
-            <div className="rounded-2xl border border-[#EEF0F5] bg-white p-5 md:p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-[18px] font-extrabold tracking-[-0.03em]">
-                      Pesanan Terbaru
-                    </h2>
-
-                    <span className="rounded-md bg-[#DDF0FF] px-2 py-1 text-[9px] font-bold text-[#0052FF]">
-                      Live Feed
-                    </span>
-                  </div>
-
-                  <p className="mt-1 text-[10px] text-[#6C7588]">
-                    5 antrean pesanan terakhir masuk dari aplikasi konsumen
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  className="hidden text-[10px] font-bold text-[#0052FF] sm:block"
-                >
-                  Lihat Semua →
-                </button>
-              </div>
-
-              <div className="mt-4 space-y-2">
-                {filteredOrders.map((order) => (
-                  <div
-                    key={order.id}
-                    className="flex items-center gap-2 rounded-xl bg-[#F1F2FF] p-2.5"
+                  <text
+                    x={pt.x}
+                    y={232}
+                    textAnchor="middle"
+                    className="fill-[#687289] text-[11px] font-medium"
                   >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-[#0052FF]">
-                      <Package size={17} />
-                    </div>
+                    {pt.label}
+                  </text>
+                </g>
+              ))}
+            </svg>
+          </div>
+        </div>
 
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1">
-                        <span className="text-[11px] font-extrabold text-[#131B2E]">
-                          {order.id}
-                        </span>
+        {/* Pesanan Terbaru dengan Foto Galon & Klik Status */}
+        <div className="flex flex-col justify-between rounded-2xl border border-[#EEF0F5] bg-white p-5">
+          <div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-extrabold text-[#131B2E]">Pesanan Terbaru</h2>
+                <span className="rounded bg-[#DDF0FF] px-2 py-0.5 text-[9px] font-bold text-[#0052FF]">
+                  Live Feed
+                </span>
+              </div>
+              <Link href="/orders" className="text-[10px] font-bold text-[#0052FF] hover:underline">
+                Lihat Semua →
+              </Link>
+            </div>
+            <p className="mt-0.5 text-[10px] text-[#6C7588]">
+              Klik badge status untuk ubah cepat atau klik item untuk detail
+            </p>
 
-                        <span className="text-[9px] text-[#7A8498]">
-                          • {order.time}
-                        </span>
+            <div className="mt-3 space-y-2">
+              {orders.slice(0, 4).map((ord) => {
+                const galonImgSrc = ord.image || resolveGalonImage(ord.product, products);
+                const imgBroken = failedOrderImages[ord.id];
+
+                return (
+                  <div
+                    key={ord.id}
+                    onClick={() => setSelectedOrder(ord)}
+                    className="flex cursor-pointer items-center justify-between rounded-xl border border-transparent bg-[#F4F6FD] p-2.5 transition hover:border-[#0052FF]/30 hover:bg-[#EDF1FC]"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      {/* Foto Galon Sesuai Produk yang Dipesan */}
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[#E4E8F5] bg-white p-1">
+                        {!imgBroken ? (
+                          <img
+                            src={galonImgSrc}
+                            alt={ord.product}
+                            className="h-full w-full object-contain"
+                            onError={() =>
+                              setFailedOrderImages((prev) => ({ ...prev, [ord.id]: true }))
+                            }
+                          />
+                        ) : (
+                          <Package size={16} className="text-[#0052FF]" />
+                        )}
                       </div>
 
-                      <p className="truncate text-[9px] text-[#313A4E]">
-                        {order.customer}
-                      </p>
-
-                      <p className="truncate text-[9px] font-semibold text-[#087D86]">
-                        {order.product}
-                      </p>
+                      <div>
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-[#131B2E]">
+                          <span>{ord.id}</span>
+                          <span className="text-[9px] font-normal text-[#7A8498]">{ord.time}</span>
+                        </div>
+                        <p className="text-[10px] text-[#69738A]">{ord.customer}</p>
+                        <p className="text-[10px] font-semibold text-[#087D86]">{ord.product}</p>
+                      </div>
                     </div>
 
                     <div className="text-right">
-                      <OrderStatus status={order.status} />
-
-                      <p className="mt-1 text-[10px] font-extrabold text-[#131B2E]">
-                        {order.price}
-                      </p>
+                      <button
+                        type="button"
+                        title="Klik untuk ganti status pesanan"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCycleOrderStatus(ord);
+                        }}
+                        className={`rounded-full px-2 py-0.5 text-[9px] font-bold transition hover:opacity-80 ${
+                          ord.status === "Diantar"
+                            ? "bg-[#C9F4F7] text-[#087D86]"
+                            : ord.status === "Diproses"
+                            ? "bg-[#DCE7FF] text-[#164FC1]"
+                            : "bg-[#BDF6C9] text-[#16752C]"
+                        }`}
+                      >
+                        ● {ord.status}
+                      </button>
+                      <p className="mt-1 text-xs font-bold text-[#131B2E]">{ord.price}</p>
                     </div>
                   </div>
-                ))}
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="mt-3 flex items-center justify-between rounded-xl bg-[#EEF1FF] p-3 text-[#131B2E]">
+            <span className="text-[10px] font-semibold">
+              Masuk antrean baru? Segera tugaskan kurir
+            </span>
+            <Link
+              href="/orders"
+              className="rounded-lg bg-[#0052FF] px-3 py-1.5 text-[10px] font-bold text-white hover:bg-[#0047DE]"
+            >
+              Dispatch Kurir
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* 4. STOK GALON FISIK DI DEPO */}
+      <section className="rounded-2xl border border-[#EEF0F5] bg-white p-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <Boxes size={18} className="text-[#0052FF]" />
+              <h2 className="text-base font-extrabold text-[#131B2E]">
+                Status Stok Galon Fisik di Depo
+              </h2>
+            </div>
+            <p className="mt-0.5 text-[10px] text-[#69738A]">
+              Ketersediaan galon isi siap dikirim berdasarkan inventaris rak fisik Depo JKT-04
+            </p>
+          </div>
+          <Link
+            href="/products"
+            className="flex items-center gap-1.5 rounded-xl bg-[#0052FF] px-4 py-2 text-xs font-bold text-white hover:bg-[#0047DE]"
+          >
+            <Plus size={15} /> Pesan Restok Pabrik
+          </Link>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {products.map((p) => (
+            <div
+              key={p.id || p.name}
+              className="rounded-2xl border border-[#E9ECF8] bg-[#F4F5FF] p-3 transition hover:border-[#0052FF]/30"
+            >
+              <div className="mb-2 flex items-center justify-between text-[10px] font-bold">
+                <span
+                  className={`rounded-full px-2 py-0.5 ${
+                    p.status === "Tersedia"
+                      ? "bg-[#CFF7F6] text-[#087D86]"
+                      : "bg-[#FFE0E0] text-[#D93636]"
+                  }`}
+                >
+                  ● {p.status}: {p.stock} Sisa
+                </span>
               </div>
-
-              <div className="mt-3 flex items-center justify-between rounded-xl bg-[#EEF1FF] p-3">
-                <div>
-                  <p className="text-[9px] font-semibold text-[#354057]">
-                    Masuk antrean baru? Segera
-                  </p>
-                  <p className="text-[9px] text-[#657087]">
-                    tugaskan kurir
-                  </p>
-                </div>
-
+              <div className="flex h-28 items-center justify-center rounded-xl bg-white p-2">
+                <img
+                  src={p.image}
+                  alt={p.name}
+                  className="h-24 object-contain"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
+                />
+              </div>
+              <div className="mt-2 text-center">
+                <h3 className="text-sm font-bold text-[#131B2E]">{p.name}</h3>
+                <p className="text-[10px] text-[#69738A]">{p.description}</p>
+              </div>
+              <div className="mt-3 flex items-center justify-between text-xs">
+                <span className="text-[10px] text-[#69738A]">Harga Refill</span>
+                <span className="font-bold text-[#131B2E]">{p.price}</span>
+              </div>
+              <div className="mt-2 flex items-center justify-between gap-2 border-t border-[#E0E4F0] pt-2 text-[10px]">
+                <span className="font-bold text-[#087D86]">
+                  Tersedia: {p.stock}/{p.maxStock} Rak
+                </span>
                 <button
                   type="button"
-                  className="flex items-center gap-2 rounded-lg bg-[#0052FF] px-3 py-2 text-[9px] font-bold text-white transition hover:bg-[#0047DE]"
+                  onClick={() => handleQuickRestock(p, 5)}
+                  className="rounded-lg bg-[#DCE6FF] px-2.5 py-1 font-bold text-[#0052FF] transition hover:bg-[#0052FF] hover:text-white"
                 >
-                  <Truck size={14} />
-                  Dispatch Kurir
+                  + Restok (+5)
                 </button>
               </div>
             </div>
-          </section>
+          ))}
+        </div>
+      </section>
 
-          {/* STOCK */}
-          <section className="mt-4 rounded-2xl border border-[#EEF0F5] bg-white p-5 md:p-6">
-            <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-              <div>
-                <div className="flex items-center gap-2">
-                  <Boxes size={20} className="text-[#0052FF]" />
-
-                  <h2 className="text-[18px] font-extrabold tracking-[-0.03em]">
-                    Status Stok Galon Fisik di Depo
-                  </h2>
-                </div>
-
-                <p className="mt-1 text-[10px] text-[#69738A]">
-                  Ketersediaan galon isi siap dikirim berdasarkan inventaris
-                  fisik Depo JKT-04
-                </p>
+      {/* 5. ARMADA PENGANTARAN AKTIF */}
+      <section className="rounded-2xl border border-[#EEF0F5] bg-white p-3">
+        <div className="flex flex-col gap-3 rounded-xl bg-[#EEF1FF] p-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-[#0052FF]">
+              <Truck size={20} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-xs font-bold text-[#131B2E]">Armada Pengantaran Aktif</h3>
+                <span className="rounded-md bg-[#C5F8D0] px-2 py-0.5 text-[9px] font-bold text-[#16752C]">
+                  {standbyCalled ? "5 Kurir Beroperasi" : "4 Kurir Beroperasi"}
+                </span>
               </div>
+              <p className="text-[10px] text-[#69738A]">
+                Budi Pratama (8 galon), Joko Susilo (6 galon), Ahmad D. (4 galon),{" "}
+                {standbyCalled ? "Indra (Aktif Mengantar)" : "Indra (Standby di Depo)"}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/monitoring"
+              className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-[#293246] hover:bg-slate-50"
+            >
+              Live Map GPS
+            </Link>
+            <button
+              type="button"
+              disabled={standbyCalled}
+              onClick={() => {
+                setStandbyCalled(true);
+                showToast("Kurir Indra berhasil dipanggil untuk pengantaran!");
+              }}
+              className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold text-white transition ${
+                standbyCalled
+                  ? "cursor-default bg-[#16752C]"
+                  : "bg-[#0052FF] hover:bg-[#0047DE]"
+              }`}
+            >
+              {standbyCalled && <UserCheck size={14} />}
+              {standbyCalled ? "Semua Kurir Aktif" : "Panggil Kurir Standby"}
+            </button>
+          </div>
+        </div>
+      </section>
 
+      {/* MODAL DETAIL & UPDATE PESANAN */}
+      {selectedOrder && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs"
+          onClick={() => setSelectedOrder(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-[#EEF0F5] pb-3">
+              <div>
+                <h3 className="text-base font-extrabold text-[#131B2E]">
+                  Detail Pesanan {selectedOrder.id}
+                </h3>
+                <p className="text-[11px] text-[#69738A]">Masuk pukul {selectedOrder.time}</p>
+              </div>
               <button
                 type="button"
-                className="flex w-fit items-center gap-2 rounded-xl bg-[#0052FF] px-4 py-2.5 text-[10px] font-bold text-white shadow-[0_5px_12px_rgba(0,82,255,0.14)] transition hover:bg-[#0047DE]"
+                onClick={() => setSelectedOrder(null)}
+                className="rounded-lg p-1.5 text-[#69738A] hover:bg-[#F2F4FA]"
               >
-                <Plus size={15} />
-                Pesan Restok Pabrik
+                <X size={18} />
               </button>
             </div>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {products.map((product) => (
-                <ProductCard key={product.name} product={product} />
-              ))}
-            </div>
-          </section>
-
-          {/* DELIVERY FLEET */}
-          <section className="mt-4 rounded-2xl border border-[#EEF0F5] bg-white p-3 md:p-4">
-            <div className="flex flex-col gap-4 rounded-2xl bg-[#EEF1FF] p-4 md:flex-row md:items-center md:justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-[#0052FF]">
-                  <Truck size={21} />
-                </div>
-
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-[16px] font-extrabold">
-                      Armada Pengantaran Aktif
-                    </h2>
-
-                    <span className="rounded-full bg-[#BDF6C9] px-2.5 py-1 text-[9px] font-bold text-[#16752C]">
-                      4 Kurir Beroperasi
-                    </span>
-                  </div>
-
-                  <p className="mt-1 text-[10px] text-[#687289]">
-                    Budi Pratama (8 galon), Joko Susilo (6 galon), Ahmad D.
-                    (4 galon), Indra (Standby di Depo)
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-[10px] font-bold text-[#293246] shadow-sm transition hover:bg-[#F8F9FD]"
-                >
-                  <MapPinned size={15} className="text-[#0052FF]" />
-                  Live Map GPS
-                </button>
-
-                <button
-                  type="button"
-                  className="flex items-center gap-2 rounded-xl bg-[#0052FF] px-4 py-2.5 text-[10px] font-bold text-white transition hover:bg-[#0047DE]"
-                >
-                  <Truck size={15} />
-                  Panggil Kurir Standby
-                </button>
+            <div className="mt-4 flex items-center gap-3 rounded-xl bg-[#F4F6FD] p-3">
+              <img
+                src={selectedOrder.image || resolveGalonImage(selectedOrder.product, products)}
+                alt={selectedOrder.product}
+                className="h-14 w-14 rounded-lg bg-white object-contain p-1"
+              />
+              <div>
+                <p className="text-xs font-bold text-[#131B2E]">{selectedOrder.customer}</p>
+                <p className="text-xs font-semibold text-[#087D86]">{selectedOrder.product}</p>
+                <p className="mt-0.5 text-xs font-extrabold text-[#131B2E]">
+                  {selectedOrder.price}
+                </p>
               </div>
             </div>
-          </section>
 
-          {/* FOOTER */}
-          <footer className="flex flex-col items-center justify-between gap-2 px-1 py-6 text-[9px] text-[#8A91A3] md:flex-row">
-            <span>© 2026 GalonKu. All Rights Reserved.</span>
+            <div className="mt-4">
+              <p className="mb-2 text-xs font-bold text-[#293246]">Update Status Pengiriman:</p>
+              <div className="grid grid-cols-3 gap-2">
+                {["Diproses", "Diantar", "Selesai"].map((st) => (
+                  <button
+                    key={st}
+                    type="button"
+                    onClick={() => handleCycleOrderStatus(selectedOrder, st)}
+                    className={`rounded-xl py-2 text-xs font-bold transition ${
+                      selectedOrder.status === st
+                        ? "bg-[#0052FF] text-white shadow-sm"
+                        : "bg-[#F2F4FA] text-[#596378] hover:bg-[#E5E9F5]"
+                    }`}
+                  >
+                    {st}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-            <div className="flex items-center gap-3">
-              <button type="button" className="hover:text-[#0052FF]">
-                Pusat Bantuan
-              </button>
-
-              <span>•</span>
-
-              <button type="button" className="hover:text-[#0052FF]">
-                Privasi &amp; Kebijakan Internal
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedOrder(null)}
+                className="rounded-xl bg-[#131B2E] px-4 py-2 text-xs font-bold text-white"
+              >
+                Tutup
               </button>
             </div>
-          </footer>
-        </main>
-      </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
