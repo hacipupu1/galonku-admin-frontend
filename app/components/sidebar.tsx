@@ -58,11 +58,17 @@ export default function Sidebar() {
   const pathname = usePathname() || '';
   const router = useRouter();
 
-  // State dropdown terbuka/tertutup (default tertutup)
   const [isMonitoringOpen, setIsMonitoringOpen] = useState(false);
 
+  if (pathname === '/login' || pathname === '/') {
+    return null;
+  }
+
   const handleLogout = () => {
-    router.push('/login');
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    document.cookie = 'token=; path=/; max-age=0';
+    router.replace('/login');
   };
 
   return (
@@ -87,28 +93,23 @@ export default function Sidebar() {
           {menuItems.map((item) => {
             const Icon = item.icon;
 
-            // BILA MENU MEMILIKI SUB-MENU (Monitoring Pengantaran)
             if (item.children) {
-              // Halaman persis /monitoring
               const isParentExactActive = pathname === item.href;
-              // Sub-menu /monitoring/kurir-lapangan sedang aktif
               const isChildActive = item.children.some((child) =>
                 child.aliases.some((alias) => pathname === alias)
               );
 
               return (
                 <div key={item.name} className="flex flex-col gap-1.5">
-                  {/* Container Menu Utama Monitoring */}
                   <div
                     className={`flex w-full items-center justify-between rounded-xl transition-all duration-150 ${
                       isParentExactActive
-                        ? 'bg-[#2563EB] text-white shadow-md' // Biru Solid saat di /monitoring
+                        ? 'bg-[#2563EB] text-white shadow-md'
                         : isChildActive
-                        ? 'bg-[#F0F5FF] text-[#2563EB]' // Biru Muda jika Kurir Lapangan yang aktif
-                        : 'text-slate-600 hover:bg-slate-50' // Putih Netral untuk hal lain (misal Dashboard)
+                        ? 'bg-[#F0F5FF] text-[#2563EB]'
+                        : 'text-slate-600 hover:bg-slate-50'
                     }`}
                   >
-                    {/* LINK UTAMA: Klik teks/icon ini akan mengarah ke /monitoring */}
                     <Link
                       href={item.href}
                       className="flex items-center gap-3 px-3.5 py-3 text-xs font-bold flex-1 min-w-0"
@@ -126,7 +127,6 @@ export default function Sidebar() {
                       <span className="whitespace-nowrap">{item.name}</span>
                     </Link>
 
-                    {/* TOMBOL PANAH: Khusus untuk Buka / Tutup Sub-menu */}
                     <button
                       type="button"
                       onClick={(e) => {
@@ -151,13 +151,10 @@ export default function Sidebar() {
                     </button>
                   </div>
 
-                  {/* Sub-menu Kurir Lapangan (Hanya muncul jika Panah di-klik) */}
                   {isMonitoringOpen && (
                     <div className="flex items-center gap-2 pl-3 py-0.5">
-                      {/* Garis Vertikal Kiri */}
                       <div className="h-8 w-[2px] rounded-full bg-blue-400 shrink-0 ml-1.5" />
 
-                      {/* Item Sub-Menu */}
                       <div className="flex-1 flex flex-col gap-1">
                         {item.children.map((subItem) => {
                           const isSubActive = subItem.aliases.some(
@@ -192,7 +189,6 @@ export default function Sidebar() {
               );
             }
 
-            // MENU BIASA (Dashboard, Pesanan, Produk, Laporan)
             const isActive = item.aliases.some(
               (alias) => pathname === alias || (alias !== '/' && pathname.startsWith(alias))
             );

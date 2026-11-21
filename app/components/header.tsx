@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import {
   Search,
   CalendarDays,
@@ -73,6 +74,8 @@ export default function Header({
   onDateChange,
   onCreateOrder,
 }: HeaderProps) {
+  const pathname = usePathname() || '';
+
   // 1. State Pencarian
   const [search, setSearch] = useState('');
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
@@ -109,6 +112,11 @@ export default function Header({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Sembunyikan header saat berada di halaman login atau root redirect
+  if (pathname === '/login' || pathname === '/') {
+    return null;
+  }
 
   const triggerToast = (msg: string) => {
     setToastMessage(msg);
