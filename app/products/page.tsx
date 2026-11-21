@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Droplets,
   RefreshCw,
@@ -138,7 +138,19 @@ export default function ProductsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [savingId, setSavingId] = useState<string | number | null>(null);
 
-  // Modal Update Produk (Stok, Harga Jual, Harga Modal, Botol Kosong)
+  // Modal Tambah Produk Baru
+  const [showAddProductModal, setShowAddProductModal] = useState(false);
+  const [isAddingProduct, setIsAddingProduct] = useState(false);
+  const [newProductForm, setNewProductForm] = useState({
+    name: '',
+    type: 'Galon Tukar Refill',
+    description: 'Air Mineral Pegunungan Alami',
+    price: 18000,
+    costPrice: 14000,
+    stock: 30,
+  });
+
+  // Modal Update Produk
   const [selectedProduct, setSelectedProduct] = useState<ProductUI | null>(null);
   const [editForm, setEditForm] = useState({
     stokTerisi: 0,
@@ -173,75 +185,121 @@ export default function ProductsPage() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-        const res = await fetch(`${API_URL}/products`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
+  const fetchProducts = useCallback(async () => {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const res = await fetch(`${API_URL}/products`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+
+      const json = await res.json();
+      const rawList = Array.isArray(json) ? json : json.data || [];
+
+      const mappedProducts: ProductUI[] = rawList.map((item: any) => {
+        const nama: string = item.name || item.nama || 'Produk Galon';
+        const isSekaliPakai =
+          nama.toLowerCase().includes('le minerale') ||
+          nama.includes('15') ||
+          (item.type && item.type.toLowerCase().includes('sekali pakai'));
+
+        const tipe =
+          item.type || (isSekaliPakai ? 'Bebas BPA / Sekali Pakai' : 'Galon Tukar Refill');
+
+        const deskripsi =
+          item.description ||
+          (isSekaliPakai
+            ? 'Galon Sekali Pakai Tanpa Tukar'
+            : 'Air Mineral Pegunungan Alami');
+
+        const sku =
+          item.sku ||
+          `GLN-${nama.replace(/[^a-zA-Z0-9]/g, '').substring(0, 4).toUpperCase()}-${item.id}`;
+
+        const hargaJual = Number(item.price ?? item.harga ?? item.hargaJual ?? 0);
+        const hargaModal = Number(
+          item.cost_price ?? item.costPrice ?? item.hargaModal ?? Math.round(hargaJual * 0.8)
+        );
+        const stokTerisi = Number(item.stock ?? item.stok ?? item.stokTerisi ?? 0);
+        const maxCapacity = Number(item.maxStock ?? item.max_stock ?? 50);
+
+        const rawImg = item.imageUrl || item.image_url || item.image || '';
+        const fullImage = rawImg
+          ? rawImg.startsWith('http') || rawImg.startsWith('/')
+            ? rawImg
+            : `http://localhost:5000/uploads/${rawImg}`
+          : '/products/aqua-19l.png';
+
+        return computeProductFields({
+          id: item.id,
+          nama,
+          deskripsi,
+          sku,
+          tipe,
+          hargaJual,
+          hargaModal,
+          stokTerisi,
+          maxCapacity,
+          botolKosongCount: isSekaliPakai ? 0 : Math.max(0, maxCapacity - stokTerisi),
+          isSekaliPakai,
+          image: fullImage,
         });
+      });
 
-        const json = await res.json();
-        const rawList = Array.isArray(json) ? json : json.data || [];
-
-        const mappedProducts: ProductUI[] = rawList.map((item: any) => {
-          const nama: string = item.name || item.nama || 'Produk Galon';
-          const isSekaliPakai =
-            nama.toLowerCase().includes('le minerale') ||
-            nama.includes('15') ||
-            (item.type && item.type.toLowerCase().includes('sekali pakai'));
-
-          const tipe =
-            item.type || (isSekaliPakai ? 'Bebas BPA / Sekali Pakai' : 'Galon Tukar Refill');
-
-          const deskripsi =
-            item.description ||
-            (isSekaliPakai
-              ? 'Galon Sekali Pakai Tanpa Tukar'
-              : 'Air Mineral Pegunungan Alami');
-
-          const sku =
-            item.sku ||
-            `GLN-${nama.replace(/[^a-zA-Z0-9]/g, '').substring(0, 4).toUpperCase()}-${item.id}`;
-
-          const hargaJual = Number(item.price ?? item.hargaJual ?? 0);
-          const hargaModal = Number(item.costPrice ?? item.hargaModal ?? Math.round(hargaJual * 0.8));
-          const stokTerisi = Number(item.stock ?? item.stokTerisi ?? 0);
-          const maxCapacity = Number(item.maxStock ?? item.max_stock ?? 50);
-
-          const rawImg = item.imageUrl || item.image_url || item.image || '';
-          const fullImage = rawImg
-            ? rawImg.startsWith('http') || rawImg.startsWith('/')
-              ? rawImg
-              : `http://localhost:5000/uploads/${rawImg}`
-            : '/products/aqua-19l.png';
-
-          return computeProductFields({
-            id: item.id,
-            nama,
-            deskripsi,
-            sku,
-            tipe,
-            hargaJual,
-            hargaModal,
-            stokTerisi,
-            maxCapacity,
-            botolKosongCount: isSekaliPakai ? 0 : Math.max(0, maxCapacity - stokTerisi),
-            isSekaliPakai,
-            image: fullImage,
-          });
-        });
-
-        setProducts(mappedProducts);
-      } catch (error) {
-        console.error('Gagal mengambil data produk:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProducts();
+      setProducts(mappedProducts);
+    } catch (error) {
+      console.error('Gagal mengambil data produk:', error);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
+
+  const handleCreateProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newProductForm.name.trim()) return;
+
+    setIsAddingProduct(true);
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const res = await fetch(`${API_URL}/products`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          name: newProductForm.name.trim(),
+          type: newProductForm.type,
+          description: newProductForm.description.trim(),
+          price: Number(newProductForm.price),
+          costPrice: Number(newProductForm.costPrice),
+          stock: Number(newProductForm.stock),
+        }),
+      });
+
+      if (!res.ok) throw new Error('Gagal menyimpan ke database');
+
+      await fetchProducts();
+      setShowAddProductModal(false);
+      setNewProductForm({
+        name: '',
+        type: 'Galon Tukar Refill',
+        description: 'Air Mineral Pegunungan Alami',
+        price: 18000,
+        costPrice: 14000,
+        stock: 30,
+      });
+      showToast('Produk galon baru berhasil ditambahkan ke database!');
+    } catch (err) {
+      console.error(err);
+      showToast('Gagal menyimpan produk baru, cek server backend!');
+    } finally {
+      setIsAddingProduct(false);
+    }
+  };
 
   const syncProductToBackend = async (
     id: string | number,
@@ -267,7 +325,7 @@ export default function ProductsPage() {
         });
       }
     } catch {
-      // Tetap lanjut update state UI jika endpoint berbeda/offline
+      // Tetap lanjut update state UI
     }
   };
 
@@ -540,8 +598,8 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {/* ==================== HEADER JUDUL (TANPA KOTAK PUTIH) ==================== */}
-      <div className="flex flex-col justify-between gap-4 pt-1 lg:flex-row lg:items-center">
+      {/* ==================== HEADER JUDUL (1 TOMBOL RAPI) ==================== */}
+      <div className="flex flex-col justify-between gap-4 pt-1 sm:flex-row sm:items-center">
         <div>
           <div className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-wider text-[#0052FF]">
             <Boxes size={14} />
@@ -555,29 +613,20 @@ export default function ProductsPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center">
           <button
             type="button"
-            onClick={() => setShowManifestModal(true)}
-            className="flex h-10 items-center gap-2 rounded-xl border border-[#EEF0F5] bg-white px-3.5 text-xs font-bold text-[#26334C] shadow-sm transition hover:bg-[#F4F6FD]"
-          >
-            <Printer size={14} className="text-[#0052FF]" />
-            Manifest Tukar
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowNewPOModal(true)}
+            onClick={() => setShowAddProductModal(true)}
             className="flex h-10 items-center gap-2 rounded-xl bg-[#0052FF] px-4 text-xs font-bold text-white shadow-sm shadow-[#0052FF]/20 transition hover:bg-[#0047DE]"
           >
             <Plus size={15} />
-            Buat PO Restok
+            Tambah Produk Baru
           </button>
         </div>
       </div>
 
       {/* ==================== 4 STATS CARDS ROW ==================== */}
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Card 1: Total Galon Terisi */}
         <div className="flex items-start justify-between rounded-2xl border border-[#EEF0F5] bg-white p-4">
           <div>
             <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#8A91A3]">
@@ -603,7 +652,6 @@ export default function ProductsPage() {
           </div>
         </div>
 
-        {/* Card 2: Stok Galon Kosong */}
         <div className="flex items-start justify-between rounded-2xl border border-[#EEF0F5] bg-white p-4">
           <div>
             <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#8A91A3]">
@@ -627,7 +675,6 @@ export default function ProductsPage() {
           </div>
         </div>
 
-        {/* Card 3: Stok Kritis / Menipis */}
         <div className="flex items-start justify-between rounded-2xl border border-[#EEF0F5] bg-white p-4">
           <div>
             <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#D93636]">
@@ -679,7 +726,6 @@ export default function ProductsPage() {
           </div>
         </div>
 
-        {/* Card 4: Total Nilai Inventaris */}
         <div className="flex items-start justify-between rounded-2xl border border-[#EEF0F5] bg-white p-4">
           <div>
             <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#8A91A3]">
@@ -793,13 +839,12 @@ export default function ProductsPage() {
               ) : filteredProducts.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-8 text-center text-xs text-[#69738A]">
-                    Tidak ada varian produk yang cocok dengan pencarian ini.
+                    Belum ada produk di database. Klik tombol <strong>+ Tambah Produk Baru</strong> di kanan atas untuk menambahkan.
                   </td>
                 </tr>
               ) : (
                 filteredProducts.map((p) => (
                   <tr key={p.id} className="transition-colors hover:bg-[#F8FAFF]">
-                    {/* 1. PRODUK & VARIAN */}
                     <td className="px-3 py-3.5">
                       <div className="flex items-center gap-3">
                         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[#EEF0F5] bg-[#F8FAFC] p-1">
@@ -821,23 +866,19 @@ export default function ProductsPage() {
                       </div>
                     </td>
 
-                    {/* 2. SKU / TIPE */}
                     <td className="whitespace-nowrap px-3 py-3.5">
                       <p className="text-xs font-bold text-[#131B2E]">{p.sku}</p>
                       <p className="text-[10px] font-semibold text-[#0052FF]">{p.tipe}</p>
                     </td>
 
-                    {/* 3. HARGA JUAL (SEJAJAR 1 BARIS TANPA PENSIL) */}
                     <td className="whitespace-nowrap px-3 py-3.5 text-sm font-extrabold text-[#131B2E]">
                       Rp {p.hargaJual.toLocaleString('id-ID')}
                     </td>
 
-                    {/* 4. HARGA MODAL (SEJAJAR 1 BARIS) */}
                     <td className="whitespace-nowrap px-3 py-3.5 font-semibold text-[#69738A]">
                       Rp {p.hargaModal.toLocaleString('id-ID')}
                     </td>
 
-                    {/* 5. STOK TERISI (DEPO) */}
                     <td className="px-3 py-3.5">
                       <div className="w-36 space-y-1">
                         <div className="flex items-center justify-between text-[11px]">
@@ -855,12 +896,10 @@ export default function ProductsPage() {
                       </div>
                     </td>
 
-                    {/* 6. BOTOL KOSONG */}
                     <td className="whitespace-nowrap px-3 py-3.5 font-bold text-[#293246]">
                       {p.isSekaliPakai ? '- (Non-Refill)' : `${p.botolKosongCount} Botol`}
                     </td>
 
-                    {/* 7. STATUS */}
                     <td className="whitespace-nowrap px-3 py-3.5">
                       {p.status === 'Tersedia' ? (
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-[#C5F8D0]/60 px-2.5 py-1 text-[10px] font-bold text-[#16752C]">
@@ -873,7 +912,6 @@ export default function ProductsPage() {
                       )}
                     </td>
 
-                    {/* 8. AKSI (HANYA TOMBOL UPDATE) */}
                     <td className="whitespace-nowrap px-3 py-3.5 text-center">
                       <button
                         type="button"
@@ -891,7 +929,6 @@ export default function ProductsPage() {
           </table>
         </div>
 
-        {/* Table Footer */}
         <div className="flex flex-col items-center justify-between gap-2 border-t border-[#EEF0F5] pt-3 text-xs text-[#69738A] sm:flex-row">
           <p>
             Menampilkan {filteredProducts.length} dari {products.length} varian produk galon depo
@@ -907,7 +944,6 @@ export default function ProductsPage() {
 
       {/* ==================== BOTTOM 2 COLUMNS ==================== */}
       <section className="grid grid-cols-1 items-start gap-4 lg:grid-cols-12">
-        {/* LEFT: RIWAYAT & JADWAL KIRIM RESTOK PABRIK (7/12) */}
         <div className="space-y-4 rounded-2xl border border-[#EEF0F5] bg-white p-5 shadow-sm lg:col-span-7">
           <div className="flex items-center justify-between border-b border-[#EEF0F5] pb-3">
             <div className="flex items-center gap-2">
@@ -1016,7 +1052,6 @@ export default function ProductsPage() {
           </div>
         </div>
 
-        {/* RIGHT: STATUS GALON KOSONG INTERAKTIF (5/12) */}
         <div className="space-y-4 rounded-2xl border border-[#EEF0F5] bg-white p-5 shadow-sm lg:col-span-5">
           <div className="flex items-center justify-between border-b border-[#EEF0F5] pb-3">
             <h3 className="text-sm font-extrabold text-[#131B2E]">Status Galon Kosong</h3>
@@ -1032,7 +1067,6 @@ export default function ProductsPage() {
                 </span>
               </div>
 
-              {/* Split Progress Bar Dinamis */}
               <div className="flex h-2 w-full overflow-hidden rounded-full bg-[#EEF0F5]">
                 <div
                   className="h-full bg-[#28A745] transition-all"
@@ -1050,7 +1084,6 @@ export default function ProductsPage() {
               </div>
             </div>
 
-            {/* Rincian Per Merek (Bisa di-Adjust +/-) */}
             <div className="space-y-2 rounded-xl bg-[#F4F6FD] p-3 text-xs">
               {emptyBottles.map((item) => (
                 <div
@@ -1093,7 +1126,6 @@ export default function ProductsPage() {
               ))}
             </div>
 
-            {/* Klaim Garansi Box */}
             <div className="flex items-center justify-between rounded-xl border border-[#FFD6D6] bg-[#FFF2F2] p-3 text-xs">
               <div>
                 <p className="font-extrabold text-[#D93636]">Klaim Garansi Retur Bocor</p>
@@ -1130,6 +1162,141 @@ export default function ProductsPage() {
           </div>
         </div>
       </section>
+
+      {/* ==================== MODAL BARU: TAMBAH PRODUK GALON KE DATABASE ==================== */}
+      {showAddProductModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+          onClick={() => setShowAddProductModal(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-[#EEF0F5] pb-3">
+              <div>
+                <h3 className="text-base font-extrabold text-[#131B2E]">
+                  Tambah Produk Galon Baru
+                </h3>
+                <p className="text-[11px] text-[#69738A]">
+                  Data produk akan otomatis tersimpan ke database MySQL depo
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddProductModal(false)}
+                className="rounded-lg p-1.5 text-[#69738A] hover:bg-[#F2F4FA]"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateProduct} className="mt-4 space-y-3 text-xs">
+              <div>
+                <label className="mb-1 block font-bold text-[#293246]">
+                  Nama Merek & Ukuran Galon *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Contoh: Galon Aqua 19L"
+                  value={newProductForm.name}
+                  onChange={(e) => setNewProductForm({ ...newProductForm, name: e.target.value })}
+                  className="h-10 w-full rounded-xl border border-[#EEF0F5] bg-[#F4F6FD] px-3 font-semibold text-[#131B2E] outline-none focus:border-[#0052FF] focus:bg-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block font-bold text-[#293246]">Jenis Galon</label>
+                  <select
+                    value={newProductForm.type}
+                    onChange={(e) => setNewProductForm({ ...newProductForm, type: e.target.value })}
+                    className="h-10 w-full rounded-xl border border-[#EEF0F5] bg-[#F4F6FD] px-3 font-semibold text-[#131B2E] outline-none focus:border-[#0052FF]"
+                  >
+                    <option value="Galon Tukar Refill">Galon Tukar Refill</option>
+                    <option value="Bebas BPA / Sekali Pakai">Bebas BPA / Sekali Pakai</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block font-bold text-[#293246]">Stok Awal (Unit)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    required
+                    value={newProductForm.stock}
+                    onChange={(e) =>
+                      setNewProductForm({ ...newProductForm, stock: Number(e.target.value) })
+                    }
+                    className="h-10 w-full rounded-xl border border-[#EEF0F5] bg-[#F4F6FD] px-3 font-bold text-[#131B2E] outline-none focus:border-[#0052FF] focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block font-bold text-[#293246]">Harga Jual (Rp)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={500}
+                    required
+                    value={newProductForm.price}
+                    onChange={(e) =>
+                      setNewProductForm({ ...newProductForm, price: Number(e.target.value) })
+                    }
+                    className="h-10 w-full rounded-xl border border-[#EEF0F5] bg-[#F4F6FD] px-3 font-bold text-[#131B2E] outline-none focus:border-[#0052FF] focus:bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block font-bold text-[#293246]">Harga Modal (Rp)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={500}
+                    required
+                    value={newProductForm.costPrice}
+                    onChange={(e) =>
+                      setNewProductForm({ ...newProductForm, costPrice: Number(e.target.value) })
+                    }
+                    className="h-10 w-full rounded-xl border border-[#EEF0F5] bg-[#F4F6FD] px-3 font-bold text-[#596378] outline-none focus:border-[#0052FF] focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1 block font-bold text-[#293246]">Keterangan Singkat</label>
+                <input
+                  type="text"
+                  placeholder="Contoh: Air Mineral Pegunungan Alami"
+                  value={newProductForm.description}
+                  onChange={(e) =>
+                    setNewProductForm({ ...newProductForm, description: e.target.value })
+                  }
+                  className="h-10 w-full rounded-xl border border-[#EEF0F5] bg-[#F4F6FD] px-3 font-semibold text-[#131B2E] outline-none focus:border-[#0052FF] focus:bg-white"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddProductModal(false)}
+                  className="h-10 rounded-xl px-4 font-bold text-[#596378] hover:bg-[#F2F4FA]"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isAddingProduct}
+                  className="h-10 rounded-xl bg-[#0052FF] px-5 font-bold text-white shadow-sm shadow-[#0052FF]/20 hover:bg-[#0047DE] disabled:opacity-60"
+                >
+                  {isAddingProduct ? 'Menyimpan...' : 'Simpan ke Database'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* ==================== MODAL 1: UPDATE STOK & HARGA PRODUK ==================== */}
       {selectedProduct && (
