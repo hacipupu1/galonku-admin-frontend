@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 
 function LoginFormContent() {
   const router = useRouter();
@@ -26,6 +26,13 @@ function LoginFormContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+
+  const saveSession = (token: string, user: any) => {
+    localStorage.setItem("token", token);
+    localStorage.setItem("user", JSON.stringify(user));
+    const maxAge = remember ? 60 * 60 * 24 * 7 : 60 * 60 * 24;
+    document.cookie = `token=${token}; path=/; max-age=${maxAge}; SameSite=Lax`;
+  };
 
   // 1. Login Email & Password ke Backend MySQL
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
@@ -59,20 +66,19 @@ function LoginFormContent() {
         return;
       }
 
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
+      saveSession(data.token, data.user);
       setSuccess(true);
 
       setTimeout(() => {
         router.push("/dashboard");
       }, 500);
     } catch (err) {
-      setError("Gagal terhubung ke server backend (localhost:5000).");
+      setError("Gagal terhubung ke server backend (localhost:5001).");
       setLoading(false);
     }
   };
 
-  // 2. Login dengan Google OAuth (Tombol Kustom Setara)
+  // 2. Login dengan Google OAuth
   const handleGoogleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       setError("");
@@ -96,15 +102,14 @@ function LoginFormContent() {
           return;
         }
 
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("user", JSON.stringify(data.user));
+        saveSession(data.token, data.user);
         setSuccess(true);
 
         setTimeout(() => {
           router.push("/dashboard");
         }, 500);
       } catch (err) {
-        setError("Gagal terhubung ke server backend (localhost:5000).");
+        setError("Gagal terhubung ke server backend (localhost:5001).");
         setLoading(false);
       }
     },
@@ -115,9 +120,7 @@ function LoginFormContent() {
 
   return (
     <main className="login-page" style={{ zoom: "55%", minHeight: "100vh" }}>
-      {/* =====================================================
-          BRAND KIRI ATAS
-      ====================================================== */}
+      {/* BRAND KIRI ATAS */}
       <header className="brand">
         <div className="brand-icon">
           <div className="brand-drop">◇</div>
@@ -133,18 +136,13 @@ function LoginFormContent() {
         </div>
       </header>
 
-      {/* =====================================================
-          BACKGROUND GLOW
-      ====================================================== */}
+      {/* BACKGROUND GLOW */}
       <div className="background-glow glow-left" />
       <div className="background-glow glow-right" />
 
-      {/* =====================================================
-          LOGIN AREA
-      ====================================================== */}
+      {/* LOGIN AREA */}
       <section className="login-wrapper">
         <div className="login-card">
-          {/* LOGO / RIDER */}
           <div className="rider-circle">
             <img
               src="/login-galonku.png"
@@ -153,34 +151,20 @@ function LoginFormContent() {
             />
           </div>
 
-          {/* TITLE */}
           <div className="login-heading">
             <h1>GalonKu Admin</h1>
-
-            <p>
-              Silakan masuk untuk mengakses dashboard admin.
-            </p>
+            <p>Silakan masuk untuk mengakses dashboard admin.</p>
           </div>
 
-          {/* FORM */}
           <form onSubmit={handleLogin} className="login-form">
-            {/* USERNAME */}
             <div className="field-group">
               <div className="field-header">
-                <label htmlFor="username">
-                  Username / Email / ID Staff
-                </label>
-
+                <label htmlFor="username">Username / Email / ID Staff</label>
                 <span className="required-text">Wajib</span>
               </div>
 
               <div className="input-wrapper">
-                <UserRound
-                  className="input-icon"
-                  size={21}
-                  strokeWidth={1.8}
-                />
-
+                <UserRound className="input-icon" size={21} strokeWidth={1.8} />
                 <input
                   id="username"
                   type="text"
@@ -195,20 +179,14 @@ function LoginFormContent() {
               </div>
             </div>
 
-            {/* PASSWORD */}
             <div className="field-group password-group">
               <div className="field-header">
-                <label htmlFor="password">
-                  Kata Sandi / Password
-                </label>
-
+                <label htmlFor="password">Kata Sandi / Password</label>
                 <button
                   type="button"
                   className="forgot-button"
                   onClick={() => {
-                    alert(
-                      "Silakan hubungi administrator untuk reset kata sandi."
-                    );
+                    alert("Silakan hubungi administrator untuk reset kata sandi.");
                   }}
                 >
                   Lupa Kata Sandi?
@@ -216,12 +194,7 @@ function LoginFormContent() {
               </div>
 
               <div className="input-wrapper">
-                <LockKeyhole
-                  className="input-icon"
-                  size={21}
-                  strokeWidth={1.8}
-                />
-
+                <LockKeyhole className="input-icon" size={21} strokeWidth={1.8} />
                 <input
                   id="password"
                   type={showPassword ? "text" : "password"}
@@ -237,61 +210,39 @@ function LoginFormContent() {
                 <button
                   type="button"
                   className="password-toggle"
-                  onClick={() =>
-                    setShowPassword((prev) => !prev)
-                  }
+                  onClick={() => setShowPassword((prev) => !prev)}
                   aria-label={
-                    showPassword
-                      ? "Sembunyikan kata sandi"
-                      : "Tampilkan kata sandi"
+                    showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"
                   }
                 >
-                  {showPassword ? (
-                    <EyeOff size={20} />
-                  ) : (
-                    <Eye size={20} />
-                  )}
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
             </div>
 
-            {/* REMEMBER */}
             <label className="remember-row">
               <input
                 type="checkbox"
                 checked={remember}
-                onChange={(e) =>
-                  setRemember(e.target.checked)
-                }
+                onChange={(e) => setRemember(e.target.checked)}
               />
-
-              <span className="custom-checkbox">
-                {remember && "✓"}
-              </span>
-
+              <span className="custom-checkbox">{remember && "✓"}</span>
               <span>Ingat saya di perangkat ini</span>
             </label>
 
-            {/* ERROR */}
-            {error && (
-              <div className="error-message">
-                {error}
-              </div>
-            )}
+            {error && <div className="error-message">{error}</div>}
 
-            {/* SUCCESS */}
             {success && (
               <div className="success-message">
                 Login berhasil. Mengarahkan ke dashboard...
               </div>
             )}
 
-            {/* LOGIN BUTTON */}
             <button
               type="submit"
-              className={`login-button ${
-                loading ? "is-loading" : ""
-              } ${success ? "is-success" : ""}`}
+              className={`login-button ${loading ? "is-loading" : ""} ${
+                success ? "is-success" : ""
+              }`}
               disabled={loading || success}
             >
               {loading ? (
@@ -304,15 +255,11 @@ function LoginFormContent() {
               ) : (
                 <>
                   <span>Masuk ke Dashboard Admin</span>
-                  <ArrowRight
-                    size={21}
-                    strokeWidth={2}
-                  />
+                  <ArrowRight size={21} strokeWidth={2} />
                 </>
               )}
             </button>
 
-            {/* PEMISAH "atau" */}
             <div
               style={{
                 display: "flex",
@@ -328,7 +275,6 @@ function LoginFormContent() {
               <div style={{ flex: 1, height: "1px", backgroundColor: "#e2e8f0" }} />
             </div>
 
-            {/* TOMBOL GOOGLE SETARA (FULL WIDTH & TINGGI SAMA) */}
             <button
               type="button"
               onClick={() => handleGoogleLogin()}
@@ -363,54 +309,34 @@ function LoginFormContent() {
             </button>
           </form>
 
-          {/* DRIVER LINK */}
           <div className="access-link">
             <span>Butuh akses kurir lapangan?</span>
-
             <button type="button">
               Aplikasi Driver
               <ExternalLink size={13} />
             </button>
           </div>
 
-          {/* VERSION */}
           <div className="card-version">
-            <span>
-              GalonKu v4.12.0 (Build 2026.04)
-            </span>
-
+            <span>GalonKu v4.12.0 (Build 2026.04)</span>
             <span className="version-dot">•</span>
-
-            <span>
-              Server: jkt01-depo.internal
-            </span>
+            <span>Server: jkt01-depo.internal</span>
           </div>
         </div>
       </section>
 
-      {/* =====================================================
-          FOOTER
-      ====================================================== */}
       <footer className="page-footer">
         <div className="footer-security">
           <ShieldCheck size={15} />
-
           <span>
-            Enkripsi Operasional End-to-End • Wilayah
-            Logistik Jabodetabek
+            Enkripsi Operasional End-to-End • Wilayah Logistik Jabodetabek
           </span>
         </div>
 
         <div className="footer-links">
-          <button type="button">
-            Pusat Bantuan
-          </button>
-
+          <button type="button">Pusat Bantuan</button>
           <span>•</span>
-
-          <button type="button">
-            Privasi &amp; Kebijakan Internal
-          </button>
+          <button type="button">Privasi &amp; Kebijakan Internal</button>
         </div>
       </footer>
     </main>

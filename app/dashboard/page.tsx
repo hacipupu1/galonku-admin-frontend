@@ -19,7 +19,8 @@ import {
   UserCheck,
 } from "lucide-react";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
+const BASE_HOST = API_URL.replace(/\/api\/?$/, "");
 
 type Product = {
   id?: number;
@@ -208,7 +209,6 @@ function formatRupiah(amount: number): string {
   }).format(amount || 0);
 }
 
-// Helper mencocokkan nama produk di pesanan dengan foto produk backend/lokal
 function resolveGalonImage(productText: string, productList: Product[]): string {
   const lower = productText.toLowerCase();
 
@@ -227,15 +227,23 @@ function resolveGalonImage(productText: string, productList: Product[]): string 
   return "/products/aqua-19l.png";
 }
 
+function toBackendOrderStatus(uiStatus: string): string {
+  const s = uiStatus.toLowerCase();
+  if (s === "diantar" || s === "dikirim") return "dikirim";
+  if (s === "selesai") return "selesai";
+  if (s === "dibatalkan") return "dibatalkan";
+  return "diproses";
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
-  const [isConnected, setIsConnected] = useState(true);
+  const [isConnected, setIsConnected] = useState(false);
   const [products, setProducts] = useState<Product[]>(defaultProducts);
   const [orders, setOrders] = useState<Order[]>(defaultOrders);
   const [hasDbOrders, setHasDbOrders] = useState(false);
+  const [reportRevenue, setReportRevenue] = useState<number | null>(null);
 
-  // State Interaktif Baru
   const [chartRange, setChartRange] = useState<ChartRange>("Hari Ini");
   const [hoveredPoint, setHoveredPoint] = useState<{
     label: string;
@@ -260,14 +268,16 @@ export default function DashboardPage() {
     };
 
     try {
-      const [prodRes, ordRes] = await Promise.allSettled([
+      const [prodRes, ordRes, repRes] = await Promise.allSettled([
         fetch(`${API_URL}/products`, { headers }),
-        fetch(`${API_URL}/orders`, { headers }),
+        fetch(`${API_URL}/orders/manage/all`, { headers }),
+        fetch(`${API_URL}/reports/summary`, { headers }),
       ]);
 
       let connected = false;
       let latestProductList = products;
 
+      // 1. Produk dari MySQL (GET /api/products)
       if (prodRes.status === "fulfilled" && prodRes.value.ok) {
         connected = true;
         const prodJson = await prodRes.value.json();
@@ -282,8 +292,8 @@ export default function DashboardPage() {
             const fullImage = rawImg
               ? rawImg.startsWith("http") || rawImg.startsWith("/")
                 ? rawImg
-                : `http://localhost:5000/uploads/${rawImg}`
-              : "/products/aqua-19l.png";
+                : `${BASE_HOST}/uploads/${rawImg}`
+              : resolveGalonImage(p.name || "", defaultProducts);
 
             let status: "Kritis" | "Rendah" | "Tersedia" = "Tersedia";
             if (stock <= 2) status = "Kritis";
@@ -305,6 +315,7 @@ export default function DashboardPage() {
         }
       }
 
+      // 2. Pesanan dari MySQL (GET /api/orders/manage/all)
       if (ordRes.status === "fulfilled" && ordRes.value.ok) {
         connected = true;
         const ordJson = await ordRes.value.json();
@@ -321,25 +332,38 @@ export default function DashboardPage() {
                 })
               : "10:00";
 
-            const rawStatus = String(o.status || "Diproses").toLowerCase();
-            let displayStatus = o.status || "Diproses";
-            if (rawStatus === "pending" || rawStatus === "processing") displayStatus = "Diproses";
-            else if (rawStatus === "delivering" || rawStatus === "shipping") displayStatus = "Diantar";
-            else if (rawStatus === "completed" || rawStatus === "done" || rawStatus === "delivered")
+            const rawStatus = String(o.status || "diproses").toLowerCase();
+            let displayStatus = "Diproses";
+            if (rawStatus === "dikirim" || rawStatus === "diantar" || rawStatus === "delivering") {
+              displayStatus = "Diantar";
+            } else if (rawStatus === "selesai" || rawStatus === "completed" || rawStatus === "done") {
               displayStatus = "Selesai";
+            } else if (rawStatus === "dibatalkan") {
+              displayStatus = "Dibatalkan";
+            }
 
-            const productName = o.product_name || o.productName || "Aqua 19L (2 Galon)";
+            // Rangkai ringkasan item produk jika tersedia dari join order_item
+            let productName = o.product_name || o.productName || "";
+            if (!productName && Array.isArray(o.items) && o.items.length > 0) {
+              productName = o.items
+                .map((it: any) => `${it.product_name || it.name || "Galon"} (${it.quantity || 1} Galon)`)
+                .join(", ");
+            }
+            if (!productName) {
+              productName = `Pesanan Galon #${o.id}`;
+            }
+
             const rawOrderImg = o.product_image || o.image_url || o.image || "";
             const resolvedImage = rawOrderImg
               ? rawOrderImg.startsWith("http") || rawOrderImg.startsWith("/")
                 ? rawOrderImg
-                : `http://localhost:5000/uploads/${rawOrderImg}`
+                : `${BASE_HOST}/uploads/${rawOrderImg}`
               : resolveGalonImage(productName, latestProductList);
 
             return {
               id: o.order_code || `#ORD-${o.id}`,
               rawId: o.id,
-              customer: o.customer_name || o.customerName || "Pelanggan GalonKu",
+              customer: o.customer_name || o.user_name || o.customerName || `Pelanggan #${o.user_id || o.id}`,
               product: productName,
               image: resolvedImage,
               time: timeStr,
@@ -354,11 +378,27 @@ export default function DashboardPage() {
         }
       }
 
+      // 3. Ringkasan Pendapatan dari /api/reports/summary (opsional)
+      if (repRes.status === "fulfilled" && repRes.value.ok) {
+        connected = true;
+        const repJson = await repRes.value.json();
+        const summaryData = repJson.data || repJson;
+        const rev = Number(
+          summaryData?.totalRevenue ??
+            summaryData?.netRevenue ??
+            summaryData?.pendapatanBersih ??
+            summaryData?.total_revenue
+        );
+        if (!Number.isNaN(rev) && rev > 0) {
+          setReportRevenue(rev);
+        }
+      }
+
       setIsConnected(connected);
     } catch {
       setIsConnected(false);
     } finally {
-      setTimeout(() => setRefreshing(false), 500);
+      setTimeout(() => setRefreshing(false), 400);
     }
   };
 
@@ -371,7 +411,7 @@ export default function DashboardPage() {
     fetchDashboardData();
   }, [router]);
 
-  // Interaksi 1: Ubah status pesanan langsung (Diproses -> Diantar -> Selesai)
+  // Update status pesanan -> PATCH /api/orders/:id/status
   const handleCycleOrderStatus = async (order: Order, nextStatus?: string) => {
     const flow = ["Diproses", "Diantar", "Selesai"];
     const currentIndex = flow.indexOf(order.status);
@@ -385,25 +425,28 @@ export default function DashboardPage() {
     }
     showToast(`Status ${order.id} diubah menjadi "${updatedStatus}"`);
 
-    // Sinkronkan ke backend jika terhubung
     if (order.rawId) {
       const token = localStorage.getItem("token");
       try {
-        await fetch(`${API_URL}/orders/${order.rawId}`, {
+        const res = await fetch(`${API_URL}/orders/${order.rawId}/status`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-          body: JSON.stringify({ status: updatedStatus }),
+          body: JSON.stringify({ status: toBackendOrderStatus(updatedStatus) }),
         });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          showToast(errData.message || "Gagal menyimpan status ke database");
+        }
       } catch {
-        // Tetap simpan perubahan lokal jika offline
+        // Tetap pertahankan state UI jika offline
       }
     }
   };
 
-  // Interaksi 2: Quick Restok (+5 Galon) langsung dari kartu produk
+  // Quick Restok (+5 Galon)
   const handleQuickRestock = async (product: Product, addQty = 5) => {
     const newStock = product.stock + addQty;
     const newStatus: "Kritis" | "Rendah" | "Tersedia" =
@@ -430,7 +473,7 @@ export default function DashboardPage() {
           body: JSON.stringify({ stock: newStock }),
         });
       } catch {
-        // Tetap simpan state UI jika API patch belum tersedia
+        // Fallback UI jika endpoint PATCH /products/:id belum dibuat
       }
     }
   };
@@ -439,12 +482,15 @@ export default function DashboardPage() {
     const totalStock = products.reduce((acc, item) => acc + item.stock, 0);
     const isLowStock = totalStock < 20;
     const totalOrders = hasDbOrders ? orders.length : 48;
-    const totalRevenue = hasDbOrders
-      ? formatRupiah(orders.reduce((acc, item) => acc + (item.priceNumber || 0), 0))
-      : "Rp 864.000";
+    const totalRevenue =
+      reportRevenue !== null
+        ? formatRupiah(reportRevenue)
+        : hasDbOrders
+        ? formatRupiah(orders.reduce((acc, item) => acc + (item.priceNumber || 0), 0))
+        : "Rp 864.000";
 
     return { totalStock, isLowStock, totalOrders, totalRevenue };
-  }, [products, orders, hasDbOrders]);
+  }, [products, orders, hasDbOrders, reportRevenue]);
 
   const activeChart = CHART_CONFIG[chartRange];
 
@@ -498,7 +544,7 @@ export default function DashboardPage() {
                   isConnected ? "bg-[#28A745]" : "bg-[#D93636]"
                 }`}
               />
-              {isConnected ? "Sinkron: Aktif" : "Sinkron: Terputus"}
+              {isConnected ? "API Connected" : "Sinkron: Terputus"}
             </div>
           </div>
         </div>
@@ -527,7 +573,7 @@ export default function DashboardPage() {
               <ArrowUpRight size={12} /> +12%{" "}
               <span className="font-normal text-[#687289]">vs kemarin (42 pesanan)</span>
             </span>
-            <Link href="/orders" className="font-bold text-[#087D86] hover:underline">
+            <Link href="/manajemenpesanan" className="font-bold text-[#087D86] hover:underline">
               Detail →
             </Link>
           </div>
@@ -553,13 +599,13 @@ export default function DashboardPage() {
               <CheckCircle2 size={12} /> +8.5%{" "}
               <span className="font-normal text-[#687289]">melampaui target harian</span>
             </span>
-            <Link href="/reports" className="font-bold text-[#087D86] hover:underline">
+            <Link href="/laporankeu" className="font-bold text-[#087D86] hover:underline">
               Laporan →
             </Link>
           </div>
         </div>
 
-        {/* Status Stock Galon (Dinamis sesuai totalStock) */}
+        {/* Status Stock Galon */}
         <div className="overflow-hidden rounded-2xl border border-[#EEF0F5] bg-white">
           <div className="flex items-start justify-between p-5">
             <div>
@@ -714,7 +760,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Pesanan Terbaru dengan Foto Galon & Klik Status */}
+        {/* Pesanan Terbaru */}
         <div className="flex flex-col justify-between rounded-2xl border border-[#EEF0F5] bg-white p-5">
           <div>
             <div className="flex items-center justify-between">
@@ -724,7 +770,10 @@ export default function DashboardPage() {
                   Live Feed
                 </span>
               </div>
-              <Link href="/orders" className="text-[10px] font-bold text-[#0052FF] hover:underline">
+              <Link
+                href="/manajemenpesanan"
+                className="text-[10px] font-bold text-[#0052FF] hover:underline"
+              >
                 Lihat Semua →
               </Link>
             </div>
@@ -744,7 +793,6 @@ export default function DashboardPage() {
                     className="flex cursor-pointer items-center justify-between rounded-xl border border-transparent bg-[#F4F6FD] p-2.5 transition hover:border-[#0052FF]/30 hover:bg-[#EDF1FC]"
                   >
                     <div className="flex items-center gap-2.5">
-                      {/* Foto Galon Sesuai Produk yang Dipesan */}
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[#E4E8F5] bg-white p-1">
                         {!imgBroken ? (
                           <img
@@ -801,7 +849,7 @@ export default function DashboardPage() {
               Masuk antrean baru? Segera tugaskan kurir
             </span>
             <Link
-              href="/orders"
+              href="/manajemenpesanan"
               className="rounded-lg bg-[#0052FF] px-3 py-1.5 text-[10px] font-bold text-white hover:bg-[#0047DE]"
             >
               Dispatch Kurir
