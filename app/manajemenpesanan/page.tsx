@@ -224,16 +224,26 @@ export default function ManajemenPesananPage() {
   const [selectedGallon, setSelectedGallon] = useState('semua');
   const [selectedPayment, setSelectedPayment] = useState('semua');
 
+<<<<<<< Updated upstream
   // STATE FITUR PAGINATION
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(3); // Default 3 agar data contoh terbagi 3 halaman
+=======
+  // STATE PAGINATION
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(5); // Default 5 baris agar pagination terlihat dengan 7 data
+>>>>>>> Stashed changes
 
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<OrderItem | null>(null);
   const [selectedCourierName, setSelectedCourierName] = useState('Pak Budi Santoso');
 
+<<<<<<< Updated upstream
   // Reset ke halaman 1 jika user mengubah pencarian/filter
+=======
+  // Reset ke halaman 1 saat ada filter yang berubah
+>>>>>>> Stashed changes
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, selectedGallon, selectedPayment, activeTab]);
@@ -306,7 +316,11 @@ export default function ManajemenPesananPage() {
     return matchTab && matchGallon && matchPayment && matchSearch;
   });
 
+<<<<<<< Updated upstream
   // LOGIKA PEMBAGIAN HALAMAN (SLICING PAGINATION)
+=======
+  // Kalkulasi Pembagian Halaman (Pagination)
+>>>>>>> Stashed changes
   const totalItems = filteredOrders.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -577,7 +591,11 @@ export default function ManajemenPesananPage() {
         </div>
       </div>
 
+<<<<<<< Updated upstream
       {/* 5. TABEL UTAMA MANAJEMEN PESANAN */}
+=======
+      {/* 5. TABEL MANAJEMEN PESANAN */}
+>>>>>>> Stashed changes
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-6">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -720,7 +738,11 @@ export default function ManajemenPesananPage() {
           </table>
         </div>
 
+<<<<<<< Updated upstream
         {/* FOOTER TABEL: SLIDE & CONTROL PAGINATION */}
+=======
+        {/* Dynamic Table Footer / Pagination */}
+>>>>>>> Stashed changes
         <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <div className="flex items-center gap-2">
             <span>
@@ -736,16 +758,24 @@ export default function ManajemenPesananPage() {
               }}
               className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-semibold focus:outline-none cursor-pointer"
             >
+<<<<<<< Updated upstream
               <option value="3">3</option>
+=======
+>>>>>>> Stashed changes
               <option value="5">5</option>
               <option value="10">10</option>
               <option value="20">20</option>
             </select>
           </div>
 
+<<<<<<< Updated upstream
           {/* TOMBOL-TOMBOL NAVIGASI HALAMAN */}
           <div className="flex items-center gap-1">
             {/* Tombol Sebelumnya */}
+=======
+          {/* Tombol Angka & Navigasi Halaman */}
+          <div className="flex items-center gap-1">
+>>>>>>> Stashed changes
             <button
               type="button"
               disabled={currentPage === 1}
@@ -755,7 +785,10 @@ export default function ManajemenPesananPage() {
               <ChevronLeft className="w-4 h-4" />
             </button>
 
+<<<<<<< Updated upstream
             {/* Angka Halaman Dinamis */}
+=======
+>>>>>>> Stashed changes
             {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((pageNum) => (
               <button
                 key={pageNum}
@@ -771,7 +804,10 @@ export default function ManajemenPesananPage() {
               </button>
             ))}
 
+<<<<<<< Updated upstream
             {/* Tombol Selanjutnya */}
+=======
+>>>>>>> Stashed changes
             <button
               type="button"
               disabled={currentPage === totalPages || totalPages === 0}
