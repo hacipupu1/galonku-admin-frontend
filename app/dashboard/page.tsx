@@ -5,22 +5,18 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   CheckCircle2,
-  Package,
   Plus,
-  RefreshCw,
   ShoppingCart,
-  Truck,
   ArrowUpRight,
   AlertTriangle,
   Boxes,
   Activity,
   WalletCards,
-  X,
-  UserCheck,
 } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api";
 const BASE_HOST = API_URL.replace(/\/api\/?$/, "");
+const STORAGE_ORDERS_KEY = "galonku_orders_v1";
 
 type Product = {
   id?: number;
@@ -125,26 +121,26 @@ const defaultProducts: Product[] = [
     description: "Air Mineral Pegunungan",
     image: "/products/aqua-19l.png",
     price: "Rp 18.000",
-    stock: 4,
-    maxStock: 20,
-    status: "Kritis",
+    stock: 140,
+    maxStock: 160,
+    status: "Tersedia",
   },
   {
     name: "Le Minerale 15L",
     description: "Galon Sekali Pakai BPA Free",
     image: "/products/le-minerale-15l.png",
     price: "Rp 17.000",
-    stock: 3,
-    maxStock: 20,
-    status: "Rendah",
+    stock: 80,
+    maxStock: 100,
+    status: "Tersedia",
   },
   {
     name: "Cleo Pure Water 19L",
     description: "Air Demineral Murni",
     image: "/products/cleo-19l.png",
     price: "Rp 16.000",
-    stock: 3,
-    maxStock: 15,
+    stock: 80,
+    maxStock: 100,
     status: "Tersedia",
   },
   {
@@ -152,52 +148,42 @@ const defaultProducts: Product[] = [
     description: "Air Mineral Higienis Teruji",
     image: "/products/vit-19l.png",
     price: "Rp 15.000",
-    stock: 2,
-    maxStock: 15,
-    status: "Kritis",
+    stock: 35,
+    maxStock: 50,
+    status: "Tersedia",
   },
 ];
 
 const defaultOrders: Order[] = [
   {
-    id: "#ORD-9021",
-    customer: "Fia Salsabila",
-    product: "Aqua 19L (3 Galon)",
-    time: "10:48",
+    id: "#ORD-1",
+    customer: "Pelanggan #1",
+    product: "Pesanan Galon #1 (3 Galon)",
+    time: "17:30",
     price: "Rp 54.000",
     priceNumber: 54000,
-    status: "Diantar",
+    status: "Selesai",
     courier: "Budi Pratama",
   },
   {
-    id: "#ORD-9020",
-    customer: "Rian Mahendra",
-    product: "Le Minerale 15L (2 Galon)",
-    time: "10:35",
-    price: "Rp 34.000",
-    priceNumber: 34000,
+    id: "#ORD-2",
+    customer: "Pelanggan #2",
+    product: "Pesanan Galon #2 (3 Galon)",
+    time: "17:30",
+    price: "Rp 54.000",
+    priceNumber: 54000,
     status: "Diproses",
     courier: "Joko Susilo",
   },
   {
-    id: "#ORD-9019",
-    customer: "Kantor Notaris Hendra",
-    product: "Cleo 19L (5 Galon)",
-    time: "10:12",
-    price: "Rp 80.000",
-    priceNumber: 80000,
-    status: "Selesai",
+    id: "#ORD-3",
+    customer: "Pelanggan #3",
+    product: "Pesanan Galon #3 (2 Galon)",
+    time: "17:30",
+    price: "Rp 50.000",
+    priceNumber: 50000,
+    status: "Diproses",
     courier: "Ahmad D.",
-  },
-  {
-    id: "#ORD-9018",
-    customer: "Siti Nurhaliza",
-    product: "Vit 19L (2 Galon)",
-    time: "09:55",
-    price: "Rp 30.000",
-    priceNumber: 30000,
-    status: "Selesai",
-    courier: "Budi Pratama",
   },
 ];
 
@@ -227,17 +213,8 @@ function resolveGalonImage(productText: string, productList: Product[]): string 
   return "/products/aqua-19l.png";
 }
 
-function toBackendOrderStatus(uiStatus: string): string {
-  const s = uiStatus.toLowerCase();
-  if (s === "diantar" || s === "dikirim") return "dikirim";
-  if (s === "selesai") return "selesai";
-  if (s === "dibatalkan") return "dibatalkan";
-  return "diproses";
-}
-
 export default function DashboardPage() {
   const router = useRouter();
-  const [refreshing, setRefreshing] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [products, setProducts] = useState<Product[]>(defaultProducts);
   const [orders, setOrders] = useState<Order[]>(defaultOrders);
@@ -249,18 +226,48 @@ export default function DashboardPage() {
     label: string;
     count: number;
   } | null>(null);
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [standbyCalled, setStandbyCalled] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  const [failedOrderImages, setFailedOrderImages] = useState<Record<string, boolean>>({});
 
   const showToast = (message: string) => {
     setToast(message);
     setTimeout(() => setToast(null), 3000);
   };
 
+  const syncOrdersFromStorage = () => {
+    try {
+      const rawSaved = localStorage.getItem(STORAGE_ORDERS_KEY);
+      if (!rawSaved) return;
+      const parsed = JSON.parse(rawSaved);
+      if (!Array.isArray(parsed) || parsed.length === 0) return;
+
+      const mappedLocalOrders: Order[] = parsed.map((o: any, idx: number) => {
+        const cleanId = String(o.id || `ORD-NEW-${idx + 1}`).replace(/^#/, "");
+        const totalNum = Number(o.total || 0);
+        return {
+          id: `#${cleanId}`,
+          customer: o.pelanggan || o.customer || "Pelanggan Baru",
+          product: `${o.produk || o.product || "Galon"} (${o.jumlah || 1}x)`,
+          time: "Baru saja",
+          price: formatRupiah(totalNum),
+          priceNumber: totalNum,
+          status: o.status || "Menunggu Kurir",
+          courier: o.kurir || o.courier || "Budi Pratama",
+        };
+      });
+
+      setOrders((prev) => {
+        const existingIds = new Set(prev.map((item) => item.id.toUpperCase()));
+        const uniqueNew = mappedLocalOrders.filter(
+          (item) => !existingIds.has(item.id.toUpperCase())
+        );
+        return uniqueNew.length > 0 ? [...uniqueNew, ...prev] : prev;
+      });
+    } catch {
+      // Abaikan jika JSON/localStorage bermasalah
+    }
+  };
+
   const fetchDashboardData = async () => {
-    setRefreshing(true);
     const token = localStorage.getItem("token");
     const headers: HeadersInit = {
       "Content-Type": "application/json",
@@ -277,7 +284,6 @@ export default function DashboardPage() {
       let connected = false;
       let latestProductList = products;
 
-      // 1. Produk dari MySQL (GET /api/products)
       if (prodRes.status === "fulfilled" && prodRes.value.ok) {
         connected = true;
         const prodJson = await prodRes.value.json();
@@ -315,7 +321,6 @@ export default function DashboardPage() {
         }
       }
 
-      // 2. Pesanan dari MySQL (GET /api/orders/manage/all)
       if (ordRes.status === "fulfilled" && ordRes.value.ok) {
         connected = true;
         const ordJson = await ordRes.value.json();
@@ -323,7 +328,9 @@ export default function DashboardPage() {
 
         if (rawOrders.length > 0) {
           const mappedOrders: Order[] = rawOrders.map((o: any) => {
-            const priceNum = Number(o.total_price ?? o.totalAmount ?? o.total ?? o.price ?? 0);
+            const priceNum = Number(
+              o.total_price ?? o.totalAmount ?? o.total ?? o.price ?? 0
+            );
             const createdDate = o.created_at || o.createdAt;
             const timeStr = createdDate
               ? new Date(createdDate).toLocaleTimeString("id-ID", {
@@ -334,19 +341,29 @@ export default function DashboardPage() {
 
             const rawStatus = String(o.status || "diproses").toLowerCase();
             let displayStatus = "Diproses";
-            if (rawStatus === "dikirim" || rawStatus === "diantar" || rawStatus === "delivering") {
+            if (
+              rawStatus === "dikirim" ||
+              rawStatus === "diantar" ||
+              rawStatus === "delivering"
+            ) {
               displayStatus = "Diantar";
-            } else if (rawStatus === "selesai" || rawStatus === "completed" || rawStatus === "done") {
+            } else if (
+              rawStatus === "selesai" ||
+              rawStatus === "completed" ||
+              rawStatus === "done"
+            ) {
               displayStatus = "Selesai";
             } else if (rawStatus === "dibatalkan") {
               displayStatus = "Dibatalkan";
             }
 
-            // Rangkai ringkasan item produk jika tersedia dari join order_item
             let productName = o.product_name || o.productName || "";
             if (!productName && Array.isArray(o.items) && o.items.length > 0) {
               productName = o.items
-                .map((it: any) => `${it.product_name || it.name || "Galon"} (${it.quantity || 1} Galon)`)
+                .map(
+                  (it: any) =>
+                    `${it.product_name || it.name || "Galon"} (${it.quantity || 1} Galon)`
+                )
                 .join(", ");
             }
             if (!productName) {
@@ -363,7 +380,11 @@ export default function DashboardPage() {
             return {
               id: o.order_code || `#ORD-${o.id}`,
               rawId: o.id,
-              customer: o.customer_name || o.user_name || o.customerName || `Pelanggan #${o.user_id || o.id}`,
+              customer:
+                o.customer_name ||
+                o.user_name ||
+                o.customerName ||
+                `Pelanggan #${o.user_id || o.id}`,
               product: productName,
               image: resolvedImage,
               time: timeStr,
@@ -378,7 +399,6 @@ export default function DashboardPage() {
         }
       }
 
-      // 3. Ringkasan Pendapatan dari /api/reports/summary (opsional)
       if (repRes.status === "fulfilled" && repRes.value.ok) {
         connected = true;
         const repJson = await repRes.value.json();
@@ -395,10 +415,10 @@ export default function DashboardPage() {
       }
 
       setIsConnected(connected);
+      syncOrdersFromStorage();
     } catch {
       setIsConnected(false);
-    } finally {
-      setTimeout(() => setRefreshing(false), 400);
+      syncOrdersFromStorage();
     }
   };
 
@@ -409,44 +429,43 @@ export default function DashboardPage() {
       return;
     }
     fetchDashboardData();
+    syncOrdersFromStorage();
+
+    const onOrderCreatedEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<any>;
+      const newOrderData = customEvent.detail;
+      if (newOrderData) {
+        const cleanId = String(newOrderData.id || `ORD-${Date.now()}`).replace(
+          /^#/,
+          ""
+        );
+        const priceNum = Number(newOrderData.total || 0);
+        setOrders((prev) => [
+          {
+            id: `#${cleanId}`,
+            customer: newOrderData.pelanggan || "Pelanggan Baru",
+            product: `${newOrderData.produk || "Galon"} (${
+              newOrderData.jumlah || 1
+            }x)`,
+            time: "Baru saja",
+            price: formatRupiah(priceNum),
+            priceNumber: priceNum,
+            status: newOrderData.status || "Menunggu Kurir",
+            courier: newOrderData.kurir || "Budi Pratama",
+          },
+          ...prev,
+        ]);
+      } else {
+        syncOrdersFromStorage();
+      }
+    };
+
+    window.addEventListener("galonku:order-created", onOrderCreatedEvent);
+    return () => {
+      window.removeEventListener("galonku:order-created", onOrderCreatedEvent);
+    };
   }, [router]);
 
-  // Update status pesanan -> PATCH /api/orders/:id/status
-  const handleCycleOrderStatus = async (order: Order, nextStatus?: string) => {
-    const flow = ["Diproses", "Diantar", "Selesai"];
-    const currentIndex = flow.indexOf(order.status);
-    const updatedStatus = nextStatus || flow[(currentIndex + 1) % flow.length];
-
-    setOrders((prev) =>
-      prev.map((item) => (item.id === order.id ? { ...item, status: updatedStatus } : item))
-    );
-    if (selectedOrder?.id === order.id) {
-      setSelectedOrder({ ...order, status: updatedStatus });
-    }
-    showToast(`Status ${order.id} diubah menjadi "${updatedStatus}"`);
-
-    if (order.rawId) {
-      const token = localStorage.getItem("token");
-      try {
-        const res = await fetch(`${API_URL}/orders/${order.rawId}/status`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify({ status: toBackendOrderStatus(updatedStatus) }),
-        });
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          showToast(errData.message || "Gagal menyimpan status ke database");
-        }
-      } catch {
-        // Tetap pertahankan state UI jika offline
-      }
-    }
-  };
-
-  // Quick Restok (+5 Galon)
   const handleQuickRestock = async (product: Product, addQty = 5) => {
     const newStock = product.stock + addQty;
     const newStatus: "Kritis" | "Rendah" | "Tersedia" =
@@ -473,24 +492,38 @@ export default function DashboardPage() {
           body: JSON.stringify({ stock: newStock }),
         });
       } catch {
-        // Fallback UI jika endpoint PATCH /products/:id belum dibuat
+        // Fallback UI jika endpoint PATCH /products/:id belum tersedia
       }
     }
   };
 
+  // 3 kotak atas saling nyambung: Total Pesanan -> Pendapatan Bersih -> Status Stock Galon
   const summary = useMemo(() => {
+    const totalOrders = orders.length;
+    const computedRevenueFromOrders = orders.reduce(
+      (acc, item) =>
+        acc +
+        (typeof item.priceNumber === "number"
+          ? item.priceNumber
+          : Number(String(item.price || "0").replace(/\D/g, "")) || 0),
+      0
+    );
+
+    const totalRevenue =
+      hasDbOrders && reportRevenue !== null
+        ? formatRupiah(reportRevenue)
+        : formatRupiah(computedRevenueFromOrders);
+
     const totalStock = products.reduce((acc, item) => acc + item.stock, 0);
     const isLowStock = totalStock < 20;
-    const totalOrders = hasDbOrders ? orders.length : 48;
-    const totalRevenue =
-      reportRevenue !== null
-        ? formatRupiah(reportRevenue)
-        : hasDbOrders
-        ? formatRupiah(orders.reduce((acc, item) => acc + (item.priceNumber || 0), 0))
-        : "Rp 864.000";
 
-    return { totalStock, isLowStock, totalOrders, totalRevenue };
-  }, [products, orders, hasDbOrders, reportRevenue]);
+    return {
+      totalOrders,
+      totalRevenue,
+      totalStock,
+      isLowStock,
+    };
+  }, [orders, products, hasDbOrders, reportRevenue]);
 
   const activeChart = CHART_CONFIG[chartRange];
 
@@ -521,17 +554,6 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                fetchDashboardData();
-                showToast("Data dashboard berhasil diperbarui");
-              }}
-              className="flex h-10 items-center gap-2 rounded-xl bg-[#F0F3FF] px-3.5 text-xs font-bold text-[#26334C] transition hover:bg-[#E6EBFF]"
-            >
-              <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
-              Refresh Data
-            </button>
             <div
               className={`flex h-10 items-center gap-2 rounded-xl px-3.5 text-xs font-bold ${
                 isConnected
@@ -550,9 +572,9 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      {/* 2. RINGKASAN STATISTIK */}
+      {/* 2. RINGKASAN STATISTIK (3 KOTAK SALING NYAMBUNG) */}
       <section className="grid gap-4 md:grid-cols-3">
-        {/* Total Pesanan */}
+        {/* Kotak 1: Total Pesanan */}
         <div className="overflow-hidden rounded-2xl border border-[#EEF0F5] bg-white">
           <div className="flex items-start justify-between p-5">
             <div>
@@ -570,16 +592,18 @@ export default function DashboardPage() {
           </div>
           <div className="flex items-center justify-between bg-[#F2F1FF] px-5 py-2 text-[10px]">
             <span className="flex items-center gap-1 font-semibold text-[#257143]">
-              <ArrowUpRight size={12} /> +12%{" "}
-              <span className="font-normal text-[#687289]">vs kemarin (42 pesanan)</span>
+              <ArrowUpRight size={12} /> Nyambung dengan {summary.totalOrders} order aktif
             </span>
-            <Link href="/manajemenpesanan" className="font-bold text-[#087D86] hover:underline">
+            <Link
+              href="/manajemenpesanan"
+              className="font-bold text-[#087D86] hover:underline"
+            >
               Detail →
             </Link>
           </div>
         </div>
 
-        {/* Pendapatan Bersih */}
+        {/* Kotak 2: Pendapatan Bersih */}
         <div className="overflow-hidden rounded-2xl border border-[#EEF0F5] bg-white">
           <div className="flex items-start justify-between p-5">
             <div>
@@ -596,16 +620,18 @@ export default function DashboardPage() {
           </div>
           <div className="flex items-center justify-between bg-[#F1FBF4] px-5 py-2 text-[10px]">
             <span className="flex items-center gap-1 font-semibold text-[#257143]">
-              <CheckCircle2 size={12} /> +8.5%{" "}
-              <span className="font-normal text-[#687289]">melampaui target harian</span>
+              <CheckCircle2 size={12} /> Terhitung dari {summary.totalOrders} pesanan
             </span>
-            <Link href="/laporankeu" className="font-bold text-[#087D86] hover:underline">
+            <Link
+              href="/laporankeu"
+              className="font-bold text-[#087D86] hover:underline"
+            >
               Laporan →
             </Link>
           </div>
         </div>
 
-        {/* Status Stock Galon */}
+        {/* Kotak 3: Status Stock Galon */}
         <div className="overflow-hidden rounded-2xl border border-[#EEF0F5] bg-white">
           <div className="flex items-start justify-between p-5">
             <div>
@@ -628,7 +654,11 @@ export default function DashboardPage() {
                   : "bg-[#C5F8D0] text-[#16752C]"
               }`}
             >
-              {summary.isLowStock ? <AlertTriangle size={18} /> : <CheckCircle2 size={18} />}
+              {summary.isLowStock ? (
+                <AlertTriangle size={18} />
+              ) : (
+                <CheckCircle2 size={18} />
+              )}
             </div>
           </div>
           <div
@@ -642,9 +672,9 @@ export default function DashboardPage() {
               }`}
             >
               <Boxes size={12} />
-              {summary.isLowStock ? "Perlu Restok Segera" : "Stok Depo Aman"}{" "}
+              {summary.isLowStock ? "Perlu Restok Segera" : "Stok Galon Aman"}{" "}
               <span className="font-normal text-[#687289]">
-                ({summary.isLowStock ? "< 20 unit" : "siap kirim"})
+                ({summary.isLowStock ? "< 20 unit" : "siap melayani order"})
               </span>
             </span>
             <Link
@@ -659,50 +689,59 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      {/* 3. GRAFIK & PESANAN TERBARU */}
-      <section className="grid gap-4 xl:grid-cols-[1.55fr_0.85fr]">
-        {/* Grafik Interaktif */}
-        <div className="rounded-2xl border border-[#EEF0F5] bg-white p-5">
-          <div className="flex items-start justify-between">
+      {/* 3. GRAFIK PESANAN FULL LEBAR */}
+      <section className="w-full">
+        <div className="w-full rounded-2xl border border-[#EEF0F5] bg-white p-5">
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-extrabold text-[#131B2E]">Grafik Pesanan</h2>
+                <h2 className="text-base font-extrabold text-[#131B2E]">
+                  Grafik Pesanan
+                </h2>
                 <span className="rounded bg-[#EEF0FF] px-2 py-0.5 text-[9px] font-bold text-[#0052FF]">
                   Realtime
                 </span>
               </div>
-              <p className="mt-0.5 text-[10px] text-[#6C7588]">{activeChart.subtitle}</p>
+              <p className="mt-0.5 text-[10px] text-[#6C7588]">
+                {activeChart.subtitle}
+              </p>
             </div>
-            <div className="flex rounded-xl bg-[#F0F1FF] p-1">
-              {(["Hari Ini", "Mingguan", "Bulanan"] as ChartRange[]).map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => {
-                    setChartRange(item);
-                    setHoveredPoint(null);
-                  }}
-                  className={`rounded-lg px-2.5 py-1 text-[9px] font-bold transition ${
-                    chartRange === item
-                      ? "bg-white text-[#0052FF] shadow-sm"
-                      : "text-[#626C80] hover:text-[#131B2E]"
-                  }`}
-                >
-                  {item}
-                </button>
-              ))}
+            <div className="flex w-fit rounded-xl bg-[#F0F1FF] p-1">
+              {(["Hari Ini", "Mingguan", "Bulanan"] as ChartRange[]).map(
+                (item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => {
+                      setChartRange(item);
+                      setHoveredPoint(null);
+                    }}
+                    className={`rounded-lg px-2.5 py-1 text-[9px] font-bold transition ${
+                      chartRange === item
+                        ? "bg-white text-[#0052FF] shadow-sm"
+                        : "text-[#626C80] hover:text-[#131B2E]"
+                    }`}
+                  >
+                    {item}
+                  </button>
+                )
+              )}
             </div>
           </div>
 
           <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl bg-[#F1F1FF] p-3 text-center">
             <div>
               <p className="text-[9px] text-[#687289]">{activeChart.peakLabel}</p>
-              <p className="text-xs font-extrabold text-[#131B2E]">{activeChart.peakValue}</p>
+              <p className="text-xs font-extrabold text-[#131B2E]">
+                {activeChart.peakValue}
+              </p>
               <p className="text-[9px] text-[#687289]">{activeChart.peakSub}</p>
             </div>
             <div>
               <p className="text-[9px] text-[#687289]">Rata-rata Pengiriman</p>
-              <p className="text-xs font-extrabold text-[#087D86]">{activeChart.avgDelivery}</p>
+              <p className="text-xs font-extrabold text-[#087D86]">
+                {activeChart.avgDelivery}
+              </p>
             </div>
             <div>
               <p className="text-[9px] text-[#687289]">Tingkat Penyelesaian</p>
@@ -712,13 +751,17 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="relative mt-4 h-[220px] w-full">
+          <div className="relative mt-4 h-[230px] w-full">
             {hoveredPoint && (
               <div className="absolute right-3 top-2 z-10 rounded-lg bg-[#131B2E] px-2.5 py-1 text-[10px] font-bold text-white shadow">
                 {hoveredPoint.label}: {hoveredPoint.count} pesanan
               </div>
             )}
-            <svg viewBox="0 0 800 240" className="h-full w-full overflow-visible">
+            <svg
+              viewBox="0 0 800 240"
+              preserveAspectRatio="none"
+              className="h-full w-full overflow-visible"
+            >
               <defs>
                 <linearGradient id="chartArea" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#0052FF" stopOpacity="0.28" />
@@ -743,7 +786,9 @@ export default function DashboardPage() {
                     stroke="#0052FF"
                     strokeWidth={3}
                     className="cursor-pointer transition-transform hover:scale-125"
-                    onMouseEnter={() => setHoveredPoint({ label: pt.label, count: pt.count })}
+                    onMouseEnter={() =>
+                      setHoveredPoint({ label: pt.label, count: pt.count })
+                    }
                     onMouseLeave={() => setHoveredPoint(null)}
                   />
                   <text
@@ -759,108 +804,11 @@ export default function DashboardPage() {
             </svg>
           </div>
         </div>
-
-        {/* Pesanan Terbaru */}
-        <div className="flex flex-col justify-between rounded-2xl border border-[#EEF0F5] bg-white p-5">
-          <div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-extrabold text-[#131B2E]">Pesanan Terbaru</h2>
-                <span className="rounded bg-[#DDF0FF] px-2 py-0.5 text-[9px] font-bold text-[#0052FF]">
-                  Live Feed
-                </span>
-              </div>
-              <Link
-                href="/manajemenpesanan"
-                className="text-[10px] font-bold text-[#0052FF] hover:underline"
-              >
-                Lihat Semua →
-              </Link>
-            </div>
-            <p className="mt-0.5 text-[10px] text-[#6C7588]">
-              Klik badge status untuk ubah cepat atau klik item untuk detail
-            </p>
-
-            <div className="mt-3 space-y-2">
-              {orders.slice(0, 4).map((ord) => {
-                const galonImgSrc = ord.image || resolveGalonImage(ord.product, products);
-                const imgBroken = failedOrderImages[ord.id];
-
-                return (
-                  <div
-                    key={ord.id}
-                    onClick={() => setSelectedOrder(ord)}
-                    className="flex cursor-pointer items-center justify-between rounded-xl border border-transparent bg-[#F4F6FD] p-2.5 transition hover:border-[#0052FF]/30 hover:bg-[#EDF1FC]"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[#E4E8F5] bg-white p-1">
-                        {!imgBroken ? (
-                          <img
-                            src={galonImgSrc}
-                            alt={ord.product}
-                            className="h-full w-full object-contain"
-                            onError={() =>
-                              setFailedOrderImages((prev) => ({ ...prev, [ord.id]: true }))
-                            }
-                          />
-                        ) : (
-                          <Package size={16} className="text-[#0052FF]" />
-                        )}
-                      </div>
-
-                      <div>
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-[#131B2E]">
-                          <span>{ord.id}</span>
-                          <span className="text-[9px] font-normal text-[#7A8498]">{ord.time}</span>
-                        </div>
-                        <p className="text-[10px] text-[#69738A]">{ord.customer}</p>
-                        <p className="text-[10px] font-semibold text-[#087D86]">{ord.product}</p>
-                      </div>
-                    </div>
-
-                    <div className="text-right">
-                      <button
-                        type="button"
-                        title="Klik untuk ganti status pesanan"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleCycleOrderStatus(ord);
-                        }}
-                        className={`rounded-full px-2 py-0.5 text-[9px] font-bold transition hover:opacity-80 ${
-                          ord.status === "Diantar"
-                            ? "bg-[#C9F4F7] text-[#087D86]"
-                            : ord.status === "Diproses"
-                            ? "bg-[#DCE7FF] text-[#164FC1]"
-                            : "bg-[#BDF6C9] text-[#16752C]"
-                        }`}
-                      >
-                        ● {ord.status}
-                      </button>
-                      <p className="mt-1 text-xs font-bold text-[#131B2E]">{ord.price}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="mt-3 flex items-center justify-between rounded-xl bg-[#EEF1FF] p-3 text-[#131B2E]">
-            <span className="text-[10px] font-semibold">
-              Masuk antrean baru? Segera tugaskan kurir
-            </span>
-            <Link
-              href="/manajemenpesanan"
-              className="rounded-lg bg-[#0052FF] px-3 py-1.5 text-[10px] font-bold text-white hover:bg-[#0047DE]"
-            >
-              Dispatch Kurir
-            </Link>
-          </div>
-        </div>
       </section>
 
       {/* 4. STOK GALON FISIK DI DEPO */}
       <section className="rounded-2xl border border-[#EEF0F5] bg-white p-5">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
           <div>
             <div className="flex items-center gap-2">
               <Boxes size={18} className="text-[#0052FF]" />
@@ -874,7 +822,7 @@ export default function DashboardPage() {
           </div>
           <Link
             href="/products"
-            className="flex items-center gap-1.5 rounded-xl bg-[#0052FF] px-4 py-2 text-xs font-bold text-white hover:bg-[#0047DE]"
+            className="flex w-fit items-center gap-1.5 rounded-xl bg-[#0052FF] px-4 py-2 text-xs font-bold text-white hover:bg-[#0047DE]"
           >
             <Plus size={15} /> Pesan Restok Pabrik
           </Link>
@@ -931,127 +879,6 @@ export default function DashboardPage() {
           ))}
         </div>
       </section>
-
-      {/* 5. ARMADA PENGANTARAN AKTIF */}
-      <section className="rounded-2xl border border-[#EEF0F5] bg-white p-3">
-        <div className="flex flex-col gap-3 rounded-xl bg-[#EEF1FF] p-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-[#0052FF]">
-              <Truck size={20} />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-xs font-bold text-[#131B2E]">Armada Pengantaran Aktif</h3>
-                <span className="rounded-md bg-[#C5F8D0] px-2 py-0.5 text-[9px] font-bold text-[#16752C]">
-                  {standbyCalled ? "5 Kurir Beroperasi" : "4 Kurir Beroperasi"}
-                </span>
-              </div>
-              <p className="text-[10px] text-[#69738A]">
-                Budi Pratama (8 galon), Joko Susilo (6 galon), Ahmad D. (4 galon),{" "}
-                {standbyCalled ? "Indra (Aktif Mengantar)" : "Indra (Standby di Depo)"}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link
-              href="/monitoring"
-              className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-[#293246] hover:bg-slate-50"
-            >
-              Live Map GPS
-            </Link>
-            <button
-              type="button"
-              disabled={standbyCalled}
-              onClick={() => {
-                setStandbyCalled(true);
-                showToast("Kurir Indra berhasil dipanggil untuk pengantaran!");
-              }}
-              className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold text-white transition ${
-                standbyCalled
-                  ? "cursor-default bg-[#16752C]"
-                  : "bg-[#0052FF] hover:bg-[#0047DE]"
-              }`}
-            >
-              {standbyCalled && <UserCheck size={14} />}
-              {standbyCalled ? "Semua Kurir Aktif" : "Panggil Kurir Standby"}
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* MODAL DETAIL & UPDATE PESANAN */}
-      {selectedOrder && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs"
-          onClick={() => setSelectedOrder(null)}
-        >
-          <div
-            className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b border-[#EEF0F5] pb-3">
-              <div>
-                <h3 className="text-base font-extrabold text-[#131B2E]">
-                  Detail Pesanan {selectedOrder.id}
-                </h3>
-                <p className="text-[11px] text-[#69738A]">Masuk pukul {selectedOrder.time}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedOrder(null)}
-                className="rounded-lg p-1.5 text-[#69738A] hover:bg-[#F2F4FA]"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="mt-4 flex items-center gap-3 rounded-xl bg-[#F4F6FD] p-3">
-              <img
-                src={selectedOrder.image || resolveGalonImage(selectedOrder.product, products)}
-                alt={selectedOrder.product}
-                className="h-14 w-14 rounded-lg bg-white object-contain p-1"
-              />
-              <div>
-                <p className="text-xs font-bold text-[#131B2E]">{selectedOrder.customer}</p>
-                <p className="text-xs font-semibold text-[#087D86]">{selectedOrder.product}</p>
-                <p className="mt-0.5 text-xs font-extrabold text-[#131B2E]">
-                  {selectedOrder.price}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-4">
-              <p className="mb-2 text-xs font-bold text-[#293246]">Update Status Pengiriman:</p>
-              <div className="grid grid-cols-3 gap-2">
-                {["Diproses", "Diantar", "Selesai"].map((st) => (
-                  <button
-                    key={st}
-                    type="button"
-                    onClick={() => handleCycleOrderStatus(selectedOrder, st)}
-                    className={`rounded-xl py-2 text-xs font-bold transition ${
-                      selectedOrder.status === st
-                        ? "bg-[#0052FF] text-white shadow-sm"
-                        : "bg-[#F2F4FA] text-[#596378] hover:bg-[#E5E9F5]"
-                    }`}
-                  >
-                    {st}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-4 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setSelectedOrder(null)}
-                className="rounded-xl bg-[#131B2E] px-4 py-2 text-xs font-bold text-white"
-              >
-                Tutup
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

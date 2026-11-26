@@ -1,10 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Search,
-  Filter,
-  Download,
   Check,
   Eye,
   X,
@@ -19,7 +17,17 @@ import {
   ChevronRight,
 } from 'lucide-react';
 
-function ProductThumb({ src, alt, fallbackText }: { src: string; alt: string; fallbackText: string }) {
+const STORAGE_ORDERS_KEY = 'galonku_orders_v1';
+
+function ProductThumb({
+  src,
+  alt,
+  fallbackText,
+}: {
+  src: string;
+  alt: string;
+  fallbackText: string;
+}) {
   const [hasError, setHasError] = useState(false);
 
   return (
@@ -32,13 +40,16 @@ function ProductThumb({ src, alt, fallbackText }: { src: string; alt: string; fa
           onError={() => setHasError(true)}
         />
       ) : (
-        <span className="font-bold text-[9px] text-blue-600 uppercase">{fallbackText}</span>
+        <span className="font-bold text-[9px] text-blue-600 uppercase">
+          {fallbackText}
+        </span>
       )}
     </div>
   );
 }
 
 interface OrderItem {
+  rawId?: number;
   id: string;
   time: string;
   customerName: string;
@@ -50,6 +61,7 @@ interface OrderItem {
   image: string;
   fallback: string;
   total: string;
+  totalNumber: number;
   paymentMethod: string;
   paymentLabel: string;
   paymentStatus: string;
@@ -61,231 +73,542 @@ interface OrderItem {
   courierDetail: string | null;
 }
 
-export default function ManajemenPesananPage() {
-  const [orders, setOrders] = useState<OrderItem[]>([
-    {
-      id: '#ORD-8824',
-      time: '10:15 WIB',
-      customerName: 'Fia Salsa',
-      customerPhone: '0812-9844-3211',
-      customerAddress: 'Kost Sakura No. 4, Lt. 2',
-      product: '2x Aqua 19L Refill',
-      productNote: 'Tukar Galon Kosong',
-      productBrand: 'aqua',
-      image: '/aqua.png',
-      fallback: 'Aqua',
-      total: 'Rp 36.000',
-      paymentMethod: 'qris',
-      paymentLabel: 'QRIS',
-      paymentStatus: 'Lunas',
-      paymentBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-      status: 'konfirmasi',
-      statusLabel: '• Menunggu Konfirmasi',
-      statusBg: 'bg-amber-50 text-amber-700 border-amber-200',
-      courier: null,
-      courierDetail: null,
-    },
-    {
-      id: '#ORD-8823',
-      time: '10:02 WIB',
-      customerName: 'Agus Setiawan',
-      customerPhone: '0857-1120-9963',
-      customerAddress: 'Jl. Ciputat Raya No. 188',
-      product: '3x Le Minerale 15L',
-      productNote: '1 Galon Baru + 2 Refill',
-      productBrand: 'leminerale',
-      image: '/leminerale.png',
-      fallback: 'Le M',
-      total: 'Rp 89.000',
-      paymentMethod: 'bca',
-      paymentLabel: 'BCA TF',
-      paymentStatus: 'Lunas',
-      paymentBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-      status: 'diproses',
-      statusLabel: '• Diproses Depo',
-      statusBg: 'bg-[#EEF2FF] text-[#4338CA] border-indigo-200',
-      courier: 'Pak Budi K.',
-      courierDetail: 'Motor 01 (Siap Angkut)',
-    },
-    {
-      id: '#ORD-8822',
-      time: '09:48 WIB',
-      customerName: 'Dewi Anggraini',
-      customerPhone: '0813-8871-0021',
-      customerAddress: 'Paku Terrace Twr S-1208',
-      product: '1x Aqua 19L Refill',
-      productNote: 'Tukar Galon Kosong',
-      productBrand: 'aqua',
-      image: '/aqua.png',
-      fallback: 'Aqua',
-      total: 'Rp 18.000',
-      paymentMethod: 'cod',
-      paymentLabel: 'COD (Tunai)',
-      paymentStatus: 'COD',
-      paymentBg: 'bg-cyan-50 text-cyan-700 border-cyan-200',
-      status: 'diantar',
-      statusLabel: '• Diantar Kurir',
-      statusBg: 'bg-cyan-50 text-cyan-700 border-cyan-200',
-      courier: 'Rian Irawan',
-      courierDetail: 'ETA: 8 mnt lagi',
-    },
-    {
-      id: '#ORD-8821',
-      time: '09:20 WIB',
-      customerName: 'Warung Kopi Mas Jon',
-      customerPhone: '0878-5544-2201',
-      customerAddress: 'Jl. Teuku Nyak Arief No. 51',
-      product: '5x Aqua 19L Refill',
-      productNote: 'Langganan Bisnis UMKM',
-      productBrand: 'aqua',
-      image: '/aqua.png',
-      fallback: 'Aqua',
-      total: 'Rp 90.000',
-      paymentMethod: 'qris',
-      paymentLabel: 'QRIS',
-      paymentStatus: 'Lunas',
-      paymentBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-      status: 'selesai',
-      statusLabel: '• Selesai Diterima',
-      statusBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-      courier: 'Pak Budi K.',
-      courierDetail: 'Diterima 09:42 WIB',
-    },
-    {
-      id: '#ORD-8820',
-      time: '08:50 WIB',
-      customerName: 'Hendro Pratama',
-      customerPhone: '0812-7788-3312',
-      customerAddress: 'Komplek Lamigres Blok B4/12',
-      product: '2x Cleo 19L',
-      productNote: 'Bebas BPA Galon',
-      productBrand: 'cleo',
-      image: '/cleo.png',
-      fallback: 'Cleo',
-      total: 'Rp 34.000',
-      paymentMethod: 'gopay',
-      paymentLabel: 'GoPay',
-      paymentStatus: 'Lunas',
-      paymentBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-      status: 'selesai',
-      statusLabel: '• Selesai Diterima',
-      statusBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-      courier: 'Deni Setiawan',
-      courierDetail: 'Diterima 09:18 WIB',
-    },
-    {
-      id: '#ORD-8819',
-      time: '08:35 WIB',
-      customerName: 'Siti Nurhaliza',
-      customerPhone: '0896-1234-9001',
-      customerAddress: 'Jl. Kebayoran Lama No. 44',
-      product: '1x Aqua 19L + Pompa',
-      productNote: 'Beli Unit Pompa Baru',
-      productBrand: 'aqua',
-      image: '/aqua.png',
-      fallback: 'Aqua',
-      total: 'Rp 68.000',
-      paymentMethod: 'bca',
-      paymentLabel: 'BCA TF',
-      paymentStatus: 'Lunas',
-      paymentBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-      status: 'diproses',
-      statusLabel: '• Diproses Depo',
-      statusBg: 'bg-[#EEF2FF] text-[#4338CA] border-indigo-200',
-      courier: null,
-      courierDetail: 'Jadwalkan',
-    },
-    {
-      id: '#ORD-8818',
-      time: '08:10 WIB',
-      customerName: 'Bambang Tri',
-      customerPhone: '0811-9922-3112',
-      customerAddress: 'Jl. Praja Raya No. 10',
-      product: '2x Vit 19L Refill',
-      productNote: 'Alasan: Salah input alamat',
-      productBrand: 'vit',
-      image: '/vit.png',
-      fallback: 'Vit',
-      total: 'Rp 30.000',
-      paymentMethod: 'cod',
-      paymentLabel: 'COD (Tunai)',
-      paymentStatus: 'Refunded',
-      paymentBg: 'bg-red-50 text-red-600 border-red-200',
-      status: 'dibatalkan',
-      statusLabel: '• Dibatalkan',
-      statusBg: 'bg-red-50 text-red-600 border-red-200',
-      courier: null,
-      courierDetail: '-',
-    },
-  ]);
+const DEFAULT_ORDERS: OrderItem[] = [
+  {
+    id: '#ORD-8824',
+    time: '10:15 WIB',
+    customerName: 'Fia Salsa',
+    customerPhone: '0812-9844-3211',
+    customerAddress: 'Kost Sakura No. 4, Lt. 2',
+    product: '2x Aqua 19L Refill',
+    productNote: 'Tukar Galon Kosong',
+    productBrand: 'aqua',
+    image: '/aqua.png',
+    fallback: 'Aqua',
+    total: 'Rp 36.000',
+    totalNumber: 36000,
+    paymentMethod: 'qris',
+    paymentLabel: 'QRIS',
+    paymentStatus: 'Lunas',
+    paymentBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    status: 'konfirmasi',
+    statusLabel: '• Menunggu Konfirmasi',
+    statusBg: 'bg-amber-50 text-amber-700 border-amber-200',
+    courier: null,
+    courierDetail: null,
+  },
+  {
+    id: '#ORD-8823',
+    time: '10:02 WIB',
+    customerName: 'Agus Setiawan',
+    customerPhone: '0857-1120-9963',
+    customerAddress: 'Jl. Ciputat Raya No. 188',
+    product: '3x Le Minerale 15L',
+    productNote: '1 Galon Baru + 2 Refill',
+    productBrand: 'leminerale',
+    image: '/leminerale.png',
+    fallback: 'Le M',
+    total: 'Rp 89.000',
+    totalNumber: 89000,
+    paymentMethod: 'bca',
+    paymentLabel: 'BCA TF',
+    paymentStatus: 'Lunas',
+    paymentBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    status: 'diproses',
+    statusLabel: '• Diproses Depo',
+    statusBg: 'bg-[#EEF2FF] text-[#4338CA] border-indigo-200',
+    courier: 'Pak Budi K.',
+    courierDetail: 'Motor 01 (Siap Angkut)',
+  },
+  {
+    id: '#ORD-8822',
+    time: '09:48 WIB',
+    customerName: 'Dewi Anggraini',
+    customerPhone: '0813-8871-0021',
+    customerAddress: 'Paku Terrace Twr S-1208',
+    product: '1x Aqua 19L Refill',
+    productNote: 'Tukar Galon Kosong',
+    productBrand: 'aqua',
+    image: '/aqua.png',
+    fallback: 'Aqua',
+    total: 'Rp 18.000',
+    totalNumber: 18000,
+    paymentMethod: 'cod',
+    paymentLabel: 'COD (Tunai)',
+    paymentStatus: 'COD',
+    paymentBg: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+    status: 'diantar',
+    statusLabel: '• Diantar Kurir',
+    statusBg: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+    courier: 'Rian Irawan',
+    courierDetail: 'ETA: 8 mnt lagi',
+  },
+  {
+    id: '#ORD-8821',
+    time: '09:20 WIB',
+    customerName: 'Warung Kopi Mas Jon',
+    customerPhone: '0878-5544-2201',
+    customerAddress: 'Jl. Teuku Nyak Arief No. 51',
+    product: '5x Aqua 19L Refill',
+    productNote: 'Langganan Bisnis UMKM',
+    productBrand: 'aqua',
+    image: '/aqua.png',
+    fallback: 'Aqua',
+    total: 'Rp 90.000',
+    totalNumber: 90000,
+    paymentMethod: 'qris',
+    paymentLabel: 'QRIS',
+    paymentStatus: 'Lunas',
+    paymentBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    status: 'selesai',
+    statusLabel: '• Selesai Diterima',
+    statusBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    courier: 'Pak Budi K.',
+    courierDetail: 'Diterima 09:42 WIB',
+  },
+  {
+    id: '#ORD-8820',
+    time: '08:50 WIB',
+    customerName: 'Hendro Pratama',
+    customerPhone: '0812-7788-3312',
+    customerAddress: 'Komplek Lamigres Blok B4/12',
+    product: '2x Cleo 19L',
+    productNote: 'Bebas BPA Galon',
+    productBrand: 'cleo',
+    image: '/cleo.png',
+    fallback: 'Cleo',
+    total: 'Rp 34.000',
+    totalNumber: 34000,
+    paymentMethod: 'gopay',
+    paymentLabel: 'GoPay',
+    paymentStatus: 'Lunas',
+    paymentBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    status: 'selesai',
+    statusLabel: '• Selesai Diterima',
+    statusBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    courier: 'Deni Setiawan',
+    courierDetail: 'Diterima 09:18 WIB',
+  },
+  {
+    id: '#ORD-8819',
+    time: '08:35 WIB',
+    customerName: 'Siti Nurhaliza',
+    customerPhone: '0896-1234-9001',
+    customerAddress: 'Jl. Kebayoran Lama No. 44',
+    product: '1x Aqua 19L + Pompa',
+    productNote: 'Beli Unit Pompa Baru',
+    productBrand: 'aqua',
+    image: '/aqua.png',
+    fallback: 'Aqua',
+    total: 'Rp 68.000',
+    totalNumber: 68000,
+    paymentMethod: 'bca',
+    paymentLabel: 'BCA TF',
+    paymentStatus: 'Lunas',
+    paymentBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    status: 'diproses',
+    statusLabel: '• Diproses Depo',
+    statusBg: 'bg-[#EEF2FF] text-[#4338CA] border-indigo-200',
+    courier: null,
+    courierDetail: 'Jadwalkan',
+  },
+  {
+    id: '#ORD-8818',
+    time: '08:10 WIB',
+    customerName: 'Bambang Tri',
+    customerPhone: '0811-9922-3112',
+    customerAddress: 'Jl. Praja Raya No. 10',
+    product: '2x Vit 19L Refill',
+    productNote: 'Alasan: Salah input alamat',
+    productBrand: 'vit',
+    image: '/vit.png',
+    fallback: 'Vit',
+    total: 'Rp 30.000',
+    totalNumber: 30000,
+    paymentMethod: 'cod',
+    paymentLabel: 'COD (Tunai)',
+    paymentStatus: 'Refunded',
+    paymentBg: 'bg-red-50 text-red-600 border-red-200',
+    status: 'dibatalkan',
+    statusLabel: '• Dibatalkan',
+    statusBg: 'bg-red-50 text-red-600 border-red-200',
+    courier: null,
+    courierDetail: '-',
+  },
+];
 
-  const [activeTab, setActiveTab] = useState<'semua' | 'konfirmasi' | 'diproses' | 'diantar' | 'selesai' | 'dibatalkan'>('semua');
+const formatRupiah = (angka: number) => {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    maximumFractionDigits: 0,
+  }).format(angka || 0);
+};
+
+function resolveBrandMeta(productText: string) {
+  const lower = productText.toLowerCase();
+  if (lower.includes('minerale')) {
+    return { brand: 'leminerale', image: '/leminerale.png', fallback: 'Le M' };
+  }
+  if (lower.includes('cleo')) {
+    return { brand: 'cleo', image: '/cleo.png', fallback: 'Cleo' };
+  }
+  if (lower.includes('vit')) {
+    return { brand: 'vit', image: '/vit.png', fallback: 'Vit' };
+  }
+  return { brand: 'aqua', image: '/aqua.png', fallback: 'Aqua' };
+}
+
+function resolveSpecificProductName(rawName: string): string {
+  const trimmed = (rawName || '').trim();
+  if (!trimmed || trimmed.toLowerCase() === 'pesanan galon') {
+    return 'Aqua 19L Refill';
+  }
+  return trimmed;
+}
+
+export default function ManajemenPesananPage() {
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+
+  const [orders, setOrders] = useState<OrderItem[]>(DEFAULT_ORDERS);
+  const [isLiveConnected, setIsLiveConnected] = useState(false);
+
+  const [activeTab, setActiveTab] = useState<
+    'semua' | 'konfirmasi' | 'diproses' | 'diantar' | 'selesai' | 'dibatalkan'
+  >('semua');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGallon, setSelectedGallon] = useState('semua');
   const [selectedPayment, setSelectedPayment] = useState('semua');
 
-<<<<<<< Updated upstream
-  // STATE FITUR PAGINATION
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(3); // Default 3 agar data contoh terbagi 3 halaman
-=======
   // STATE PAGINATION
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(5); // Default 5 baris agar pagination terlihat dengan 7 data
+  const [itemsPerPage, setItemsPerPage] = useState(3);
 
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<OrderItem | null>(null);
-  const [selectedCourierName, setSelectedCourierName] = useState('Pak Budi Santoso');
+  const [selectedCourierName, setSelectedCourierName] = useState('Pak Budi K.');
 
-<<<<<<< Updated upstream
-  // Reset ke halaman 1 jika user mengubah pencarian/filter
-=======
-  // Reset ke halaman 1 saat ada filter yang berubah
->>>>>>> Stashed changes
+  const mapBackendOrder = (item: any): OrderItem => {
+    const rawStatus = (item.status || 'pending').toLowerCase();
+    let normalizedStatus = 'konfirmasi';
+    let statusLabel = '• Menunggu Konfirmasi';
+    let statusBg = 'bg-amber-50 text-amber-700 border-amber-200';
+
+    if (rawStatus === 'diproses') {
+      normalizedStatus = 'diproses';
+      statusLabel = '• Diproses Depo';
+      statusBg = 'bg-[#EEF2FF] text-[#4338CA] border-indigo-200';
+    } else if (rawStatus === 'dikirim' || rawStatus === 'diantar') {
+      normalizedStatus = 'diantar';
+      statusLabel = '• Diantar Kurir';
+      statusBg = 'bg-cyan-50 text-cyan-700 border-cyan-200';
+    } else if (rawStatus === 'selesai') {
+      normalizedStatus = 'selesai';
+      statusLabel = '• Selesai Diterima';
+      statusBg = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+    } else if (rawStatus === 'dibatalkan') {
+      normalizedStatus = 'dibatalkan';
+      statusLabel = '• Dibatalkan';
+      statusBg = 'bg-red-50 text-red-600 border-red-200';
+    }
+
+    const rawProductName =
+      item.productSummary || item.items?.[0]?.product?.name || 'Aqua 19L Refill';
+    const productName = resolveSpecificProductName(rawProductName);
+    const meta = resolveBrandMeta(productName);
+
+    const totalNominal = Number(
+      item.totalAmount ?? item.total_amount ?? item.total_price ?? 0
+    );
+    const createdDate = item.createdAt || item.created_at;
+
+    return {
+      rawId: Number(item.id),
+      id: `#ORD-${item.id}`,
+      time: createdDate
+        ? new Date(createdDate).toLocaleTimeString('id-ID', {
+            hour: '2-digit',
+            minute: '2-digit',
+          }) + ' WIB'
+        : 'Baru saja',
+      customerName:
+        item.customerName ||
+        item.user?.name ||
+        `Pelanggan #${item.userId || item.user_id || '-'}`,
+      customerPhone:
+        item.customerPhone || item.user?.phone || '0812-0000-0000',
+      customerAddress:
+        item.address || item.shippingAddress || 'Alamat terdaftar di sistem',
+      product: productName,
+      productNote: item.items ? `${item.items.length} item produk` : 'Refill / Galon',
+      productBrand: meta.brand,
+      image: meta.image,
+      fallback: meta.fallback,
+      total: formatRupiah(totalNominal),
+      totalNumber: totalNominal,
+      paymentMethod: (
+        item.paymentMethod ||
+        item.payment_method ||
+        'qris'
+      ).toLowerCase(),
+      paymentLabel: item.paymentMethod || item.payment_method || 'QRIS',
+      paymentStatus: rawStatus === 'selesai' ? 'Lunas' : 'Terverifikasi',
+      paymentBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      status: normalizedStatus,
+      statusLabel,
+      statusBg,
+      courier:
+        normalizedStatus === 'diantar' || normalizedStatus === 'selesai'
+          ? 'Kurir Depo'
+          : null,
+      courierDetail:
+        normalizedStatus === 'diantar'
+          ? 'Dalam perjalanan'
+          : normalizedStatus === 'selesai'
+          ? 'Terkirim'
+          : null,
+    };
+  };
+
+  const mapLocalCreatedOrder = (item: any, index: number): OrderItem => {
+    const cleanId = String(item.id || `ORD-NEW-${index + 1}`).replace(/^#/, '');
+    const productText = resolveSpecificProductName(
+      `${item.jumlah || 1}x ${item.produk || item.product || 'Aqua 19L'}`
+    );
+    const meta = resolveBrandMeta(productText);
+    const priceNum = Number(item.total || item.priceNumber || 0);
+
+    return {
+      id: `#${cleanId}`,
+      time: 'Baru saja',
+      customerName: item.pelanggan || item.customer || 'Pelanggan Baru',
+      customerPhone: item.telepon || '0812-0000-0000',
+      customerAddress: item.alamat || item.address || 'Alamat pengiriman baru',
+      product: productText,
+      productNote: `Kurir: ${item.kurir || 'Belum ditugaskan'}`,
+      productBrand: meta.brand,
+      image: meta.image,
+      fallback: meta.fallback,
+      total: formatRupiah(priceNum),
+      totalNumber: priceNum,
+      paymentMethod: 'qris',
+      paymentLabel: 'QRIS',
+      paymentStatus: 'Terverifikasi',
+      paymentBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      status: 'konfirmasi',
+      statusLabel: '• Menunggu Konfirmasi',
+      statusBg: 'bg-amber-50 text-amber-700 border-amber-200',
+      courier: item.kurir || null,
+      courierDetail: item.kurir ? 'Ditugaskan baru' : null,
+    };
+  };
+
+  const mergeLocalCreatedOrders = useCallback((baseList: OrderItem[]) => {
+    try {
+      const rawSaved = localStorage.getItem(STORAGE_ORDERS_KEY);
+      if (!rawSaved) return baseList;
+      const parsed = JSON.parse(rawSaved);
+      if (!Array.isArray(parsed) || parsed.length === 0) return baseList;
+
+      const mapped = parsed.map(mapLocalCreatedOrder);
+      const existingIds = new Set(baseList.map((o) => o.id.toUpperCase()));
+      const uniqueNew = mapped.filter((o) => !existingIds.has(o.id.toUpperCase()));
+      return [...uniqueNew, ...baseList];
+    } catch {
+      return baseList;
+    }
+  }, []);
+
+  const fetchOrdersFromBackend = useCallback(async () => {
+    try {
+      const token =
+        typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      if (!token) {
+        setOrders((prev) => mergeLocalCreatedOrders(prev));
+        return;
+      }
+
+      const res = await fetch(`${API_URL}/orders/manage/all`, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        const rawList = Array.isArray(json.data) ? json.data : [];
+        if (rawList.length > 0) {
+          setOrders(mergeLocalCreatedOrders(rawList.map(mapBackendOrder)));
+        } else {
+          setOrders((prev) => mergeLocalCreatedOrders(prev));
+        }
+        setIsLiveConnected(true);
+      } else {
+        setOrders((prev) => mergeLocalCreatedOrders(prev));
+      }
+    } catch (error) {
+      console.error('Gagal memuat data pesanan:', error);
+      setOrders((prev) => mergeLocalCreatedOrders(prev));
+    }
+  }, [API_URL, mergeLocalCreatedOrders]);
+
+  useEffect(() => {
+    fetchOrdersFromBackend();
+
+    const onGlobalSearch = (e: Event) => {
+      const customEvent = e as CustomEvent<{ query: string; category: string }>;
+      if (typeof customEvent.detail?.query === 'string') {
+        setSearchQuery(customEvent.detail.query);
+      }
+    };
+
+    const onOrderCreated = (e: Event) => {
+      const customEvent = e as CustomEvent<any>;
+      if (customEvent.detail) {
+        const mappedNew = mapLocalCreatedOrder(customEvent.detail, 0);
+        setOrders((prev) => {
+          if (prev.some((o) => o.id.toUpperCase() === mappedNew.id.toUpperCase())) {
+            return prev;
+          }
+          return [mappedNew, ...prev];
+        });
+        setCurrentPage(1);
+      }
+    };
+
+    window.addEventListener('galonku:global-search', onGlobalSearch);
+    window.addEventListener('galonku:order-created', onOrderCreated);
+    return () => {
+      window.removeEventListener('galonku:global-search', onGlobalSearch);
+      window.removeEventListener('galonku:order-created', onOrderCreated);
+    };
+  }, [fetchOrdersFromBackend]);
+
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, selectedGallon, selectedPayment, activeTab]);
 
-  const handleConfirmOrder = (orderId: string) => {
-    setOrders((prev) =>
-      prev.map((o) => {
-        if (o.id === orderId) {
-          return {
-            ...o,
-            status: 'diproses',
-            statusLabel: '• Diproses Depo',
-            statusBg: 'bg-[#EEF2FF] text-[#4338CA] border-indigo-200',
-          };
+  // Konfirmasi Pesanan -> PATCH /api/orders/:id/status { status: 'diproses' }
+  const handleConfirmOrder = async (order: OrderItem) => {
+    if (order.rawId) {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_URL}/orders/${order.rawId}/status`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ status: 'diproses' }),
+        });
+
+        if (res.ok) {
+          alert(`Pesanan ${order.id} berhasil dikonfirmasi!`);
+          fetchOrdersFromBackend();
+          return;
         }
-        return o;
-      })
+      } catch (err) {
+        console.error('Error konfirmasi pesanan:', err);
+      }
+    }
+
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === order.id
+          ? {
+              ...o,
+              status: 'diproses',
+              statusLabel: '• Diproses Depo',
+              statusBg: 'bg-[#EEF2FF] text-[#4338CA] border-indigo-200',
+            }
+          : o
+      )
     );
-    alert(`Pesanan ${orderId} berhasil dikonfirmasi!`);
+    alert(`Pesanan ${order.id} berhasil dikonfirmasi!`);
   };
 
-  const handleAssignCourier = (e: React.FormEvent) => {
+  // Tugaskan Kurir -> PATCH /api/orders/:id/status { status: 'dikirim' }
+  const handleAssignCourier = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedOrder) return;
 
-    setOrders((prev) =>
-      prev.map((o) => {
-        if (o.id === selectedOrder.id) {
-          return {
-            ...o,
-            status: 'diantar',
-            statusLabel: '• Diantar Kurir',
-            statusBg: 'bg-cyan-50 text-cyan-700 border-cyan-200',
-            courier: selectedCourierName,
-            courierDetail: 'Tiba ~15 mnt lagi',
-          };
+    if (selectedOrder.rawId) {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_URL}/orders/${selectedOrder.rawId}/status`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ status: 'dikirim' }),
+        });
+
+        if (res.ok) {
+          setShowAssignModal(false);
+          alert(
+            `Kurir ${selectedCourierName} berhasil ditugaskan untuk ${selectedOrder.id}!`
+          );
+          fetchOrdersFromBackend();
+          return;
         }
-        return o;
-      })
+      } catch (err) {
+        console.error('Error tugaskan kurir:', err);
+      }
+    }
+
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === selectedOrder.id
+          ? {
+              ...o,
+              status: 'diantar',
+              statusLabel: '• Diantar Kurir',
+              statusBg: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+              courier: selectedCourierName,
+              courierDetail: 'Tiba ~15 mnt lagi',
+            }
+          : o
+      )
     );
     setShowAssignModal(false);
-    alert(`Kurir ${selectedCourierName} berhasil ditugaskan untuk ${selectedOrder.id}!`);
+    alert(
+      `Kurir ${selectedCourierName} berhasil ditugaskan untuk ${selectedOrder.id}!`
+    );
   };
+
+  // Perhitungan dinamis untuk 4 kotak KPI & tab
+  const kpiStats = useMemo(() => {
+    const totalPesanan = orders.length;
+    const perluKonfirmasi = orders.filter((o) => o.status === 'konfirmasi').length;
+    const diproses = orders.filter((o) => o.status === 'diproses').length;
+    const sedangDiantar = orders.filter((o) => o.status === 'diantar').length;
+    const selesai = orders.filter((o) => o.status === 'selesai').length;
+    const dibatalkan = orders.filter((o) => o.status === 'dibatalkan').length;
+
+    const totalOmzetAngka = orders
+      .filter((o) => o.status !== 'dibatalkan')
+      .reduce(
+        (acc, o) =>
+          acc +
+          (typeof o.totalNumber === 'number'
+            ? o.totalNumber
+            : Number(String(o.total || '0').replace(/\D/g, '')) || 0),
+        0
+      );
+
+    return {
+      totalPesanan,
+      perluKonfirmasi,
+      diproses,
+      sedangDiantar,
+      selesai,
+      dibatalkan,
+      totalOmzet: formatRupiah(totalOmzetAngka),
+    };
+  }, [orders]);
 
   // Filter Data Utama
   const filteredOrders = orders.filter((o) => {
@@ -306,42 +629,37 @@ export default function ManajemenPesananPage() {
       matchPayment = o.paymentMethod === selectedPayment;
     }
 
+    const q = searchQuery.toLowerCase();
     const matchSearch =
-      o.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      o.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      !q ||
+      o.id.toLowerCase().includes(q) ||
+      o.customerName.toLowerCase().includes(q) ||
       o.customerPhone.includes(searchQuery) ||
-      o.product.toLowerCase().includes(searchQuery.toLowerCase());
+      o.customerAddress.toLowerCase().includes(q) ||
+      o.product.toLowerCase().includes(q);
 
     return matchTab && matchGallon && matchPayment && matchSearch;
   });
 
-<<<<<<< Updated upstream
   // LOGIKA PEMBAGIAN HALAMAN (SLICING PAGINATION)
-=======
-  // Kalkulasi Pembagian Halaman (Pagination)
->>>>>>> Stashed changes
   const totalItems = filteredOrders.length;
-  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
-  const startIndex = (currentPage - 1) * itemsPerPage;
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * itemsPerPage;
   const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
   const paginatedOrders = filteredOrders.slice(startIndex, startIndex + itemsPerPage);
 
-  const handleResetFilter = () => {
-    setSearchQuery('');
-    setSelectedGallon('semua');
-    setSelectedPayment('semua');
-    setActiveTab('semua');
-    setCurrentPage(1);
-  };
-
   return (
     <main className="w-full bg-[#F8FAFC] min-h-screen p-6 pt-4 font-sans text-slate-800">
-      
       {/* 1. HEADER HALAMAN */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
-          <div className="text-[11px] font-bold text-blue-600 uppercase tracking-wider mb-0.5 h-4 flex items-center gap-1.5">
+          <div className="text-[11px] font-bold text-blue-600 uppercase tracking-wider mb-0.5 h-4 flex items-center gap-2">
             <span>MANAJEMEN TRANSAKSI &amp; DISPATCH</span>
+            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md flex items-center gap-1 normal-case">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              {isLiveConnected ? 'API Connected' : 'Local Mode'}
+            </span>
           </div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight leading-tight">
             Manajemen Pesanan
@@ -350,93 +668,131 @@ export default function ManajemenPesananPage() {
             Kelola, verifikasi, dan pantau status transaksi pemesanan galon pelanggan secara real-time.
           </p>
         </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => alert('Mengunduh Laporan Pesanan (CSV/Excel)...')}
-            className="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold px-3.5 py-2.5 rounded-xl shadow-sm flex items-center gap-2 transition cursor-pointer"
-          >
-            <Download className="w-3.5 h-3.5 text-blue-600" />
-            <span>Ekspor (CSV/Excel)</span>
-          </button>
-        </div>
       </div>
 
-      {/* 2. TOP KPI CARDS */}
+      {/* 2. TOP KPI CARDS (INTERAKTIF & NYAMBUNG) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
+        <button
+          type="button"
+          onClick={() => setActiveTab('semua')}
+          className={`text-left bg-white p-4 rounded-2xl border shadow-sm flex flex-col justify-between transition cursor-pointer ${
+            activeTab === 'semua'
+              ? 'border-blue-500 ring-2 ring-blue-500/15'
+              : 'border-slate-100 hover:border-blue-200'
+          }`}
+        >
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">TOTAL PESANAN HARI INI</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                TOTAL PESANAN HARI INI
+              </span>
               <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
                 <ShoppingBag className="w-4 h-4" />
               </div>
             </div>
             <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-2xl font-bold text-slate-900">48</span>
+              <span className="text-2xl font-bold text-slate-900">
+                {kpiStats.totalPesanan}
+              </span>
             </div>
           </div>
-          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center text-[11px]">
+          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px]">
             <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md font-semibold">
-              ↗ +14% dibanding kemarin
+              ↗ {kpiStats.selesai} selesai
+            </span>
+            <span className="text-[10px] font-semibold text-blue-600">
+              Lihat semua →
             </span>
           </div>
-        </div>
+        </button>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
+        <button
+          type="button"
+          onClick={() => setActiveTab('konfirmasi')}
+          className={`text-left bg-white p-4 rounded-2xl border shadow-sm flex flex-col justify-between transition cursor-pointer ${
+            activeTab === 'konfirmasi'
+              ? 'border-red-500 ring-2 ring-red-500/15'
+              : 'border-slate-100 hover:border-red-200'
+          }`}
+        >
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-red-600 uppercase tracking-wider">PERLU KONFIRMASI</span>
+              <span className="text-[10px] font-bold text-red-600 uppercase tracking-wider">
+                PERLU KONFIRMASI
+              </span>
               <div className="p-2.5 bg-red-50 text-red-600 rounded-xl">
                 <Clock className="w-4 h-4" />
               </div>
             </div>
             <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-2xl font-bold text-red-600">4</span>
+              <span className="text-2xl font-bold text-red-600">
+                {kpiStats.perluKonfirmasi}
+              </span>
             </div>
           </div>
-          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center text-[11px]">
+          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px]">
             <span className="text-red-600 bg-red-50 px-2 py-0.5 rounded-md font-semibold">
-              ⚡ Respon &lt; 5 mnt
+              ⚡ Menunggu konfirmasi
+            </span>
+            <span className="text-[10px] font-semibold text-red-600">
+              Filter →
             </span>
           </div>
-        </div>
+        </button>
 
-        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
+        <button
+          type="button"
+          onClick={() => setActiveTab('diantar')}
+          className={`text-left bg-white p-4 rounded-2xl border shadow-sm flex flex-col justify-between transition cursor-pointer ${
+            activeTab === 'diantar'
+              ? 'border-cyan-500 ring-2 ring-cyan-500/15'
+              : 'border-slate-100 hover:border-cyan-200'
+          }`}
+        >
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">SEDANG DIANTAR</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                SEDANG DIANTAR
+              </span>
               <div className="p-2.5 bg-cyan-50 text-cyan-600 rounded-xl">
                 <Truck className="w-4 h-4" />
               </div>
             </div>
             <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-2xl font-bold text-slate-900">5</span>
+              <span className="text-2xl font-bold text-slate-900">
+                {kpiStats.sedangDiantar}
+              </span>
             </div>
           </div>
-          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center text-[11px]">
+          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px]">
             <span className="text-cyan-700 bg-cyan-50 px-2 py-0.5 rounded-md font-semibold">
-              🛵 4 Armada aktif
+              🛵 {kpiStats.diproses} diproses depo
+            </span>
+            <span className="text-[10px] font-semibold text-cyan-700">
+              Pantau →
             </span>
           </div>
-        </div>
+        </button>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">TOTAL OMZET TERCATAT</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                TOTAL OMZET TERCATAT
+              </span>
               <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
                 <Wallet className="w-4 h-4" />
               </div>
             </div>
             <div className="mt-1">
-              <span className="text-2xl font-bold text-slate-900">Rp 864.000</span>
+              <span className="text-2xl font-bold text-slate-900">
+                {kpiStats.totalOmzet}
+              </span>
             </div>
           </div>
           <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center text-[11px]">
             <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md font-semibold">
-              🛡️ 92% Lunas
+              🛡️ Nyambung dengan {kpiStats.totalPesanan} pesanan
             </span>
           </div>
         </div>
@@ -454,8 +810,14 @@ export default function ManajemenPesananPage() {
           }`}
         >
           <span>Semua</span>
-          <span className={`px-1.5 py-0.5 rounded-md text-[10px] ${activeTab === 'semua' ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-600'}`}>
-            48
+          <span
+            className={`px-1.5 py-0.5 rounded-md text-[10px] ${
+              activeTab === 'semua'
+                ? 'bg-blue-700 text-white'
+                : 'bg-slate-100 text-slate-600'
+            }`}
+          >
+            {kpiStats.totalPesanan}
           </span>
         </button>
 
@@ -470,7 +832,7 @@ export default function ManajemenPesananPage() {
         >
           <span>Menunggu Konfirmasi</span>
           <span className="px-1.5 py-0.5 rounded-md text-[10px] bg-red-100 text-red-600 font-bold">
-            1
+            {kpiStats.perluKonfirmasi}
           </span>
         </button>
 
@@ -485,7 +847,7 @@ export default function ManajemenPesananPage() {
         >
           <span>Diproses Depo</span>
           <span className="px-1.5 py-0.5 rounded-md text-[10px] bg-slate-100 text-slate-700 font-bold">
-            2
+            {kpiStats.diproses}
           </span>
         </button>
 
@@ -500,7 +862,7 @@ export default function ManajemenPesananPage() {
         >
           <span>Dalam Pengantaran</span>
           <span className="px-1.5 py-0.5 rounded-md text-[10px] bg-cyan-100 text-cyan-700 font-bold">
-            1
+            {kpiStats.sedangDiantar}
           </span>
         </button>
 
@@ -515,7 +877,7 @@ export default function ManajemenPesananPage() {
         >
           <span>Selesai</span>
           <span className="px-1.5 py-0.5 rounded-md text-[10px] bg-emerald-100 text-emerald-700 font-bold">
-            43
+            {kpiStats.selesai}
           </span>
         </button>
 
@@ -530,19 +892,19 @@ export default function ManajemenPesananPage() {
         >
           <span>Dibatalkan</span>
           <span className="px-1.5 py-0.5 rounded-md text-[10px] bg-slate-100 text-slate-600 font-bold">
-            1
+            {kpiStats.dibatalkan}
           </span>
         </button>
       </div>
 
       {/* 4. SEARCH & DROPDOWN FILTER BAR */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-3 mb-6">
-        <div className="md:col-span-5 relative">
+        <div className="md:col-span-6 relative">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cari berdasarkan No. Order (#ORD-...), nama..."
+            placeholder="Cari berdasarkan No. Order (#ORD-...), nama pelanggan, galon..."
             className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 shadow-sm"
           />
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
@@ -577,24 +939,9 @@ export default function ManajemenPesananPage() {
           </select>
           <CreditCard className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
         </div>
-
-        <div className="md:col-span-1 flex items-center justify-end">
-          <button
-            type="button"
-            onClick={handleResetFilter}
-            title="Reset Semua Filter"
-            className="w-full h-full bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl flex items-center justify-center p-2.5 shadow-sm transition cursor-pointer"
-          >
-            <Filter className="w-4 h-4" />
-          </button>
-        </div>
       </div>
 
-<<<<<<< Updated upstream
       {/* 5. TABEL UTAMA MANAJEMEN PESANAN */}
-=======
-      {/* 5. TABEL MANAJEMEN PESANAN */}
->>>>>>> Stashed changes
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-6">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -613,7 +960,6 @@ export default function ManajemenPesananPage() {
               {paginatedOrders.length > 0 ? (
                 paginatedOrders.map((order) => (
                   <tr key={order.id} className="hover:bg-slate-50/80 transition">
-                    
                     {/* KOLOM 1: NO. ORDER & WAKTU */}
                     <td className="py-3.5 px-4 align-top whitespace-nowrap">
                       <span
@@ -625,13 +971,19 @@ export default function ManajemenPesananPage() {
                       >
                         {order.id}
                       </span>
-                      <span className="text-[10px] text-slate-400 block mt-0.5">{order.time}</span>
+                      <span className="text-[10px] text-slate-400 block mt-0.5">
+                        {order.time}
+                      </span>
                     </td>
 
                     {/* KOLOM 2: PELANGGAN & LOKASI */}
                     <td className="py-3.5 px-4 align-top">
-                      <span className="font-bold text-slate-900 block text-xs">{order.customerName}</span>
-                      <span className="text-[10px] text-slate-400 block">{order.customerPhone}</span>
+                      <span className="font-bold text-slate-900 block text-xs">
+                        {order.customerName}
+                      </span>
+                      <span className="text-[10px] text-slate-400 block">
+                        {order.customerPhone}
+                      </span>
                       <span className="text-[10px] text-slate-500 block mt-0.5 line-clamp-1 max-w-[180px]">
                         {order.customerAddress}
                       </span>
@@ -640,7 +992,11 @@ export default function ManajemenPesananPage() {
                     {/* KOLOM 3: ITEM PESANAN */}
                     <td className="py-3.5 px-4 align-top">
                       <div className="flex items-start gap-2.5">
-                        <ProductThumb src={order.image} alt={order.product} fallbackText={order.fallback} />
+                        <ProductThumb
+                          src={order.image}
+                          alt={order.product}
+                          fallbackText={order.fallback}
+                        />
                         <div className="min-w-0">
                           <span className="font-bold text-slate-800 block text-xs whitespace-nowrap">
                             {order.product}
@@ -654,15 +1010,21 @@ export default function ManajemenPesananPage() {
 
                     {/* KOLOM 4: TAGIHAN & BAYAR */}
                     <td className="py-3.5 px-3 align-top whitespace-nowrap">
-                      <span className="font-bold text-slate-900 block text-xs">{order.total}</span>
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-bold border mt-1 ${order.paymentBg}`}>
+                      <span className="font-bold text-slate-900 block text-xs">
+                        {order.total}
+                      </span>
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-bold border mt-1 ${order.paymentBg}`}
+                      >
                         ✓ {order.paymentLabel} - {order.paymentStatus}
                       </span>
                     </td>
 
                     {/* KOLOM 5: STATUS */}
                     <td className="py-3.5 px-3 align-top whitespace-nowrap">
-                      <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold border ${order.statusBg}`}>
+                      <span
+                        className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold border ${order.statusBg}`}
+                      >
                         {order.statusLabel}
                       </span>
                     </td>
@@ -675,11 +1037,16 @@ export default function ManajemenPesananPage() {
                             {order.courier.slice(0, 2).toUpperCase()}
                           </div>
                           <div>
-                            <span className="font-bold text-slate-800 block text-xs">{order.courier}</span>
-                            <span className="text-[10px] text-slate-400 block">{order.courierDetail}</span>
+                            <span className="font-bold text-slate-800 block text-xs">
+                              {order.courier}
+                            </span>
+                            <span className="text-[10px] text-slate-400 block">
+                              {order.courierDetail}
+                            </span>
                           </div>
                         </div>
-                      ) : order.status === 'konfirmasi' ? (
+                      ) : order.status === 'konfirmasi' ||
+                        order.status === 'diproses' ? (
                         <button
                           type="button"
                           onClick={() => {
@@ -702,7 +1069,7 @@ export default function ManajemenPesananPage() {
                         {order.status === 'konfirmasi' && (
                           <button
                             type="button"
-                            onClick={() => handleConfirmOrder(order.id)}
+                            onClick={() => handleConfirmOrder(order)}
                             title="Konfirmasi Pesanan"
                             className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl transition cursor-pointer border border-blue-100"
                           >
@@ -723,12 +1090,14 @@ export default function ManajemenPesananPage() {
                         </button>
                       </div>
                     </td>
-
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-400 font-medium">
+                  <td
+                    colSpan={7}
+                    className="py-12 text-center text-slate-400 font-medium"
+                  >
                     Tidak ada pesanan yang sesuai dengan filter pencarian.
                   </td>
                 </tr>
@@ -737,15 +1106,13 @@ export default function ManajemenPesananPage() {
           </table>
         </div>
 
-<<<<<<< Updated upstream
         {/* FOOTER TABEL: SLIDE & CONTROL PAGINATION */}
-=======
-        {/* Dynamic Table Footer / Pagination */}
->>>>>>> Stashed changes
         <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <div className="flex items-center gap-2">
             <span>
-              Menampilkan <strong>{totalItems === 0 ? 0 : startIndex + 1}-{endIndex}</strong> dari <strong>{totalItems}</strong> pesanan
+              Menampilkan{' '}
+              <strong>{totalItems === 0 ? 0 : startIndex + 1}-{endIndex}</strong> dari{' '}
+              <strong>{totalItems}</strong> pesanan
             </span>
             <span className="text-slate-300">•</span>
             <span>Baris per halaman:</span>
@@ -757,44 +1124,30 @@ export default function ManajemenPesananPage() {
               }}
               className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-semibold focus:outline-none cursor-pointer"
             >
-<<<<<<< Updated upstream
               <option value="3">3</option>
-=======
->>>>>>> Stashed changes
               <option value="5">5</option>
               <option value="10">10</option>
               <option value="20">20</option>
             </select>
           </div>
 
-<<<<<<< Updated upstream
-          {/* TOMBOL-TOMBOL NAVIGASI HALAMAN */}
           <div className="flex items-center gap-1">
-            {/* Tombol Sebelumnya */}
-=======
-          {/* Tombol Angka & Navigasi Halaman */}
-          <div className="flex items-center gap-1">
->>>>>>> Stashed changes
             <button
               type="button"
-              disabled={currentPage === 1}
+              disabled={safeCurrentPage === 1}
               onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
               className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
 
-<<<<<<< Updated upstream
-            {/* Angka Halaman Dinamis */}
-=======
->>>>>>> Stashed changes
             {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((pageNum) => (
               <button
                 key={pageNum}
                 type="button"
                 onClick={() => setCurrentPage(pageNum)}
                 className={`w-8 h-8 rounded-lg font-bold text-xs flex items-center justify-center transition cursor-pointer ${
-                  currentPage === pageNum
+                  safeCurrentPage === pageNum
                     ? 'bg-[#2563EB] text-white shadow-sm'
                     : 'border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold'
                 }`}
@@ -803,14 +1156,12 @@ export default function ManajemenPesananPage() {
               </button>
             ))}
 
-<<<<<<< Updated upstream
-            {/* Tombol Selanjutnya */}
-=======
->>>>>>> Stashed changes
             <button
               type="button"
-              disabled={currentPage === totalPages || totalPages === 0}
-              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+              disabled={safeCurrentPage === totalPages || totalItems === 0}
+              onClick={() =>
+                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+              }
               className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
               <ChevronRight className="w-4 h-4" />
@@ -838,12 +1189,18 @@ export default function ManajemenPesananPage() {
 
             <form onSubmit={handleAssignCourier} className="space-y-4 text-xs">
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <span className="text-slate-500 block">Pelanggan: <strong>{selectedOrder.customerName}</strong></span>
-                <span className="text-slate-500 block mt-0.5">Alamat: {selectedOrder.customerAddress}</span>
+                <span className="text-slate-500 block">
+                  Pelanggan: <strong>{selectedOrder.customerName}</strong>
+                </span>
+                <span className="text-slate-500 block mt-0.5">
+                  Alamat: {selectedOrder.customerAddress}
+                </span>
               </div>
 
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">Pilih Armada Kurir</label>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  Pilih Armada Kurir
+                </label>
                 <select
                   value={selectedCourierName}
                   onChange={(e) => setSelectedCourierName(e.target.value)}
@@ -884,7 +1241,9 @@ export default function ManajemenPesananPage() {
                 <h3 className="font-bold text-slate-900 text-base">
                   Detail Pesanan {selectedOrder.id}
                 </h3>
-                <span className="text-[10px] text-slate-400">Waktu: {selectedOrder.time}</span>
+                <span className="text-[10px] text-slate-400">
+                  Waktu: {selectedOrder.time}
+                </span>
               </div>
               <button
                 type="button"
@@ -897,30 +1256,48 @@ export default function ManajemenPesananPage() {
 
             <div className="space-y-4 text-xs">
               <div className="p-3 bg-blue-50/50 border border-blue-100 rounded-xl">
-                <span className="font-bold text-blue-900 block mb-1">Informasi Pelanggan</span>
-                <p className="text-slate-700 font-semibold">{selectedOrder.customerName} ({selectedOrder.customerPhone})</p>
-                <p className="text-slate-500 mt-0.5">{selectedOrder.customerAddress}</p>
+                <span className="font-bold text-blue-900 block mb-1">
+                  Informasi Pelanggan
+                </span>
+                <p className="text-slate-700 font-semibold">
+                  {selectedOrder.customerName} ({selectedOrder.customerPhone})
+                </p>
+                <p className="text-slate-500 mt-0.5">
+                  {selectedOrder.customerAddress}
+                </p>
               </div>
 
               <div className="border border-slate-100 rounded-xl p-3 space-y-2">
                 <span className="font-bold text-slate-900 block">Item Produk</span>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-semibold text-slate-800">{selectedOrder.product}</p>
-                    <p className="text-[10px] text-slate-400">{selectedOrder.productNote}</p>
+                    <p className="font-semibold text-slate-800">
+                      {selectedOrder.product}
+                    </p>
+                    <p className="text-[10px] text-slate-400">
+                      {selectedOrder.productNote}
+                    </p>
                   </div>
-                  <span className="font-bold text-slate-900">{selectedOrder.total}</span>
+                  <span className="font-bold text-slate-900">
+                    {selectedOrder.total}
+                  </span>
                 </div>
               </div>
 
               <div className="flex justify-between items-center pt-2">
                 <div>
-                  <span className="text-slate-400 block text-[10px]">Metode Pembayaran</span>
-                  <span className="font-semibold text-slate-700">{selectedOrder.paymentLabel} ({selectedOrder.paymentStatus})</span>
+                  <span className="text-slate-400 block text-[10px]">
+                    Metode Pembayaran
+                  </span>
+                  <span className="font-semibold text-slate-700">
+                    {selectedOrder.paymentLabel} ({selectedOrder.paymentStatus})
+                  </span>
                 </div>
                 <div>
                   <span className="text-slate-400 block text-[10px]">Kurir</span>
-                  <span className="font-semibold text-slate-700">{selectedOrder.courier || '-'}</span>
+                  <span className="font-semibold text-slate-700">
+                    {selectedOrder.courier || '-'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -937,7 +1314,6 @@ export default function ManajemenPesananPage() {
           </div>
         </div>
       )}
-
     </main>
   );
 }

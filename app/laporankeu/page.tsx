@@ -1,145 +1,416 @@
 'use client';
 
-import React, { useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  RotateCw,
   ShoppingBag,
   Wallet,
   Droplets,
   Truck,
-  Filter,
-  Download,
-  Plus,
   X,
   CheckCircle2,
 } from 'lucide-react';
 
-// Sub-komponen Gambar Galon Mini dengan Fallback
-function GalonThumb({ src, alt, fallbackText }: { src: string; alt: string; fallbackText: string }) {
-  const [hasError, setHasError] = useState(false);
+type GallonBrand = 'aqua' | 'leminerale' | 'cleo' | 'vit' | 'amdis';
 
-  return (
-    <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 p-1 flex items-center justify-center shrink-0 shadow-sm">
-      {!hasError ? (
-        <img
-          src={src}
-          alt={alt}
-          className="max-h-full max-w-full object-contain"
-          onError={() => setHasError(true)}
-        />
-      ) : (
-        <span className="font-bold text-[9px] text-blue-600 uppercase">{fallbackText}</span>
-      )}
-    </div>
-  );
+interface OrderItemView {
+  rawId?: number;
+  id: string;
+  time: string;
+  customerName: string;
+  product: string;
+  brand: GallonBrand;
+  qty: number;
+  totalNumber: number;
+  status: string;
+}
+
+type ChartRange = 'hari' | '7hari' | '30hari';
+
+const GALLON_PRICING: Record<
+  GallonBrand,
+  { name: string; sellPrice: number; costPrice: number; stock: number }
+> = {
+  aqua: { name: 'Galon Aqua 19L', sellPrice: 20000, costPrice: 16000, stock: 50 },
+  cleo: { name: 'Galon Cleo 19L', sellPrice: 19000, costPrice: 15200, stock: 50 },
+  leminerale: { name: 'Galon Le Minerale 15L', sellPrice: 21000, costPrice: 16800, stock: 50 },
+  vit: { name: 'Galon VIT 19L', sellPrice: 18000, costPrice: 14400, stock: 50 },
+  amdis: { name: 'Galon Amdis', sellPrice: 17000, costPrice: 13600, stock: 11 },
+};
+
+const INITIAL_GALLON_STOCK =
+  GALLON_PRICING.aqua.stock +
+  GALLON_PRICING.cleo.stock +
+  GALLON_PRICING.leminerale.stock +
+  GALLON_PRICING.vit.stock +
+  GALLON_PRICING.amdis.stock; // 211
+
+const TOTAL_FLEET_COURIERS = 6;
+
+const DEFAULT_MOCK_ORDERS: OrderItemView[] = [
+  {
+    id: '#ORD-8824',
+    time: 'baru saja',
+    customerName: 'Ria Ika',
+    product: '2x Galon Aqua 19L',
+    brand: 'aqua',
+    qty: 2,
+    totalNumber: 2 * GALLON_PRICING.aqua.sellPrice,
+    status: 'diproses',
+  },
+  {
+    id: '#ORD-8823',
+    time: '5 mnt lalu',
+    customerName: 'Bpk. Hendra Gunawan',
+    product: '1x Galon Le Minerale 15L',
+    brand: 'leminerale',
+    qty: 1,
+    totalNumber: 1 * GALLON_PRICING.leminerale.sellPrice,
+    status: 'diantar',
+  },
+  {
+    id: '#ORD-8822',
+    time: '12 mnt lalu',
+    customerName: 'Ibu Rina Kartika',
+    product: '3x Galon Aqua 19L',
+    brand: 'aqua',
+    qty: 3,
+    totalNumber: 3 * GALLON_PRICING.aqua.sellPrice,
+    status: 'diantar',
+  },
+  {
+    id: '#ORD-8821',
+    time: '18 mnt lalu',
+    customerName: 'Kedai Kopi Senja',
+    product: '2x Galon Cleo 19L',
+    brand: 'cleo',
+    qty: 2,
+    totalNumber: 2 * GALLON_PRICING.cleo.sellPrice,
+    status: 'selesai',
+  },
+  {
+    id: '#ORD-8820',
+    time: '30 mnt lalu',
+    customerName: 'Klinik Gigi Medika',
+    product: '1x Galon VIT 19L',
+    brand: 'vit',
+    qty: 1,
+    totalNumber: 1 * GALLON_PRICING.vit.sellPrice,
+    status: 'selesai',
+  },
+];
+
+const CHART_DATA: Record<
+  ChartRange,
+  {
+    subtitle: string;
+    badgeText: string;
+    tooltipText: string;
+    tooltipLeft: string;
+    areaPath: string;
+    linePath: string;
+    peakX: number;
+    peakY: number;
+    secondaryX: number;
+    secondaryY: number;
+    bars: { x: number; y: number; h: number; color: string; opacity?: number }[];
+    xLabels: { text: string; highlight?: boolean }[];
+    highlights: { label: string; value: string; accent: string }[];
+  }
+> = {
+  hari: {
+    subtitle: 'Distribusi lonjakan pengantaran galon jam sibuk (08:00 - 18:00 WIB)',
+    badgeText: 'Harian • Jam Kerja',
+    tooltipText: '13:00 Puncak Pesanan • 9 Galon / jam • Rp 180.000',
+    tooltipLeft: '36%',
+    areaPath:
+      'M 20 120 C 70 100, 110 80, 150 75 C 190 70, 220 20, 260 20 C 300 20, 330 110, 370 110 C 420 110, 460 50, 500 45 C 540 40, 570 30, 580 25 L 580 160 L 20 160 Z',
+    linePath:
+      'M 20 120 C 70 100, 110 80, 150 75 C 190 70, 220 20, 260 20 C 300 20, 330 110, 370 110 C 420 110, 460 50, 500 45 C 540 40, 570 30, 580 25',
+    peakX: 260,
+    peakY: 20,
+    secondaryX: 500,
+    secondaryY: 45,
+    bars: [
+      { x: 50, y: 100, h: 40, color: '#3B82F6', opacity: 0.3 },
+      { x: 110, y: 80, h: 60, color: '#3B82F6', opacity: 0.4 },
+      { x: 170, y: 70, h: 70, color: '#3B82F6', opacity: 0.5 },
+      { x: 230, y: 25, h: 115, color: '#2563EB', opacity: 1 },
+      { x: 290, y: 90, h: 50, color: '#3B82F6', opacity: 0.4 },
+      { x: 350, y: 105, h: 35, color: '#3B82F6', opacity: 0.3 },
+      { x: 410, y: 50, h: 90, color: '#00C49F', opacity: 0.7 },
+      { x: 470, y: 40, h: 100, color: '#00C49F', opacity: 0.8 },
+    ],
+    xLabels: [
+      { text: '08:00' },
+      { text: '09:30' },
+      { text: '10:00' },
+      { text: '11:00' },
+      { text: '12:00' },
+      { text: '13:00', highlight: true },
+      { text: '14:00' },
+      { text: '15:00' },
+      { text: '16:30' },
+      { text: '17:30' },
+      { text: '18:00' },
+    ],
+    highlights: [
+      { label: 'Varian Dominan', value: 'Galon Aqua 19L Terlaris', accent: 'text-slate-800' },
+      { label: 'Rute Pengiriman Cepat', value: 'Radius 2.4 KM', accent: 'text-blue-600' },
+      { label: 'Pembayaran Non-Tunai', value: '82% QRIS & Transfer', accent: 'text-emerald-600' },
+    ],
+  },
+  '7hari': {
+    subtitle: 'Rekapitulasi volume galon terjual & pendapatan mingguan (Senin - Minggu)',
+    badgeText: '7 Hari • Mingguan',
+    tooltipText: 'Sabtu Puncak Mingguan • 64 Galon • Rp 1.280.000',
+    tooltipLeft: '72%',
+    areaPath:
+      'M 20 135 C 95 115, 155 120, 220 88 C 290 55, 355 75, 425 42 C 490 15, 540 35, 580 30 L 580 160 L 20 160 Z',
+    linePath:
+      'M 20 135 C 95 115, 155 120, 220 88 C 290 55, 355 75, 425 42 C 490 15, 540 35, 580 30',
+    peakX: 425,
+    peakY: 42,
+    secondaryX: 220,
+    secondaryY: 88,
+    bars: [
+      { x: 55, y: 112, h: 28, color: '#3B82F6', opacity: 0.35 },
+      { x: 140, y: 98, h: 42, color: '#3B82F6', opacity: 0.45 },
+      { x: 225, y: 72, h: 68, color: '#3B82F6', opacity: 0.55 },
+      { x: 310, y: 84, h: 56, color: '#3B82F6', opacity: 0.45 },
+      { x: 395, y: 38, h: 102, color: '#00C49F', opacity: 0.8 },
+      { x: 480, y: 22, h: 118, color: '#2563EB', opacity: 1 },
+      { x: 555, y: 34, h: 106, color: '#00C49F', opacity: 0.75 },
+    ],
+    xLabels: [
+      { text: 'Senin' },
+      { text: 'Selasa' },
+      { text: 'Rabu' },
+      { text: 'Kamis' },
+      { text: 'Jumat' },
+      { text: 'Sabtu', highlight: true },
+      { text: 'Minggu' },
+    ],
+    highlights: [
+      { label: 'Total 7 Hari', value: '348 Galon Terkirim', accent: 'text-slate-800' },
+      { label: 'Rata-rata Harian', value: '~49 Galon / Hari', accent: 'text-blue-600' },
+      { label: 'Pelanggan Langganan', value: '68% Order Rutin', accent: 'text-emerald-600' },
+    ],
+  },
+  '30hari': {
+    subtitle: 'Tren pertumbuhan bulanan penjualan galon Depo JKT-04 (Minggu 1 - Minggu 4)',
+    badgeText: '30 Hari • Bulanan',
+    tooltipText: 'Minggu ke-4 Tertinggi • 420 Galon • Rp 8.400.000',
+    tooltipLeft: '82%',
+    areaPath:
+      'M 20 142 C 130 125, 220 96, 330 74 C 440 52, 515 24, 580 16 L 580 160 L 20 160 Z',
+    linePath:
+      'M 20 142 C 130 125, 220 96, 330 74 C 440 52, 515 24, 580 16',
+    peakX: 580,
+    peakY: 16,
+    secondaryX: 330,
+    secondaryY: 74,
+    bars: [
+      { x: 85, y: 110, h: 30, color: '#3B82F6', opacity: 0.35 },
+      { x: 245, y: 82, h: 58, color: '#3B82F6', opacity: 0.55 },
+      { x: 405, y: 50, h: 90, color: '#00C49F', opacity: 0.75 },
+      { x: 555, y: 20, h: 120, color: '#2563EB', opacity: 1 },
+    ],
+    xLabels: [
+      { text: 'Minggu 1' },
+      { text: 'Minggu 2' },
+      { text: 'Minggu 3' },
+      { text: 'Minggu 4', highlight: true },
+    ],
+    highlights: [
+      { label: 'Akumulasi 30 Hari', value: '1.420 Galon Terjual', accent: 'text-slate-800' },
+      { label: 'Pertumbuhan Bulanan', value: '+18.4% vs Bulan Lalu', accent: 'text-blue-600' },
+      { label: 'Efisiensi Depo', value: '98.2% Tepat Waktu', accent: 'text-emerald-600' },
+    ],
+  },
+};
+
+const formatRupiah = (angka: number) => {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    maximumFractionDigits: 0,
+  }).format(angka || 0);
+};
+
+function detectBrandAndQty(
+  rawText: string,
+  rawQty?: number
+): {
+  brand: GallonBrand;
+  qty: number;
+  label: string;
+} {
+  const lower = (rawText || '').toLowerCase();
+  const matchQty = rawText?.match(/(\d+)\s*x/i);
+  const qty = Math.max(1, Number(rawQty || (matchQty ? matchQty[1] : 1)) || 1);
+
+  if (lower.includes('minerale')) {
+    return {
+      brand: 'leminerale',
+      qty,
+      label: rawText || `${qty}x Galon Le Minerale 15L`,
+    };
+  }
+  if (lower.includes('cleo')) {
+    return {
+      brand: 'cleo',
+      qty,
+      label: rawText || `${qty}x Galon Cleo 19L`,
+    };
+  }
+  if (lower.includes('vit')) {
+    return {
+      brand: 'vit',
+      qty,
+      label: rawText || `${qty}x Galon VIT 19L`,
+    };
+  }
+  if (lower.includes('amdis')) {
+    return {
+      brand: 'amdis',
+      qty,
+      label: rawText || `${qty}x Galon Amdis`,
+    };
+  }
+  return {
+    brand: 'aqua',
+    qty,
+    label: rawText || `${qty}x Galon Aqua 19L`,
+  };
 }
 
 export default function RingkasanOperasionalPage() {
-  const router = useRouter();
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
-  // STATE INTERAKTIF
-  const [chartTab, setChartTab] = useState<'hari' | '7hari' | '30hari'>('hari');
-  const [orderTab, setOrderTab] = useState<'semua' | 'ditugaskan' | 'diantar'>('semua');
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [showRestokModal, setShowRestokModal] = useState(false);
-  const [showAssignModal, setShowAssignModal] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
+  const [chartTab, setChartTab] = useState<ChartRange>('hari');
+  const [orders, setOrders] = useState<OrderItemView[]>(DEFAULT_MOCK_ORDERS);
+  const [activeCouriers, setActiveCouriers] = useState<number>(4);
+  const [showCourierModal, setShowCourierModal] = useState(false);
+  const [selectedKpiNote, setSelectedKpiNote] = useState<string | null>(null);
 
-  // Data Mock Live Orders
-  const [orders] = useState([
-    {
-      id: '#ORD-8824',
-      time: 'baru saja',
-      customerName: 'Ria Ika',
-      customerPhone: '0812-9944-3211',
-      customerAddress: 'Komp. Srikandi No. 4, Kebayoran',
-      product: '2x Aqua 19L Refill',
-      productSub: 'Tukar Galon',
-      total: 'Rp 36.000',
-      totalSub: 'Gratis Ongkir',
-      paymentMethod: 'QRIS Instan',
-      status: 'diproses',
-      statusLabel: '• Diproses Depo',
-      statusBg: 'bg-amber-50 text-amber-700 border-amber-200',
-    },
-    {
-      id: '#ORD-8823',
-      time: '5 mnt lalu',
-      customerName: 'Bpk. Hendra Gunawan',
-      customerPhone: '0817-1122-9988',
-      customerAddress: 'Jl. Cendrawasih 3 No. 82',
-      product: '1x Le Minerale 15L',
-      productSub: 'Galon Baru',
-      total: 'Rp 17.000',
-      totalSub: 'Lunas',
-      paymentMethod: 'Transfer BCA',
-      status: 'diantar',
-      statusLabel: '• Diantar (Mas Doni)',
-      statusBg: 'bg-cyan-50 text-cyan-700 border-cyan-200',
-    },
-    {
-      id: '#ORD-8822',
-      time: '12 mnt lalu',
-      customerName: 'Ibu Rina Kartika',
-      customerPhone: '0813-8817-0101',
-      customerAddress: 'Apartemen Gandaria Lt. 14',
-      product: '3x Aqua 19L Refill',
-      productSub: 'Tukar Galon',
-      total: 'Rp 54.000',
-      totalSub: 'Bayar di Tempat',
-      paymentMethod: 'COD Tunai',
-      status: 'diantar',
-      statusLabel: '• Diantar (Pak Budi)',
-      statusBg: 'bg-cyan-50 text-cyan-700 border-cyan-200',
-    },
-    {
-      id: '#ORD-8821',
-      time: '18 mnt lalu',
-      customerName: 'Kedai Kopi Senja',
-      customerPhone: '0821-4560-1289',
-      customerAddress: 'Ruko Permata Blok B-3',
-      product: '3x Aqua 19L Refill',
-      productSub: 'Tukar Galon',
-      total: 'Rp 54.000',
-      totalSub: 'Bayar di Tempat',
-      paymentMethod: 'COD Tunai',
-      status: 'selesai',
-      statusLabel: '• Selesai Diterima',
-      statusBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    },
-    {
-      id: '#ORD-8820',
-      time: '30 mnt lalu',
-      customerName: 'Klinik Gigi Medika',
-      customerPhone: '0815-9233-0012',
-      customerAddress: 'Jl. Radio Dalam No. 44',
-      product: '4x Aqua 19L Refill',
-      productSub: 'Tukar Galon',
-      total: 'Rp 72.000',
-      totalSub: 'Lunas',
-      paymentMethod: 'QRIS Instan',
-      status: 'selesai',
-      statusLabel: '• Selesai Diterima',
-      statusBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    },
-  ]);
+  const mapBackendOrder = (item: any): OrderItemView => {
+    const rawStatus = (item.status || 'pending').toLowerCase();
+    const createdDate = item.createdAt || item.created_at;
+    const rawProduct =
+      item.productSummary || item.items?.[0]?.product?.name || 'Galon Aqua 19L';
+    const rawItemQty = item.items?.[0]?.quantity;
+    const detected = detectBrandAndQty(rawProduct, rawItemQty);
 
-  const filteredOrders = orders.filter((o) => {
-    if (orderTab === 'ditugaskan') return o.status === 'diproses';
-    if (orderTab === 'diantar') return o.status === 'diantar';
-    return true;
-  });
+    const rawNominal = Number(
+      item.totalAmount ?? item.total_amount ?? item.total_price ?? 0
+    );
+    const totalNominal =
+      rawNominal > 0
+        ? rawNominal
+        : GALLON_PRICING[detected.brand].sellPrice * detected.qty;
 
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    setTimeout(() => setIsRefreshing(false), 600);
+    return {
+      rawId: Number(item.id),
+      id: `#ORD-${item.id}`,
+      time: createdDate
+        ? new Date(createdDate).toLocaleTimeString('id-ID', {
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        : 'baru saja',
+      customerName:
+        item.customerName ||
+        item.user?.name ||
+        `Pelanggan #${item.userId || item.user_id || '-'}`,
+      product: detected.label,
+      brand: detected.brand,
+      qty: detected.qty,
+      totalNumber: totalNominal,
+      status: rawStatus,
+    };
   };
+
+  const fetchBackendData = useCallback(async () => {
+    try {
+      const token =
+        typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      if (!token) return;
+
+      const ordersRes = await fetch(`${API_URL}/orders/manage/all`, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (ordersRes.ok) {
+        const ordersJson = await ordersRes.json();
+        const rawList = Array.isArray(ordersJson.data) ? ordersJson.data : [];
+        if (rawList.length > 0) {
+          setOrders(rawList.map(mapBackendOrder));
+        }
+      }
+    } catch (error) {
+      console.error('Gagal mengambil data dari backend:', error);
+    }
+  }, [API_URL]);
+
+  useEffect(() => {
+    fetchBackendData();
+  }, [fetchBackendData]);
+
+  const operationalMetrics = useMemo(() => {
+    const validOrders = orders.filter((o) => o.status !== 'dibatalkan');
+
+    const categoryTotals: Record<GallonBrand, { qty: number; revenue: number }> = {
+      aqua: { qty: 0, revenue: 0 },
+      leminerale: { qty: 0, revenue: 0 },
+      cleo: { qty: 0, revenue: 0 },
+      vit: { qty: 0, revenue: 0 },
+      amdis: { qty: 0, revenue: 0 },
+    };
+
+    for (const ord of validOrders) {
+      const unitPrice = GALLON_PRICING[ord.brand].sellPrice;
+      const lineRevenue = ord.totalNumber > 0 ? ord.totalNumber : unitPrice * ord.qty;
+      categoryTotals[ord.brand].qty += ord.qty;
+      categoryTotals[ord.brand].revenue += lineRevenue;
+    }
+
+    const totalGalonTerjual = Object.values(categoryTotals).reduce(
+      (sum, item) => sum + item.qty,
+      0
+    );
+
+    const totalPendapatanAngka = Object.values(categoryTotals).reduce(
+      (sum, item) => sum + item.revenue,
+      0
+    );
+
+    const sisaStokGalon = Math.max(0, INITIAL_GALLON_STOCK - totalGalonTerjual);
+
+    const pct = (val: number) =>
+      totalGalonTerjual > 0 ? Math.round((val / totalGalonTerjual) * 100) : 0;
+
+    return {
+      totalGalonTerjual,
+      totalPendapatan: formatRupiah(totalPendapatanAngka),
+      sisaStokGalon,
+      categoryTotals,
+      percentages: {
+        aqua: pct(categoryTotals.aqua.qty),
+        leminerale: pct(categoryTotals.leminerale.qty),
+        cleo: pct(categoryTotals.cleo.qty),
+        vit: pct(categoryTotals.vit.qty),
+        amdis: pct(categoryTotals.amdis.qty),
+      },
+    };
+  }, [orders]);
+
+  const activeChart = CHART_DATA[chartTab];
 
   return (
     <main className="w-full bg-[#F8FAFC] min-h-screen p-6 pt-4 font-sans text-slate-800">
-      
       {/* 1. HEADER HALAMAN */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
@@ -147,723 +418,475 @@ export default function RingkasanOperasionalPage() {
             Depo Kebayoran Lama • ID DEPO: JKT-04
           </div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight leading-tight">
-            Ringkasan Operasional Hari Ini
+            Ringkasan Operasional
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Pantau status pasokan galon, armada kurir motor, dan kelancaran order real-time.
+            Pantau pesanan galon terjual, pendapatan, sisa stok, dan kurir yang bertugas.
           </p>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            className="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold px-3.5 py-2.5 rounded-xl shadow-sm flex items-center gap-2 transition cursor-pointer"
-          >
-            <Filter className="w-3.5 h-3.5 text-slate-500" />
-            
-          </button>
-          <button
-            type="button"
-            onClick={handleRefresh}
-            className="bg-[#2563EB] hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-sm flex items-center gap-2 transition active:scale-95 cursor-pointer"
-          >
-            <RotateCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-            <span>Refresh Data</span>
-          </button>
         </div>
       </div>
 
+      {/* BANNER INTERAKSI KPI SAAT DIKLIK */}
+      {selectedKpiNote && (
+        <div className="mb-4 bg-blue-50 border border-blue-200 text-blue-900 px-4 py-2.5 rounded-xl text-xs font-medium flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
+            <span>{selectedKpiNote}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSelectedKpiNote(null)}
+            className="text-blue-600 hover:text-blue-800 p-1 cursor-pointer"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* 2. TOP 4 KPI CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {/* Card 1: Total Pesanan */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
+        <button
+          type="button"
+          onClick={() =>
+            setSelectedKpiNote(
+              `Hari ini terjual ${operationalMetrics.totalGalonTerjual} galon dari ${orders.length} transaksi, menghasilkan ${operationalMetrics.totalPendapatan}.`
+            )
+          }
+          className="text-left bg-white p-4 rounded-2xl border border-slate-100 hover:border-blue-200 shadow-sm flex flex-col justify-between transition cursor-pointer"
+        >
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">TOTAL PESANAN HARI INI</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                TOTAL PESANAN HARI INI
+              </span>
               <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
                 <ShoppingBag className="w-4 h-4" />
               </div>
             </div>
             <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-2xl font-bold text-slate-900">48</span>
-              <span className="text-xs font-medium text-slate-500">Pesanan</span>
+              <span className="text-2xl font-bold text-slate-900">
+                {operationalMetrics.totalGalonTerjual}
+              </span>
+              <span className="text-xs font-medium text-slate-500">
+                Galon Terjual
+              </span>
             </div>
           </div>
-          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center text-[11px]">
+          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px]">
             <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md font-semibold">
-              ↗ +12% vs kemarin (42 pesanan)
+              {orders.length} order tercatat
             </span>
+            <span className="text-blue-600 font-semibold">Klik detail</span>
           </div>
-        </div>
+        </button>
 
-        {/* Card 2: Total Pendapatan */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
+        <button
+          type="button"
+          onClick={() =>
+            setSelectedKpiNote(
+              `Total pendapatan hari ini ${operationalMetrics.totalPendapatan} dari ${operationalMetrics.totalGalonTerjual} galon terjual.`
+            )
+          }
+          className="text-left bg-white p-4 rounded-2xl border border-slate-100 hover:border-emerald-200 shadow-sm flex flex-col justify-between transition cursor-pointer"
+        >
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">TOTAL PENDAPATAN</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                TOTAL PENDAPATAN
+              </span>
               <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
                 <Wallet className="w-4 h-4" />
               </div>
             </div>
             <div className="mt-1">
-              <span className="text-2xl font-bold text-slate-900">Rp 864.000</span>
+              <span className="text-2xl font-bold text-slate-900">
+                {operationalMetrics.totalPendapatan}
+              </span>
             </div>
           </div>
-          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center text-[11px]">
+          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px]">
             <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md font-semibold">
-              ↗ +8.5% melampaui target harian
+              Terhitung dari {operationalMetrics.totalGalonTerjual} galon
             </span>
           </div>
-        </div>
+        </button>
 
-        {/* Card 3: Sisa Stok Galon */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
+        <button
+          type="button"
+          onClick={() =>
+            setSelectedKpiNote(
+              `Stok awal depo ${INITIAL_GALLON_STOCK} galon (Aqua 50, Cleo 50, Le Minerale 50, VIT 50, Amdis 11), terjual ${operationalMetrics.totalGalonTerjual} galon, tersisa ${operationalMetrics.sisaStokGalon} galon.`
+            )
+          }
+          className="text-left bg-white p-4 rounded-2xl border border-slate-100 hover:border-amber-200 shadow-sm flex flex-col justify-between transition cursor-pointer"
+        >
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">SISA STOK GALON</span>
-              <div className="p-2.5 bg-red-50 text-red-600 rounded-xl">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                SISA STOK GALON
+              </span>
+              <div className="p-2.5 bg-amber-50 text-amber-600 rounded-xl">
                 <Droplets className="w-4 h-4" />
               </div>
             </div>
             <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-2xl font-bold text-red-600">12</span>
-              <span className="text-xs font-semibold text-slate-600">Galon Tersisa</span>
+              <span className="text-2xl font-bold text-slate-900">
+                {operationalMetrics.sisaStokGalon}
+              </span>
+              <span className="text-xs font-semibold text-slate-500">
+                / {INITIAL_GALLON_STOCK} Galon
+              </span>
             </div>
           </div>
           <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px]">
-            <span className="text-red-600 font-semibold flex items-center gap-1">
-              ⚠️ Perlu Restok Segera
+            <span className="text-slate-600 font-medium">
+              Terjual {operationalMetrics.totalGalonTerjual} galon hari ini
             </span>
-            <span className="text-slate-400">(&lt; 20 unit)</span>
           </div>
-        </div>
+        </button>
 
-        {/* Card 4: Kurir Bertugas (RATA-RATA WAKTU DISAJIKAN SEJAJAR DENGAN RAPI) */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
+        <button
+          type="button"
+          onClick={() => setShowCourierModal(true)}
+          className="text-left bg-white p-4 rounded-2xl border border-slate-100 hover:border-cyan-200 shadow-sm flex flex-col justify-between transition cursor-pointer"
+        >
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">KURIR BERTUGAS</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                KURIR BERTUGAS
+              </span>
               <div className="p-2.5 bg-cyan-50 text-cyan-600 rounded-xl">
                 <Truck className="w-4 h-4" />
               </div>
             </div>
             <div className="flex items-baseline gap-1 mt-1">
-              <span className="text-2xl font-bold text-slate-900">5</span>
-              <span className="text-sm font-semibold text-slate-400">/ 6</span>
-            </div>
-          </div>
-          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center gap-2 text-[11px]">
-            <span className="text-cyan-700 bg-cyan-50 px-2 py-1 rounded-md font-semibold whitespace-nowrap flex items-center gap-1 shrink-0">
-              ⚡ 18 mnt
-            </span>
-            <span className="text-slate-500 font-medium whitespace-nowrap">Rata-rata waktu sampai</span>
-          </div>
-        </div>
-      </div>
-
-      {/* 3. MIDDLE AREA: GRAFIK & WIDGET KANAN */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        
-        {/* LEFT COLUMN */}
-        <div className="lg:col-span-2 space-y-6">
-          
-          {/* GRAFIK TREN PESANAN */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-base font-bold text-slate-900">Grafik Tren Pesanan &amp; Pendapatan</h2>
-                  <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
-                    Live Sync
-                  </span>
-                </div>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Distribusi lonjakan pengantaran galon jam sibuk (08:00 - 18:00 WIB)
-                </p>
-              </div>
-
-              <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 self-start sm:self-auto">
-                <button
-                  type="button"
-                  onClick={() => setChartTab('hari')}
-                  className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition cursor-pointer ${
-                    chartTab === 'hari' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-900'
-                  }`}
-                >
-                  Hari Ini
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setChartTab('7hari')}
-                  className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition cursor-pointer ${
-                    chartTab === '7hari' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-900'
-                  }`}
-                >
-                  7 Hari
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setChartTab('30hari')}
-                  className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition cursor-pointer ${
-                    chartTab === '30hari' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-900'
-                  }`}
-                >
-                  30 Hari
-                </button>
-              </div>
-            </div>
-
-            {/* AREA CHART SVG */}
-            <div className="relative w-full h-[220px] pt-6">
-              <div className="absolute left-[36%] top-1 -translate-x-1/2 bg-[#1E293B] text-white text-[10px] font-medium px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-1.5 z-10">
-                <span className="w-2 h-2 rounded-full bg-blue-400"></span>
-                <span><strong>13:00 Puncak Pesanan</strong> • 9 Galon / jam • Rp 162.000</span>
-              </div>
-
-              <svg className="w-full h-full overflow-visible" viewBox="0 0 600 160" preserveAspectRatio="none">
-                <defs>
-                  <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.3" />
-                    <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.0" />
-                  </linearGradient>
-                </defs>
-
-                <path
-                  d="M 20 120 C 70 100, 110 80, 150 75 C 190 70, 220 20, 260 20 C 300 20, 330 110, 370 110 C 420 110, 460 50, 500 45 C 540 40, 570 30, 580 25 L 580 160 L 20 160 Z"
-                  fill="url(#areaGradient)"
-                />
-
-                <rect x="50" y="100" width="8" height="40" fill="#3B82F6" opacity="0.3" rx="2" />
-                <rect x="110" y="80" width="8" height="60" fill="#3B82F6" opacity="0.4" rx="2" />
-                <rect x="170" y="70" width="8" height="70" fill="#3B82F6" opacity="0.5" rx="2" />
-                <rect x="230" y="25" width="10" height="115" fill="#2563EB" rx="3" />
-                <rect x="290" y="90" width="8" height="50" fill="#3B82F6" opacity="0.4" rx="2" />
-                <rect x="350" y="105" width="8" height="35" fill="#3B82F6" opacity="0.3" rx="2" />
-                <rect x="410" y="50" width="8" height="90" fill="#00C49F" opacity="0.7" rx="2" />
-                <rect x="470" y="40" width="8" height="100" fill="#00C49F" opacity="0.8" rx="2" />
-
-                <path
-                  d="M 20 120 C 70 100, 110 80, 150 75 C 190 70, 220 20, 260 20 C 300 20, 330 110, 370 110 C 420 110, 460 50, 500 45 C 540 40, 570 30, 580 25"
-                  fill="none"
-                  stroke="#2563EB"
-                  strokeWidth="3"
-                />
-
-                <circle cx="260" cy="20" r="4" fill="#2563EB" stroke="#FFFFFF" strokeWidth="2" />
-                <circle cx="500" cy="45" r="4" fill="#2563EB" stroke="#FFFFFF" strokeWidth="2" />
-              </svg>
-
-              <div className="flex justify-between text-[10px] font-semibold text-slate-400 mt-2 px-1">
-                <span>08:00</span>
-                <span>09:30</span>
-                <span>10:00</span>
-                <span>11:00</span>
-                <span>12:00</span>
-                <span className="font-bold text-blue-600">13:00</span>
-                <span>14:00</span>
-                <span>15:00</span>
-                <span>16:30</span>
-                <span>17:30</span>
-                <span>18:00</span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3 mt-5 pt-4 border-t border-slate-100 text-xs">
-              <div className="bg-slate-50 p-3 rounded-xl">
-                <span className="text-[10px] font-bold text-slate-400 uppercase block">Aqua 19L Dominan</span>
-                <span className="font-bold text-slate-800">58.3% Total Order</span>
-              </div>
-              <div className="bg-slate-50 p-3 rounded-xl">
-                <span className="text-[10px] font-bold text-slate-400 uppercase block">Rute Pengiriman Cepat</span>
-                <span className="font-bold text-blue-600">Radius 2.4 KM</span>
-              </div>
-              <div className="bg-slate-50 p-3 rounded-xl">
-                <span className="text-[10px] font-bold text-slate-400 uppercase block">Pembayaran Non-Tunai</span>
-                <span className="font-bold text-emerald-600">82% Via QRIS &amp; Transfer</span>
-              </div>
-            </div>
-          </div>
-
-          {/* RINGKASAN KATEGORI */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <h2 className="text-base font-bold text-slate-900">Ringkasan Kategori Galon Terjual Hari Ini</h2>
-                <p className="text-xs text-slate-400 mt-0.5">Total akumulasi 48 galon terjual dari 4 varian utama</p>
-              </div>
-              <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-md">
-                100% Tercatat
+              <span className="text-2xl font-bold text-slate-900">
+                {activeCouriers}
+              </span>
+              <span className="text-sm font-semibold text-slate-400">
+                / {TOTAL_FLEET_COURIERS}
               </span>
             </div>
-
-            <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden flex mb-4">
-              <div className="h-full bg-blue-600" style={{ width: '58%' }}></div>
-              <div className="h-full bg-cyan-500" style={{ width: '25%' }}></div>
-              <div className="h-full bg-emerald-500" style={{ width: '10%' }}></div>
-              <div className="h-full bg-red-500" style={{ width: '7%' }}></div>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <div className="flex items-center gap-1.5 font-bold text-slate-800 mb-1">
-                  <span className="w-2 h-2 rounded-full bg-blue-600"></span> Aqua 19L
-                </div>
-                <div className="font-extrabold text-sm text-slate-900">28 <span className="text-xs font-normal text-slate-400">galon</span></div>
-                <div className="text-[10px] text-slate-400 mt-0.5">Rp 504.000 (58%)</div>
-              </div>
-
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <div className="flex items-center gap-1.5 font-bold text-slate-800 mb-1">
-                  <span className="w-2 h-2 rounded-full bg-cyan-500"></span> Le Minerale 15L
-                </div>
-                <div className="font-extrabold text-sm text-slate-900">12 <span className="text-xs font-normal text-slate-400">galon</span></div>
-                <div className="text-[10px] text-slate-400 mt-0.5">Rp 204.000 (25%)</div>
-              </div>
-
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <div className="flex items-center gap-1.5 font-bold text-slate-800 mb-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Cleo 19L
-                </div>
-                <div className="font-extrabold text-sm text-slate-900">5 <span className="text-xs font-normal text-slate-400">galon</span></div>
-                <div className="text-[10px] text-slate-400 mt-0.5">Rp 80.000 (10%)</div>
-              </div>
-
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <div className="flex items-center gap-1.5 font-bold text-slate-800 mb-1">
-                  <span className="w-2 h-2 rounded-full bg-red-500"></span> Vit 19L
-                </div>
-                <div className="font-extrabold text-sm text-slate-900">3 <span className="text-xs font-normal text-slate-400">galon</span></div>
-                <div className="text-[10px] text-slate-400 mt-0.5">Rp 45.000 (7%)</div>
-              </div>
-            </div>
           </div>
-
-        </div>
-
-        {/* RIGHT COLUMN */}
-        <div className="space-y-6">
-          
-          {/* BOX STOK GALON MENIPIS (SEJAJAR DAN RAPI TANPA BANYAK BARS) */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 bg-red-50 text-red-600 rounded-xl">
-                    <Droplets className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h2 className="text-sm font-bold text-slate-900">Stok Galon Menipis</h2>
-                    <p className="text-[10px] text-slate-400">Depo Pusat Kebayoran</p>
-                  </div>
-                </div>
-                <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
-                  4 Variasi
-                </span>
-              </div>
-
-              {/* Items List dengan layout flex rapat */}
-              <div className="space-y-2.5 mt-4 text-xs">
-                
-                {/* Item 1 */}
-                <div className="p-2.5 bg-slate-50/80 rounded-xl flex items-center justify-between gap-2 border border-slate-100">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <GalonThumb src="/aqua.png" alt="Aqua 19L" fallbackText="Aqua" />
-                    <div className="truncate">
-                      <h4 className="font-bold text-slate-800 text-xs truncate">Aqua 19L</h4>
-                      <p className="text-[10px] text-slate-400 truncate">Isi Mineral Alami</p>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-bold text-red-600 bg-red-100/70 px-2.5 py-1 rounded-md whitespace-nowrap shrink-0 text-center">
-                    Sisa 4 galon • Kritis
-                  </span>
-                </div>
-
-                {/* Item 2 */}
-                <div className="p-2.5 bg-slate-50/80 rounded-xl flex items-center justify-between gap-2 border border-slate-100">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <GalonThumb src="/leminerale.png" alt="Le Minerale 15L" fallbackText="Le M" />
-                    <div className="truncate">
-                      <h4 className="font-bold text-slate-800 text-xs truncate">Le Minerale 15L</h4>
-                      <p className="text-[10px] text-slate-400 truncate">Galon Sekali Pakai</p>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-bold text-orange-600 bg-orange-100/70 px-2.5 py-1 rounded-md whitespace-nowrap shrink-0 text-center">
-                    Sisa 4 galon • Batas
-                  </span>
-                </div>
-
-                {/* Item 3 */}
-                <div className="p-2.5 bg-slate-50/80 rounded-xl flex items-center justify-between gap-2 border border-slate-100">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <GalonThumb src="/cleo.png" alt="Cleo 19L" fallbackText="Cleo" />
-                    <div className="truncate">
-                      <h4 className="font-bold text-slate-800 text-xs truncate">Cleo 19L</h4>
-                      <p className="text-[10px] text-slate-400 truncate">Pure Demineralized</p>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-bold text-red-600 bg-red-100/70 px-2.5 py-1 rounded-md whitespace-nowrap shrink-0 text-center">
-                    Sisa 2 galon • Sangat Kritis
-                  </span>
-                </div>
-
-                {/* Item 4 */}
-                <div className="p-2.5 bg-slate-50/80 rounded-xl flex items-center justify-between gap-2 border border-slate-100">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <GalonThumb src="/vit.png" alt="Vit 19L" fallbackText="Vit" />
-                    <div className="truncate">
-                      <h4 className="font-bold text-slate-800 text-xs truncate">Vit 19L</h4>
-                      <p className="text-[10px] text-slate-400 truncate">Air Mineral Higienis</p>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-bold text-red-600 bg-red-100/70 px-2.5 py-1 rounded-md whitespace-nowrap shrink-0 text-center">
-                    Sisa 1 galon • Segera Habis!
-                  </span>
-                </div>
-
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowRestokModal(true)}
-              className="w-full mt-4 bg-[#2563EB] hover:bg-blue-700 text-white text-xs font-semibold py-2.5 rounded-xl shadow-sm transition active:scale-95 cursor-pointer flex items-center justify-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              <span>+ Order Restok Galon ke Pabrik</span>
-            </button>
+          <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2 text-[11px]">
+            <span className="text-cyan-700 bg-cyan-50 px-2 py-0.5 rounded-md font-semibold">
+              {activeCouriers} kurir aktif bertugas
+            </span>
+            <span className="text-cyan-700 font-semibold">Atur</span>
           </div>
-
-          {/* BOX STATUS KURIR GALONKU */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
-                  <Truck className="w-4 h-4" />
-                </div>
-                <div>
-                  <h2 className="text-sm font-bold text-slate-900">Status Kurir GalonKu</h2>
-                  <p className="text-[10px] text-slate-400">Armada motor beroperasi</p>
-                </div>
-              </div>
-              {/* LINK RUTE DIPERBAIKI MENJADI /monitoring/kurir */}
-              <Link
-                href="/monitoring/kurir"
-                className="text-[11px] font-semibold text-blue-600 hover:underline"
-              >
-                Kelola (6)
-              </Link>
-            </div>
-
-            <div className="space-y-2.5 text-xs">
-              <div className="p-2.5 bg-slate-50 rounded-xl flex items-center justify-between border border-slate-100">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold text-[10px] flex items-center justify-center">
-                    PB
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-slate-800">Pak Budi Santoso</h4>
-                    <p className="text-[10px] text-slate-400">#ORD-8821 • Jl. Mawar No. 12</p>
-                  </div>
-                </div>
-                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                  Di Jalan
-                </span>
-              </div>
-
-              <div className="p-2.5 bg-slate-50 rounded-xl flex items-center justify-between border border-slate-100">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-full bg-cyan-100 text-cyan-700 font-bold text-[10px] flex items-center justify-center">
-                    MD
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-slate-800">Mas Doni Wijaya</h4>
-                    <p className="text-[10px] text-slate-400">#ORD-8822 • Gandaria Heights</p>
-                  </div>
-                </div>
-                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                  Di Jalan
-                </span>
-              </div>
-
-              <div className="p-2.5 bg-slate-50 rounded-xl flex items-center justify-between border border-slate-100">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[10px] flex items-center justify-center">
-                    AG
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-slate-800">Pak Agus Prasetyo</h4>
-                    <p className="text-[10px] text-slate-400">Siap kirim 3 galon berikutnya</p>
-                  </div>
-                </div>
-                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
-                  Standby Depo
-                </span>
-              </div>
-            </div>
-          </div>
-
-        </div>
-
+        </button>
       </div>
 
-      {/* 4. TABEL LIVE ORDERS */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mb-6">
-        <div className="p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* 3. GRAFIK TREN */}
+      <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="font-bold text-slate-900 text-base">Pesanan Terbaru Masuk (Live Orders)</h2>
-              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                Real-Time Queue
+              <h2 className="text-base font-bold text-slate-900">
+                Grafik Tren Pesanan &amp; Pendapatan
+              </h2>
+              <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
+                {activeChart.badgeText}
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              Daftar transaksi pesanan galon yang perlu diproses dan ditugaskan ke kurir
+              {activeChart.subtitle}
             </p>
           </div>
 
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
+          <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 self-start sm:self-auto">
             <button
               type="button"
-              onClick={() => setOrderTab('semua')}
-              className={`text-xs font-semibold px-3 py-1.5 rounded-xl transition cursor-pointer whitespace-nowrap ${
-                orderTab === 'semua' ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:bg-slate-50'
+              onClick={() => setChartTab('hari')}
+              className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                chartTab === 'hari'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-900'
               }`}
             >
-              Semua
+              Hari Ini
             </button>
             <button
               type="button"
-              onClick={() => setOrderTab('ditugaskan')}
-              className={`text-xs font-semibold px-3 py-1.5 rounded-xl transition cursor-pointer whitespace-nowrap ${
-                orderTab === 'ditugaskan' ? 'bg-blue-50 text-blue-600' : 'text-slate-500 hover:bg-slate-50'
+              onClick={() => setChartTab('7hari')}
+              className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                chartTab === '7hari'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-900'
               }`}
             >
-              Perlu Ditugaskan (3)
+              7 Hari
             </button>
             <button
               type="button"
-              onClick={() => setOrderTab('diantar')}
-              className={`text-xs font-semibold px-3 py-1.5 rounded-xl transition cursor-pointer whitespace-nowrap ${
-                orderTab === 'diantar' ? 'bg-cyan-50 text-cyan-600' : 'text-slate-500 hover:bg-slate-50'
+              onClick={() => setChartTab('30hari')}
+              className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                chartTab === '30hari'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-900'
               }`}
             >
-              Diantar (2)
-            </button>
-            <button
-              type="button"
-              className="border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold px-3 py-1.5 rounded-xl flex items-center gap-1 transition cursor-pointer ml-2"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>Ekspor CSV</span>
+              30 Hari
             </button>
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                <th className="py-3 px-5">NO. ORDER &amp; TEPAT WAKTU</th>
-                <th className="py-3 px-5">PELANGGAN</th>
-                <th className="py-3 px-5">PRODUK GALON</th>
-                <th className="py-3 px-5">TOTAL BAYAR</th>
-                <th className="py-3 px-5">METODE BAYAR</th>
-                <th className="py-3 px-5">STATUS PENGANTARAN</th>
-                <th className="py-3 px-5 text-right">AKSI CEPAT</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-xs">
-              {filteredOrders.map((order) => (
-                <tr key={order.id} className="hover:bg-slate-50/80 transition">
-                  <td className="py-4 px-5 align-top">
-                    <span className="font-bold text-slate-900 block">{order.id}</span>
-                    <span className="text-[10px] text-slate-400">{order.time}</span>
-                  </td>
+        <div className="relative w-full h-[220px] pt-6">
+          <div
+            style={{ left: activeChart.tooltipLeft }}
+            className="absolute top-1 -translate-x-1/2 bg-[#1E293B] text-white text-[10px] font-medium px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-1.5 z-10 whitespace-nowrap"
+          >
+            <span className="w-2 h-2 rounded-full bg-blue-400"></span>
+            <span>{activeChart.tooltipText}</span>
+          </div>
 
-                  <td className="py-4 px-5 align-top">
-                    <span className="font-bold text-slate-800 block">{order.customerName}</span>
-                    <span className="text-[10px] text-slate-400 block">{order.customerPhone}</span>
-                    <span className="text-[10px] text-slate-500 block line-clamp-1">{order.customerAddress}</span>
-                  </td>
+          <svg
+            className="w-full h-full overflow-visible"
+            viewBox="0 0 600 160"
+            preserveAspectRatio="none"
+          >
+            <defs>
+              <linearGradient
+                id="areaGradientRange"
+                x1="0"
+                y1="0"
+                x2="0"
+                y2="1"
+              >
+                <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.3" />
+                <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.0" />
+              </linearGradient>
+            </defs>
 
-                  <td className="py-4 px-5 align-top">
-                    <div className="flex items-center gap-1.5 font-bold text-slate-800">
-                      <Droplets className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                      <span>{order.product}</span>
-                    </div>
-                    <span className="text-[10px] text-slate-400 block ml-5">{order.productSub}</span>
-                  </td>
+            <path d={activeChart.areaPath} fill="url(#areaGradientRange)" />
 
-                  <td className="py-4 px-5 align-top">
-                    <span className="font-bold text-slate-900 block">{order.total}</span>
-                    <span className="text-[10px] text-emerald-600 font-medium block">{order.totalSub}</span>
-                  </td>
+            {activeChart.bars.map((bar, idx) => (
+              <rect
+                key={`${chartTab}-bar-${idx}`}
+                x={bar.x}
+                y={bar.y}
+                width="10"
+                height={bar.h}
+                fill={bar.color}
+                opacity={bar.opacity ?? 0.6}
+                rx="3"
+              />
+            ))}
 
-                  <td className="py-4 px-5 align-top">
-                    <span className="inline-block px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-semibold">
-                      {order.paymentMethod}
-                    </span>
-                  </td>
+            <path
+              d={activeChart.linePath}
+              fill="none"
+              stroke="#2563EB"
+              strokeWidth="3"
+            />
 
-                  <td className="py-4 px-5 align-top">
-                    <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold border ${order.statusBg}`}>
-                      {order.statusLabel}
-                    </span>
-                  </td>
+            <circle
+              cx={activeChart.peakX}
+              cy={activeChart.peakY}
+              r="4.5"
+              fill="#2563EB"
+              stroke="#FFFFFF"
+              strokeWidth="2"
+            />
+            <circle
+              cx={activeChart.secondaryX}
+              cy={activeChart.secondaryY}
+              r="4.5"
+              fill="#2563EB"
+              stroke="#FFFFFF"
+              strokeWidth="2"
+            />
+          </svg>
 
-                  <td className="py-4 px-5 align-top text-right">
-                    {order.status === 'diproses' ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedOrder(order.id);
-                          setShowAssignModal(true);
-                        }}
-                        className="bg-[#2563EB] hover:bg-blue-700 text-white text-[11px] font-semibold px-3 py-1.5 rounded-xl transition shadow-sm cursor-pointer"
-                      >
-                        Tugaskan Kurir
-                      </button>
-                    ) : (
-                      /* ROUTE LINK KETAUGASKAN KURIR DIBERSIHKAN KE /monitoring/kurir */
-                      <button
-                        type="button"
-                        onClick={() => router.push('/monitoring/kurir')}
-                        className="border border-slate-200 hover:bg-slate-50 text-slate-600 text-[11px] font-semibold px-3 py-1.5 rounded-xl transition cursor-pointer"
-                      >
-                        Detail
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="flex justify-between text-[10px] font-semibold text-slate-400 mt-2 px-1">
+            {activeChart.xLabels.map((lbl) => (
+              <span
+                key={`${chartTab}-${lbl.text}`}
+                className={lbl.highlight ? 'font-bold text-blue-600' : ''}
+              >
+                {lbl.text}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5 pt-4 border-t border-slate-100 text-xs">
+          {activeChart.highlights.map((item) => (
+            <div key={item.label} className="bg-slate-50 p-3 rounded-xl">
+              <span className="text-[10px] font-bold text-slate-400 uppercase block">
+                {item.label}
+              </span>
+              <span className={`font-bold ${item.accent}`}>{item.value}</span>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* MODAL TUGASKAN KURIR */}
-      {showAssignModal && (
+      {/* 4. RINGKASAN KATEGORI GALON TERJUAL HARI INI */}
+      <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h2 className="text-base font-bold text-slate-900">
+              Ringkasan Kategori Galon Terjual Hari Ini
+            </h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Total akumulasi {operationalMetrics.totalGalonTerjual} galon terjual dari 5 varian depo
+            </p>
+          </div>
+          <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-md">
+            {operationalMetrics.totalPendapatan}
+          </span>
+        </div>
+
+        <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden flex mb-4">
+          <div
+            className="h-full bg-blue-600 transition-all"
+            style={{ width: `${operationalMetrics.percentages.aqua}%` }}
+          ></div>
+          <div
+            className="h-full bg-cyan-500 transition-all"
+            style={{ width: `${operationalMetrics.percentages.leminerale}%` }}
+          ></div>
+          <div
+            className="h-full bg-emerald-500 transition-all"
+            style={{ width: `${operationalMetrics.percentages.cleo}%` }}
+          ></div>
+          <div
+            className="h-full bg-amber-500 transition-all"
+            style={{ width: `${operationalMetrics.percentages.vit}%` }}
+          ></div>
+          <div
+            className="h-full bg-rose-500 transition-all"
+            style={{ width: `${operationalMetrics.percentages.amdis}%` }}
+          ></div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 text-xs">
+          <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+            <div className="flex items-center gap-1.5 font-bold text-slate-800 mb-1">
+              <span className="w-2 h-2 rounded-full bg-blue-600"></span> Galon Aqua 19L
+            </div>
+            <div className="font-extrabold text-sm text-slate-900">
+              {operationalMetrics.categoryTotals.aqua.qty}{' '}
+              <span className="text-xs font-normal text-slate-400">galon</span>
+            </div>
+            <div className="text-[10px] text-slate-400 mt-0.5">
+              {formatRupiah(operationalMetrics.categoryTotals.aqua.revenue)} (
+              {operationalMetrics.percentages.aqua}%)
+            </div>
+          </div>
+
+          <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+            <div className="flex items-center gap-1.5 font-bold text-slate-800 mb-1">
+              <span className="w-2 h-2 rounded-full bg-cyan-500"></span> Galon Le Minerale 15L
+            </div>
+            <div className="font-extrabold text-sm text-slate-900">
+              {operationalMetrics.categoryTotals.leminerale.qty}{' '}
+              <span className="text-xs font-normal text-slate-400">galon</span>
+            </div>
+            <div className="text-[10px] text-slate-400 mt-0.5">
+              {formatRupiah(operationalMetrics.categoryTotals.leminerale.revenue)} (
+              {operationalMetrics.percentages.leminerale}%)
+            </div>
+          </div>
+
+          <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+            <div className="flex items-center gap-1.5 font-bold text-slate-800 mb-1">
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Galon Cleo 19L
+            </div>
+            <div className="font-extrabold text-sm text-slate-900">
+              {operationalMetrics.categoryTotals.cleo.qty}{' '}
+              <span className="text-xs font-normal text-slate-400">galon</span>
+            </div>
+            <div className="text-[10px] text-slate-400 mt-0.5">
+              {formatRupiah(operationalMetrics.categoryTotals.cleo.revenue)} (
+              {operationalMetrics.percentages.cleo}%)
+            </div>
+          </div>
+
+          <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+            <div className="flex items-center gap-1.5 font-bold text-slate-800 mb-1">
+              <span className="w-2 h-2 rounded-full bg-amber-500"></span> Galon VIT 19L
+            </div>
+            <div className="font-extrabold text-sm text-slate-900">
+              {operationalMetrics.categoryTotals.vit.qty}{' '}
+              <span className="text-xs font-normal text-slate-400">galon</span>
+            </div>
+            <div className="text-[10px] text-slate-400 mt-0.5">
+              {formatRupiah(operationalMetrics.categoryTotals.vit.revenue)} (
+              {operationalMetrics.percentages.vit}%)
+            </div>
+          </div>
+
+          <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+            <div className="flex items-center gap-1.5 font-bold text-slate-800 mb-1">
+              <span className="w-2 h-2 rounded-full bg-rose-500"></span> Galon Amdis
+            </div>
+            <div className="font-extrabold text-sm text-slate-900">
+              {operationalMetrics.categoryTotals.amdis.qty}{' '}
+              <span className="text-xs font-normal text-slate-400">galon</span>
+            </div>
+            <div className="text-[10px] text-slate-400 mt-0.5">
+              {formatRupiah(operationalMetrics.categoryTotals.amdis.revenue)} (
+              {operationalMetrics.percentages.amdis}%)
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* MODAL ATUR KURIR BERTUGAS */}
+      {showCourierModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-              <h3 className="font-bold text-slate-900 text-base">Tugaskan Kurir untuk {selectedOrder}</h3>
+              <h3 className="font-bold text-slate-900 text-sm">
+                Atur Kurir Bertugas
+              </h3>
               <button
                 type="button"
-                onClick={() => setShowAssignModal(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg transition"
+                onClick={() => setShowCourierModal(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                setShowAssignModal(false);
-                alert(`Order ${selectedOrder} berhasil ditugaskan!`);
-              }}
-              className="space-y-4 text-xs"
-            >
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Pilih Kurir Standby</label>
-                <select className="w-full border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-blue-500">
-                  <option value="agus">Pak Agus Prasetyo (Standby Depo JKT-04)</option>
-                  <option value="raynar">Raynar Putra M. (Standby Depo MHG-03)</option>
-                </select>
-              </div>
+            <p className="text-xs text-slate-500 mb-3">
+              Pilih jumlah kurir yang sedang bertugas dari total {TOTAL_FLEET_COURIERS} armada depo:
+            </p>
 
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Catatan Tambahan untuk Kurir</label>
-                <textarea
-                  placeholder="Contoh: Bawa kembalian Rp 50.000 / Naik ke lantai 3"
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-blue-500 h-20"
-                ></textarea>
-              </div>
-
-              <div className="pt-2 flex items-center justify-end gap-2">
+            <div className="grid grid-cols-3 gap-2 mb-4">
+              {[2, 3, 4, 5, 6].map((num) => (
                 <button
+                  key={num}
                   type="button"
-                  onClick={() => setShowAssignModal(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 font-semibold text-slate-600 hover:bg-slate-50 transition"
+                  onClick={() => {
+                    setActiveCouriers(num);
+                    setShowCourierModal(false);
+                  }}
+                  className={`py-2 rounded-xl text-xs font-bold border transition cursor-pointer ${
+                    activeCouriers === num
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
                 >
-                  Batal
+                  {num} / {TOTAL_FLEET_COURIERS} Kurir
                 </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition shadow-sm"
-                >
-                  Konfirmasi Penugasan
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL PESAN RESTOK PABRIK */}
-      {showRestokModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-              <h3 className="font-bold text-slate-900 text-base">Pesan Restok Galon ke Pabrik</h3>
-              <button
-                type="button"
-                onClick={() => setShowRestokModal(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg transition"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              ))}
             </div>
 
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                setShowRestokModal(false);
-                alert('Order restok ke pabrik berhasil dibuat!');
-              }}
-              className="space-y-4 text-xs"
-            >
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Merek Galon</label>
-                <select className="w-full border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-blue-500">
-                  <option value="aqua">Aqua 19L</option>
-                  <option value="leminerale">Le Minerale 15L</option>
-                  <option value="cleo">Cleo 19L</option>
-                  <option value="vit">Vit 19L</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Jumlah Unit Galon</label>
-                <input
-                  type="number"
-                  defaultValue={40}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-blue-500"
-                  required
-                />
-              </div>
-
-              <div className="pt-2 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowRestokModal(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 font-semibold text-slate-600 hover:bg-slate-50 transition"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition shadow-sm"
-                >
-                  Kirim Order Restok
-                </button>
-              </div>
-            </form>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowCourierModal(false)}
+                className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-semibold hover:bg-slate-200 cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
           </div>
         </div>
       )}
-
     </main>
   );
 }
