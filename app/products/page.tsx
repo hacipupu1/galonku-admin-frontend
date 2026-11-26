@@ -8,18 +8,16 @@ import {
   WalletCards,
   Search,
   X,
-  Clock,
-  Truck,
-  Package,
   CheckCircle2,
   Printer,
   Plus,
   FileText,
-  PhoneCall,
   Boxes,
+  Trash2,
 } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+export const INVENTORY_SYNC_KEY = 'galonku_inventory_sync';
 
 interface ProductUI {
   id: string | number;
@@ -41,60 +39,11 @@ interface ProductUI {
   image: string;
 }
 
-interface PurchaseOrder {
-  id: string;
-  supplier: string;
-  status: 'Dalam Pengiriman' | 'PO Kritis' | 'Selesai Diterima';
-  badgeText: string;
-  detail: string;
-  eta: string;
-  subInfo: string;
-  productKeyword: string;
-  qtyRestok: number;
-  followedUp?: boolean;
-}
-
 interface EmptyBottleItem {
   id: string;
   label: string;
   count: number;
 }
-
-const INITIAL_POS: PurchaseOrder[] = [
-  {
-    id: 'PO-883',
-    supplier: 'Pabrik PT Danone Aqua Pulogadung',
-    status: 'Dalam Pengiriman',
-    badgeText: 'Dalam Pengiriman',
-    detail: 'Truk Hino B-9142-SDA • Muatan: 50 Galon Aqua 19L • Tukar 50 Galon Kosong',
-    eta: 'ETA: Hari ini, 15:30 WIB',
-    subInfo: 'Sopir: Pak Winarno (+62 813-8872)',
-    productKeyword: 'aqua',
-    qtyRestok: 50,
-  },
-  {
-    id: 'PO-882',
-    supplier: 'Pabrik Sariguna Primatirta (Cleo)',
-    status: 'PO Kritis',
-    badgeText: 'PO Kritis #PO-882',
-    detail: 'Permintaan Restok: 30 Galon Cleo 19L • Depo butuh percepatan',
-    eta: 'Jadwal: Besok, 09:00 WIB',
-    subInfo: 'Sales PIC: Pak Hendra',
-    productKeyword: 'cleo',
-    qtyRestok: 30,
-  },
-  {
-    id: 'PO-881',
-    supplier: 'Distributor Mayora Le Minerale',
-    status: 'Selesai Diterima',
-    badgeText: 'Selesai Diterima',
-    detail: 'Masuk: 40 Galon Baru 15L • Diterima Staf Depo: Riko',
-    eta: 'Kemarin, 14:10 WIB',
-    subInfo: 'Faktur: #INV-LMN-9921',
-    productKeyword: 'minerale',
-    qtyRestok: 40,
-  },
-];
 
 const INITIAL_EMPTY_BOTTLES: EmptyBottleItem[] = [
   { id: 'aqua', label: 'Aqua 19L Kosong', count: 18 },
@@ -137,6 +86,7 @@ export default function ProductsPage() {
   const [activeTab, setActiveTab] = useState<'semua' | 'refill' | 'sekalipakai' | 'kritis'>('semua');
   const [searchQuery, setSearchQuery] = useState('');
   const [savingId, setSavingId] = useState<string | number | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   // Modal Tambah Produk Baru
   const [showAddProductModal, setShowAddProductModal] = useState(false);
@@ -150,26 +100,13 @@ export default function ProductsPage() {
     stock: 30,
   });
 
-  // Modal Update Produk
+  // Modal Update Produk (termasuk tombol Delete di dalamnya)
   const [selectedProduct, setSelectedProduct] = useState<ProductUI | null>(null);
+  const [confirmDeleteInModal, setConfirmDeleteInModal] = useState<boolean>(false);
   const [editForm, setEditForm] = useState({
     stokTerisi: 0,
     hargaJual: 0,
     hargaModal: 0,
-    botolKosongCount: 0,
-  });
-
-  // State PO & Surat Jalan Restok Pabrik
-  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(INITIAL_POS);
-  const [showAllPO, setShowAllPO] = useState(false);
-  const [showNewPOModal, setShowNewPOModal] = useState(false);
-  const [newPOForm, setNewPOForm] = useState({
-    supplier: 'Pabrik PT Danone Aqua Pulogadung',
-    productKeyword: 'aqua',
-    qtyRestok: 40,
-    tukarKosong: 40,
-    eta: 'Besok, 10:00 WIB',
-    sopir: 'Pak Winarno (+62 813-8872)',
   });
 
   // State Status Galon Kosong & Manifest
@@ -301,6 +238,35 @@ export default function ProductsPage() {
     }
   };
 
+  // ==================== HAPUS PRODUK DARI DALAM MODAL UPDATE ====================
+  const handleDeleteSelectedProduct = async () => {
+    if (!selectedProduct) return;
+    const target = selectedProduct;
+    setIsDeleting(true);
+
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const res = await fetch(`${API_URL}/products/${target.id}`, {
+        method: 'DELETE',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+
+      if (!res.ok) {
+        throw new Error('Gagal menghapus produk dari database');
+      }
+
+      setProducts((prev) => prev.filter((item) => item.id !== target.id));
+      setSelectedProduct(null);
+      setConfirmDeleteInModal(false);
+      showToast(`Produk "${target.nama}" berhasil dihapus`);
+    } catch (error) {
+      console.error('Gagal menghapus produk:', error);
+      showToast(`Gagal menghapus "${target.nama}", cek koneksi backend!`);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const syncProductToBackend = async (
     id: string | number,
     payload: { price?: number; costPrice?: number; stock?: number }
@@ -331,11 +297,11 @@ export default function ProductsPage() {
 
   const openUpdateModal = (product: ProductUI) => {
     setSelectedProduct(product);
+    setConfirmDeleteInModal(false);
     setEditForm({
       stokTerisi: product.stokTerisi,
       hargaJual: product.hargaJual,
       hargaModal: product.hargaModal,
-      botolKosongCount: product.botolKosongCount,
     });
   };
 
@@ -349,9 +315,6 @@ export default function ProductsPage() {
       stokTerisi: Math.max(0, Number(editForm.stokTerisi)),
       hargaJual: Math.max(0, Number(editForm.hargaJual)),
       hargaModal: Math.max(0, Number(editForm.hargaModal)),
-      botolKosongCount: selectedProduct.isSekaliPakai
-        ? 0
-        : Math.max(0, Number(editForm.botolKosongCount)),
     });
 
     setProducts((prev) =>
@@ -366,69 +329,8 @@ export default function ProductsPage() {
 
     setSavingId(null);
     setSelectedProduct(null);
+    setConfirmDeleteInModal(false);
     showToast(`Inventaris & harga ${updatedProduct.nama} berhasil disimpan`);
-  };
-
-  const handleReceivePO = async (po: PurchaseOrder) => {
-    setPurchaseOrders((prev) =>
-      prev.map((item) =>
-        item.id === po.id
-          ? {
-              ...item,
-              status: 'Selesai Diterima',
-              badgeText: 'Selesai Diterima',
-              eta: 'Baru saja diterima',
-            }
-          : item
-      )
-    );
-
-    const targetProduct = products.find((p) =>
-      p.nama.toLowerCase().includes(po.productKeyword.toLowerCase())
-    );
-
-    if (targetProduct) {
-      const nextStock = targetProduct.stokTerisi + po.qtyRestok;
-      setProducts((prev) =>
-        prev.map((p) =>
-          p.id === targetProduct.id
-            ? computeProductFields({ ...p, stokTerisi: nextStock })
-            : p
-        )
-      );
-      await syncProductToBackend(targetProduct.id, { stock: nextStock });
-      showToast(`PO ${po.id} diterima! +${po.qtyRestok} stok ditambahkan ke ${targetProduct.nama}`);
-    } else {
-      showToast(`PO ${po.id} ditandai selesai diterima`);
-    }
-  };
-
-  const handleCreateNewPO = (e: React.FormEvent) => {
-    e.preventDefault();
-    const labelMap: Record<string, string> = {
-      aqua: 'Aqua 19L',
-      cleo: 'Cleo 19L',
-      vit: 'VIT 19L',
-      minerale: 'Le Minerale 15L',
-    };
-    const prodLabel = labelMap[newPOForm.productKeyword] || 'Galon 19L';
-    const newId = `PO-${Math.floor(884 + Math.random() * 100)}`;
-
-    const created: PurchaseOrder = {
-      id: newId,
-      supplier: newPOForm.supplier,
-      status: 'Dalam Pengiriman',
-      badgeText: `Surat Jalan #${newId}`,
-      detail: `Muatan: ${newPOForm.qtyRestok} Galon ${prodLabel} • Tukar ${newPOForm.tukarKosong} Galon Kosong`,
-      eta: `ETA: ${newPOForm.eta}`,
-      subInfo: `Sopir: ${newPOForm.sopir}`,
-      productKeyword: newPOForm.productKeyword,
-      qtyRestok: Number(newPOForm.qtyRestok),
-    };
-
-    setPurchaseOrders((prev) => [created, ...prev]);
-    setShowNewPOModal(false);
-    showToast(`Surat Jalan Restok #${newId} berhasil diterbitkan!`);
   };
 
   const handlePrintManifest = () => {
@@ -588,6 +490,30 @@ export default function ProductsPage() {
     };
   }, [products, emptyBottles, damagedCount]);
 
+  // ==================== SINKRONISASI REAL-TIME KE LAPORAN KEUANGAN ====================
+  useEffect(() => {
+    if (loading || typeof window === 'undefined') return;
+
+    const syncPayload = {
+      totalGalonTerisi: stats.totalGalonTerisi,
+      totalGalonKosong: stats.totalGalonKosong,
+      totalNilaiInventaris: stats.totalNilaiInventaris,
+      totalModalInventaris: stats.totalModalInventaris,
+      variants: products.map((p) => ({
+        id: p.id,
+        nama: p.nama,
+        brand: getShortBrand(p.nama),
+        stokTerisi: p.stokTerisi,
+        hargaJual: p.hargaJual,
+        hargaModal: p.hargaModal,
+      })),
+      updatedAt: new Date().toISOString(),
+    };
+
+    localStorage.setItem(INVENTORY_SYNC_KEY, JSON.stringify(syncPayload));
+    window.dispatchEvent(new CustomEvent('galonku-inventory-updated', { detail: syncPayload }));
+  }, [loading, products, stats]);
+
   return (
     <div className="space-y-5 text-[#131B2E] antialiased">
       {/* Toast Notifikasi */}
@@ -598,7 +524,7 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {/* ==================== HEADER JUDUL (1 TOMBOL RAPI) ==================== */}
+      {/* ==================== HEADER JUDUL ==================== */}
       <div className="flex flex-col justify-between gap-4 pt-1 sm:flex-row sm:items-center">
         <div>
           <div className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-wider text-[#0052FF]">
@@ -692,7 +618,7 @@ export default function ProductsPage() {
             </div>
             <div className="mt-2.5 flex items-center gap-1.5 text-[10px]">
               <span
-                className={`max-w-[130px] truncate font-bold ${
+                className={`max-w-[160px] truncate font-bold ${
                   stats.produkKritis.length > 0 ? 'text-[#D93636]' : 'text-[#16752C]'
                 }`}
               >
@@ -700,15 +626,6 @@ export default function ProductsPage() {
                   ? stats.produkKritis.map((p) => getShortBrand(p.nama)).join(' & ')
                   : 'Semua Stok Aman'}
               </span>
-              {stats.produkKritis.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setShowNewPOModal(true)}
-                  className="rounded-md bg-[#FFE0E0] px-2 py-0.5 font-bold text-[#D93636] hover:bg-[#FFD0D0]"
-                >
-                  Perlu PO
-                </button>
-              )}
             </div>
           </div>
           <div
@@ -811,7 +728,7 @@ export default function ProductsPage() {
             </span>
           </div>
           <p className="text-[11px] text-[#69738A]">
-            Klik Update pada setiap baris untuk mengatur stok, harga jual, dan modal
+            Klik Update pada setiap baris untuk mengatur stok, harga, atau menghapus produk
           </p>
         </div>
 
@@ -824,7 +741,6 @@ export default function ProductsPage() {
                 <th className="whitespace-nowrap px-3 py-3">HARGA JUAL</th>
                 <th className="whitespace-nowrap px-3 py-3">HARGA MODAL</th>
                 <th className="px-3 py-3">STOK TERISI (DEPO)</th>
-                <th className="whitespace-nowrap px-3 py-3">BOTOL KOSONG</th>
                 <th className="px-3 py-3">STATUS</th>
                 <th className="rounded-r-xl px-3 py-3 text-center">AKSI</th>
               </tr>
@@ -832,13 +748,13 @@ export default function ProductsPage() {
             <tbody className="divide-y divide-[#EEF0F5]">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-xs text-[#69738A]">
+                  <td colSpan={7} className="py-8 text-center text-xs text-[#69738A]">
                     Memuat data produk dari database...
                   </td>
                 </tr>
               ) : filteredProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-xs text-[#69738A]">
+                  <td colSpan={7} className="py-8 text-center text-xs text-[#69738A]">
                     Belum ada produk di database. Klik tombol <strong>+ Tambah Produk Baru</strong> di kanan atas untuk menambahkan.
                   </td>
                 </tr>
@@ -896,10 +812,6 @@ export default function ProductsPage() {
                       </div>
                     </td>
 
-                    <td className="whitespace-nowrap px-3 py-3.5 font-bold text-[#293246]">
-                      {p.isSekaliPakai ? '- (Non-Refill)' : `${p.botolKosongCount} Botol`}
-                    </td>
-
                     <td className="whitespace-nowrap px-3 py-3.5">
                       {p.status === 'Tersedia' ? (
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-[#C5F8D0]/60 px-2.5 py-1 text-[10px] font-bold text-[#16752C]">
@@ -917,7 +829,7 @@ export default function ProductsPage() {
                         type="button"
                         onClick={() => openUpdateModal(p)}
                         disabled={savingId === p.id}
-                        className="rounded-lg bg-[#F0F3FF] px-3.5 py-1.5 text-xs font-bold text-[#0052FF] transition hover:bg-[#0052FF] hover:text-white"
+                        className="rounded-lg bg-[#F0F3FF] px-3.5 py-1.5 text-xs font-bold text-[#0052FF] transition hover:bg-[#0052FF] hover:text-white disabled:opacity-50"
                       >
                         {savingId === p.id ? 'Menyimpan...' : 'Update'}
                       </button>
@@ -942,228 +854,118 @@ export default function ProductsPage() {
         </div>
       </section>
 
-      {/* ==================== BOTTOM 2 COLUMNS ==================== */}
-      <section className="grid grid-cols-1 items-start gap-4 lg:grid-cols-12">
-        <div className="space-y-4 rounded-2xl border border-[#EEF0F5] bg-white p-5 shadow-sm lg:col-span-7">
-          <div className="flex items-center justify-between border-b border-[#EEF0F5] pb-3">
-            <div className="flex items-center gap-2">
-              <Clock size={16} className="text-[#0052FF]" />
-              <h3 className="text-sm font-extrabold text-[#131B2E]">
-                Riwayat & Jadwal Kirim Restok Pabrik
-              </h3>
+      {/* ==================== STATUS GALON KOSONG ==================== */}
+      <section className="space-y-4 rounded-2xl border border-[#EEF0F5] bg-white p-5 shadow-sm">
+        <div className="flex items-center justify-between border-b border-[#EEF0F5] pb-3">
+          <h3 className="text-sm font-extrabold text-[#131B2E]">Status Galon Kosong</h3>
+          <span className="h-2 w-2 rounded-full bg-[#28A745]" />
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <div className="mb-1.5 flex items-baseline justify-between">
+              <span className="text-xs font-semibold text-[#69738A]">Total Botol di Depo:</span>
+              <span className="text-lg font-extrabold text-[#131B2E]">
+                {stats.totalGalonKosong} Botol
+              </span>
             </div>
-            <button
-              type="button"
-              onClick={() => setShowAllPO((prev) => !prev)}
-              className="text-xs font-bold text-[#0052FF] hover:underline"
-            >
-              {showAllPO ? 'Tampilkan Ringkas' : `Lihat Semua PO (${purchaseOrders.length})`}
-            </button>
+
+            <div className="flex h-2 w-full overflow-hidden rounded-full bg-[#EEF0F5]">
+              <div
+                className="h-full bg-[#28A745] transition-all"
+                style={{ width: `${stats.siapTukarPct}%` }}
+              />
+              <div
+                className="h-full bg-[#D93636] transition-all"
+                style={{ width: `${100 - stats.siapTukarPct}%` }}
+              />
+            </div>
+
+            <div className="mt-1.5 flex justify-between text-[10px] font-bold">
+              <span className="text-[#16752C]">● {stats.totalSiapTukar} Siap Tukar</span>
+              <span className="text-[#D93636]">● {damagedCount} Afkir / Rusak</span>
+            </div>
           </div>
 
-          <div className="space-y-3">
-            {(showAllPO ? purchaseOrders : purchaseOrders.slice(0, 3)).map((po) => (
+          <div className="space-y-2 rounded-xl bg-[#F4F6FD] p-3 text-xs">
+            {emptyBottles.map((item) => (
               <div
-                key={po.id}
-                className="flex flex-col justify-between gap-3 rounded-xl border border-[#EEF0F5] bg-[#F8FAFF] p-3.5 text-xs sm:flex-row sm:items-center"
+                key={item.id}
+                className="flex items-center justify-between border-b border-[#E3E7F2] pb-1.5 last:border-none last:pb-0"
               >
-                <div className="flex items-start gap-3">
-                  <div
-                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
-                      po.status === 'Dalam Pengiriman'
-                        ? 'bg-[#DDE7FF] text-[#0052FF]'
-                        : po.status === 'PO Kritis'
-                        ? 'bg-[#FFE0E0] text-[#D93636]'
-                        : 'bg-[#C5F8D0] text-[#16752C]'
-                    }`}
+                <span className="font-semibold text-[#293246]">{item.label}</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setEmptyBottles((prev) =>
+                        prev.map((b) =>
+                          b.id === item.id ? { ...b, count: Math.max(0, b.count - 1) } : b
+                        )
+                      )
+                    }
+                    className="flex h-5 w-5 items-center justify-center rounded bg-white font-bold text-[#596378] shadow-sm hover:bg-[#0052FF] hover:text-white"
                   >
-                    {po.status === 'Dalam Pengiriman' ? (
-                      <Truck size={17} />
-                    ) : po.status === 'PO Kritis' ? (
-                      <Package size={17} />
-                    ) : (
-                      <CheckCircle2 size={17} />
-                    )}
-                  </div>
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h4 className="font-extrabold text-[#131B2E]">{po.supplier}</h4>
-                      <span
-                        className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${
-                          po.status === 'Dalam Pengiriman'
-                            ? 'bg-[#DDE7FF] text-[#0052FF]'
-                            : po.status === 'PO Kritis'
-                            ? 'bg-[#FFE0E0] text-[#D93636]'
-                            : 'bg-[#C5F8D0] text-[#16752C]'
-                        }`}
-                      >
-                        {po.badgeText}
-                      </span>
-                    </div>
-                    <p className="mt-0.5 text-[11px] text-[#69738A]">{po.detail}</p>
-                  </div>
-                </div>
-
-                <div className="shrink-0 text-right">
-                  <p className="font-extrabold text-[#131B2E]">{po.eta}</p>
-                  {po.status === 'Dalam Pengiriman' && (
-                    <button
-                      type="button"
-                      onClick={() => handleReceivePO(po)}
-                      className="mt-1 rounded-lg bg-[#0052FF] px-2.5 py-1 text-[10px] font-bold text-white hover:bg-[#0047DE]"
-                    >
-                      Konfirmasi Terima (+{po.qtyRestok})
-                    </button>
-                  )}
-                  {po.status === 'PO Kritis' && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPurchaseOrders((prev) =>
-                          prev.map((item) =>
-                            item.id === po.id ? { ...item, followedUp: true } : item
-                          )
-                        );
-                        showToast(`Pengingat pengiriman #${po.id} terkirim ke Sales Cleo`);
-                      }}
-                      className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold text-[#0052FF] hover:underline"
-                    >
-                      <PhoneCall size={11} />
-                      {po.followedUp ? 'Sudah Di-Follow Up ✓' : 'Follow-up Sales'}
-                    </button>
-                  )}
-                  {po.status === 'Selesai Diterima' && (
-                    <p className="mt-0.5 text-[10px] text-[#8A91A3]">{po.subInfo}</p>
-                  )}
+                    -
+                  </button>
+                  <span className="w-16 text-right font-extrabold text-[#131B2E]">
+                    {item.count} Galon
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setEmptyBottles((prev) =>
+                        prev.map((b) =>
+                          b.id === item.id ? { ...b, count: b.count + 1 } : b
+                        )
+                      )
+                    }
+                    className="flex h-5 w-5 items-center justify-center rounded bg-white font-bold text-[#596378] shadow-sm hover:bg-[#0052FF] hover:text-white"
+                  >
+                    +
+                  </button>
                 </div>
               </div>
             ))}
           </div>
 
-          <div className="flex items-center justify-between border-t border-[#EEF0F5] pt-2.5 text-[11px] text-[#69738A]">
-            <span>Supplier resmi Danone, Mayora, Tirta Sariguna terverifikasi.</span>
-            <button
-              type="button"
-              onClick={() => setShowNewPOModal(true)}
-              className="font-bold text-[#0052FF] hover:underline"
-            >
-              Buat Surat Jalan Restok →
-            </button>
-          </div>
-        </div>
-
-        <div className="space-y-4 rounded-2xl border border-[#EEF0F5] bg-white p-5 shadow-sm lg:col-span-5">
-          <div className="flex items-center justify-between border-b border-[#EEF0F5] pb-3">
-            <h3 className="text-sm font-extrabold text-[#131B2E]">Status Galon Kosong</h3>
-            <span className="h-2 w-2 rounded-full bg-[#28A745]" />
-          </div>
-
-          <div className="space-y-3">
+          <div className="flex items-center justify-between rounded-xl border border-[#FFD6D6] bg-[#FFF2F2] p-3 text-xs">
             <div>
-              <div className="mb-1.5 flex items-baseline justify-between">
-                <span className="text-xs font-semibold text-[#69738A]">Total Botol di Depo:</span>
-                <span className="text-lg font-extrabold text-[#131B2E]">
-                  {stats.totalGalonKosong} Botol
-                </span>
-              </div>
-
-              <div className="flex h-2 w-full overflow-hidden rounded-full bg-[#EEF0F5]">
-                <div
-                  className="h-full bg-[#28A745] transition-all"
-                  style={{ width: `${stats.siapTukarPct}%` }}
-                />
-                <div
-                  className="h-full bg-[#D93636] transition-all"
-                  style={{ width: `${100 - stats.siapTukarPct}%` }}
-                />
-              </div>
-
-              <div className="mt-1.5 flex justify-between text-[10px] font-bold">
-                <span className="text-[#16752C]">● {stats.totalSiapTukar} Siap Tukar</span>
-                <span className="text-[#D93636]">● {damagedCount} Afkir / Rusak</span>
-              </div>
+              <p className="font-extrabold text-[#D93636]">Klaim Garansi Retur Bocor</p>
+              <p className="text-[10px] text-[#D93636]/80">
+                Klik + untuk catat temuan botol bocor
+              </p>
             </div>
-
-            <div className="space-y-2 rounded-xl bg-[#F4F6FD] p-3 text-xs">
-              {emptyBottles.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between border-b border-[#E3E7F2] pb-1.5 last:border-none last:pb-0"
-                >
-                  <span className="font-semibold text-[#293246]">{item.label}</span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setEmptyBottles((prev) =>
-                          prev.map((b) =>
-                            b.id === item.id ? { ...b, count: Math.max(0, b.count - 1) } : b
-                          )
-                        )
-                      }
-                      className="flex h-5 w-5 items-center justify-center rounded bg-white font-bold text-[#596378] shadow-sm hover:bg-[#0052FF] hover:text-white"
-                    >
-                      -
-                    </button>
-                    <span className="w-16 text-right font-extrabold text-[#131B2E]">
-                      {item.count} Galon
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setEmptyBottles((prev) =>
-                          prev.map((b) =>
-                            b.id === item.id ? { ...b, count: b.count + 1 } : b
-                          )
-                        )
-                      }
-                      className="flex h-5 w-5 items-center justify-center rounded bg-white font-bold text-[#596378] shadow-sm hover:bg-[#0052FF] hover:text-white"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-              ))}
+            <div className="flex items-center gap-1.5">
+              <span className="rounded-lg bg-[#FFE0E0] px-2.5 py-1 text-[10px] font-extrabold text-[#D93636]">
+                {warrantyClaimCount} Galon Diajukan
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setWarrantyClaimCount((c) => c + 1);
+                  setDamagedCount((d) => d + 1);
+                  showToast('1 galon bocor ditambahkan ke klaim retur');
+                }}
+                className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#D93636] font-bold text-white hover:bg-[#B82828]"
+              >
+                +
+              </button>
             </div>
-
-            <div className="flex items-center justify-between rounded-xl border border-[#FFD6D6] bg-[#FFF2F2] p-3 text-xs">
-              <div>
-                <p className="font-extrabold text-[#D93636]">Klaim Garansi Retur Bocor</p>
-                <p className="text-[10px] text-[#D93636]/80">
-                  Klik + untuk catat temuan botol bocor
-                </p>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="rounded-lg bg-[#FFE0E0] px-2.5 py-1 text-[10px] font-extrabold text-[#D93636]">
-                  {warrantyClaimCount} Galon Diajukan
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setWarrantyClaimCount((c) => c + 1);
-                    setDamagedCount((d) => d + 1);
-                    showToast('1 galon bocor ditambahkan ke klaim retur');
-                  }}
-                  className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#D93636] font-bold text-white hover:bg-[#B82828]"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowManifestModal(true)}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#0052FF] py-2.5 text-xs font-bold text-white shadow-sm shadow-[#0052FF]/20 transition hover:bg-[#0047DE]"
-            >
-              <Printer size={15} />
-              Cetak Manifest Galon Tukar
-            </button>
           </div>
+
+          <button
+            type="button"
+            onClick={() => setShowManifestModal(true)}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#0052FF] py-2.5 text-xs font-bold text-white shadow-sm shadow-[#0052FF]/20 transition hover:bg-[#0047DE]"
+          >
+            <Printer size={15} />
+            Cetak Manifest Galon Tukar
+          </button>
         </div>
       </section>
 
-      {/* ==================== MODAL BARU: TAMBAH PRODUK GALON KE DATABASE ==================== */}
+      {/* ==================== MODAL TAMBAH PRODUK GALON KE DATABASE ==================== */}
       {showAddProductModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
@@ -1179,7 +981,7 @@ export default function ProductsPage() {
                   Tambah Produk Galon Baru
                 </h3>
                 <p className="text-[11px] text-[#69738A]">
-                  Data produk akan otomatis tersimpan ke database MySQL depo
+                  Data produk akan otomatis tersimpan ke database & laporan keuangan
                 </p>
               </div>
               <button
@@ -1298,11 +1100,14 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {/* ==================== MODAL 1: UPDATE STOK & HARGA PRODUK ==================== */}
+      {/* ==================== MODAL UPDATE STOK, HARGA & DELETE PRODUK ==================== */}
       {selectedProduct && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
-          onClick={() => setSelectedProduct(null)}
+          onClick={() => {
+            setSelectedProduct(null);
+            setConfirmDeleteInModal(false);
+          }}
         >
           <div
             className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl"
@@ -1319,7 +1124,10 @@ export default function ProductsPage() {
               </div>
               <button
                 type="button"
-                onClick={() => setSelectedProduct(null)}
+                onClick={() => {
+                  setSelectedProduct(null);
+                  setConfirmDeleteInModal(false);
+                }}
                 className="rounded-lg p-1.5 text-[#69738A] hover:bg-[#F2F4FA]"
               >
                 <X size={18} />
@@ -1385,165 +1193,64 @@ export default function ProductsPage() {
                 </div>
               </div>
 
-              {!selectedProduct.isSekaliPakai && (
-                <div>
-                  <label className="mb-1 block font-bold text-[#293246]">
-                    Botol Kosong Varian Ini (Unit)
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={editForm.botolKosongCount}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, botolKosongCount: Number(e.target.value) })
-                    }
-                    className="h-10 w-full rounded-xl border border-[#EEF0F5] bg-[#F4F6FD] px-3 font-bold text-[#131B2E] outline-none focus:border-[#0052FF] focus:bg-white"
-                  />
-                </div>
-              )}
-
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setSelectedProduct(null)}
-                  className="h-10 rounded-xl px-4 font-bold text-[#596378] hover:bg-[#F2F4FA]"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="h-10 rounded-xl bg-[#0052FF] px-5 font-bold text-white shadow-sm shadow-[#0052FF]/20 hover:bg-[#0047DE]"
-                >
-                  Simpan Perubahan
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ==================== MODAL 2: BUAT SURAT JALAN / PO RESTOK PABRIK ==================== */}
-      {showNewPOModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
-          onClick={() => setShowNewPOModal(false)}
-        >
-          <div
-            className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b border-[#EEF0F5] pb-3">
-              <div>
-                <h3 className="text-base font-extrabold text-[#131B2E]">
-                  Buat Surat Jalan Restok Pabrik
-                </h3>
-                <p className="text-[11px] text-[#69738A]">
-                  Jadwalkan pengiriman galon isi sekaligus penukaran galon kosong
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowNewPOModal(false)}
-                className="rounded-lg p-1.5 text-[#69738A] hover:bg-[#F2F4FA]"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateNewPO} className="mt-4 space-y-3 text-xs">
-              <div>
-                <label className="mb-1 block font-bold text-[#293246]">Pabrik / Distributor</label>
-                <select
-                  value={newPOForm.supplier}
-                  onChange={(e) => setNewPOForm({ ...newPOForm, supplier: e.target.value })}
-                  className="h-10 w-full rounded-xl border border-[#EEF0F5] bg-[#F4F6FD] px-3 font-semibold text-[#131B2E] outline-none focus:border-[#0052FF]"
-                >
-                  <option value="Pabrik PT Danone Aqua Pulogadung">
-                    Pabrik PT Danone Aqua Pulogadung
-                  </option>
-                  <option value="Pabrik Sariguna Primatirta (Cleo)">
-                    Pabrik Sariguna Primatirta (Cleo)
-                  </option>
-                  <option value="Distributor Mayora Le Minerale">
-                    Distributor Mayora Le Minerale
-                  </option>
-                  <option value="PT Tirta Investama (VIT)">PT Tirta Investama (VIT)</option>
-                </select>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2.5">
-                <div>
-                  <label className="mb-1 block font-bold text-[#293246]">Varian Galon</label>
-                  <select
-                    value={newPOForm.productKeyword}
-                    onChange={(e) =>
-                      setNewPOForm({ ...newPOForm, productKeyword: e.target.value })
-                    }
-                    className="h-10 w-full rounded-xl border border-[#EEF0F5] bg-[#F4F6FD] px-2.5 font-semibold text-[#131B2E] outline-none focus:border-[#0052FF]"
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#EEF0F5] pt-3">
+                {/* Tombol Delete di dalam Modal Update */}
+                {!confirmDeleteInModal ? (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDeleteInModal(true)}
+                    className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-[#FFF0F0] px-3.5 font-bold text-[#D93636] transition hover:bg-[#FFE0E0]"
                   >
-                    <option value="aqua">Aqua 19L</option>
-                    <option value="cleo">Cleo 19L</option>
-                    <option value="vit">VIT 19L</option>
-                    <option value="minerale">Le Minerale 15L</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-1 block font-bold text-[#293246]">Muatan Isi</label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={newPOForm.qtyRestok}
-                    onChange={(e) =>
-                      setNewPOForm({ ...newPOForm, qtyRestok: Number(e.target.value) })
-                    }
-                    className="h-10 w-full rounded-xl border border-[#EEF0F5] bg-[#F4F6FD] px-3 font-bold text-[#131B2E] outline-none focus:border-[#0052FF]"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block font-bold text-[#293246]">Tukar Kosong</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={newPOForm.tukarKosong}
-                    onChange={(e) =>
-                      setNewPOForm({ ...newPOForm, tukarKosong: Number(e.target.value) })
-                    }
-                    className="h-10 w-full rounded-xl border border-[#EEF0F5] bg-[#F4F6FD] px-3 font-bold text-[#131B2E] outline-none focus:border-[#0052FF]"
-                  />
-                </div>
-              </div>
+                    <Trash2 size={14} />
+                    Hapus Produk
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={handleDeleteSelectedProduct}
+                      disabled={isDeleting}
+                      className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-[#D93636] px-3.5 font-bold text-white hover:bg-[#B82828] disabled:opacity-60"
+                    >
+                      <Trash2 size={14} />
+                      {isDeleting ? 'Menghapus...' : 'Ya, Hapus'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDeleteInModal(false)}
+                      disabled={isDeleting}
+                      className="h-10 rounded-xl px-2.5 font-bold text-[#596378] hover:bg-[#F2F4FA]"
+                    >
+                      Batal
+                    </button>
+                  </div>
+                )}
 
-              <div>
-                <label className="mb-1 block font-bold text-[#293246]">Estimasi Tiba (ETA)</label>
-                <input
-                  type="text"
-                  value={newPOForm.eta}
-                  onChange={(e) => setNewPOForm({ ...newPOForm, eta: e.target.value })}
-                  className="h-10 w-full rounded-xl border border-[#EEF0F5] bg-[#F4F6FD] px-3 font-semibold text-[#131B2E] outline-none focus:border-[#0052FF]"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowNewPOModal(false)}
-                  className="h-10 rounded-xl px-4 font-bold text-[#596378] hover:bg-[#F2F4FA]"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="h-10 rounded-xl bg-[#0052FF] px-5 font-bold text-white hover:bg-[#0047DE]"
-                >
-                  Terbitkan Surat Jalan
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedProduct(null);
+                      setConfirmDeleteInModal(false);
+                    }}
+                    className="h-10 rounded-xl px-4 font-bold text-[#596378] hover:bg-[#F2F4FA]"
+                  >
+                    Tutup
+                  </button>
+                  <button
+                    type="submit"
+                    className="h-10 rounded-xl bg-[#0052FF] px-5 font-bold text-white shadow-sm shadow-[#0052FF]/20 hover:bg-[#0047DE]"
+                  >
+                    Simpan Perubahan
+                  </button>
+                </div>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* ==================== MODAL 3: PREVIEW & CETAK MANIFEST GALON TUKAR ==================== */}
+      {/* ==================== MODAL PREVIEW & CETAK MANIFEST GALON TUKAR ==================== */}
       {showManifestModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
