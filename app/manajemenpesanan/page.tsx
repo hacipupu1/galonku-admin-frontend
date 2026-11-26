@@ -232,7 +232,6 @@ export default function ManajemenPesananPage() {
   // STATE PAGINATION
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5); // Default 5 baris agar pagination terlihat dengan 7 data
->>>>>>> Stashed changes
 
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
