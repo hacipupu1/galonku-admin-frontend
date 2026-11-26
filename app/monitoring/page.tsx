@@ -20,11 +20,12 @@ import {
 } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+export const MONITORING_DELIVERIES_KEY = 'galonku_monitoring_deliveries';
 
 type DeliveryStatus = 'diantar' | 'diproses' | 'selesai';
 type ItemType = 'aqua' | 'le_minerale' | 'campur' | 'vit';
 
-interface DeliveryItem {
+export interface DeliveryItem {
   id: string;
   orderNo: string;
   orderNumeric: number;
@@ -38,16 +39,11 @@ interface DeliveryItem {
   itemCount: string;
   gallonQty: number;
   itemType: ItemType;
-  progressPercent: number;
-  progressText: string;
-  etaText: string;
   etaMinutes: number;
-  distanceText: string;
   status: DeliveryStatus;
   depoInfo: string;
 }
 
-// 8 Data Awal Utama
 const baseDeliveries: DeliveryItem[] = [
   {
     id: '1',
@@ -63,11 +59,7 @@ const baseDeliveries: DeliveryItem[] = [
     itemCount: '3 Galon Aqua',
     gallonQty: 3,
     itemType: 'aqua',
-    progressPercent: 75,
-    progressText: '75% Selesai',
-    etaText: '6 mnt lagi',
     etaMinutes: 6,
-    distanceText: 'Jarak: 600m ke titik kirim',
     status: 'diantar',
     depoInfo: 'Depo JKT-04',
   },
@@ -85,11 +77,7 @@ const baseDeliveries: DeliveryItem[] = [
     itemCount: '2 Galon Le Minerale',
     gallonQty: 2,
     itemType: 'le_minerale',
-    progressPercent: 45,
-    progressText: '45% Selesai',
-    etaText: '12 mnt lagi',
     etaMinutes: 12,
-    distanceText: 'Jarak: 1.8 KM (Lampu Merah Kyai Maja)',
     status: 'diantar',
     depoInfo: 'Depo JKT-04',
   },
@@ -107,11 +95,7 @@ const baseDeliveries: DeliveryItem[] = [
     itemCount: '4 Galon Campur',
     gallonQty: 4,
     itemType: 'campur',
-    progressPercent: 25,
-    progressText: '25% Selesai',
-    etaText: '15 mnt lagi',
     etaMinutes: 15,
-    distanceText: 'Jarak: 2.7 KM (Baru keluar Depo)',
     status: 'diantar',
     depoInfo: 'Depo JKT-04',
   },
@@ -129,11 +113,7 @@ const baseDeliveries: DeliveryItem[] = [
     itemCount: '3 Galon Aqua',
     gallonQty: 3,
     itemType: 'aqua',
-    progressPercent: 20,
-    progressText: 'Sedang Muat',
-    etaText: '',
     etaMinutes: 25,
-    distanceText: 'Persiapan berangkat',
     status: 'diproses',
     depoInfo: 'Depo JKT-04',
   },
@@ -151,11 +131,7 @@ const baseDeliveries: DeliveryItem[] = [
     itemCount: '5 Galon Aqua',
     gallonQty: 5,
     itemType: 'aqua',
-    progressPercent: 20,
-    progressText: 'Sedang Muat',
-    etaText: '',
     etaMinutes: 28,
-    distanceText: 'Persiapan berangkat',
     status: 'diproses',
     depoInfo: 'Depo Mhg-03',
   },
@@ -173,11 +149,7 @@ const baseDeliveries: DeliveryItem[] = [
     itemCount: '3 Galon Aqua',
     gallonQty: 3,
     itemType: 'aqua',
-    progressPercent: 20,
-    progressText: 'Sedang Muat',
-    etaText: '',
     etaMinutes: 30,
-    distanceText: 'Persiapan berangkat',
     status: 'diproses',
     depoInfo: 'Depo JKT-05',
   },
@@ -195,11 +167,7 @@ const baseDeliveries: DeliveryItem[] = [
     itemCount: '2 Galon Le Minerale',
     gallonQty: 2,
     itemType: 'le_minerale',
-    progressPercent: 20,
-    progressText: 'Sedang Muat',
-    etaText: '',
     etaMinutes: 32,
-    distanceText: 'Persiapan berangkat',
     status: 'diproses',
     depoInfo: 'Depo JKT-04',
   },
@@ -217,17 +185,12 @@ const baseDeliveries: DeliveryItem[] = [
     itemCount: '4 Galon Vit',
     gallonQty: 4,
     itemType: 'vit',
-    progressPercent: 20,
-    progressText: 'Sedang Muat',
-    etaText: '',
     etaMinutes: 35,
-    distanceText: 'Persiapan berangkat',
     status: 'diproses',
     depoInfo: 'Depo JKT-06',
   },
 ];
 
-// Generate tambahan 100 data pesanan (Total 108 pesanan) agar pagination multi-halaman langsung teruji
 function generateExtendedDeliveries(): DeliveryItem[] {
   const couriers = [
     { name: 'Pak Budi Santoso', phone: '0812-4411-9021', vehicle: 'Honda Beat • B 4120 SZX' },
@@ -264,7 +227,6 @@ function generateExtendedDeliveries(): DeliveryItem[] {
     const status = statusPool[i % statusPool.length];
     const hour = String(8 + (i % 10)).padStart(2, '0');
     const minute = String((i * 7) % 60).padStart(2, '0');
-    const progress = status === 'selesai' ? 100 : status === 'diantar' ? 35 + (i % 50) : 20;
     const eta = 8 + (i % 20);
 
     extra.push({
@@ -281,21 +243,7 @@ function generateExtendedDeliveries(): DeliveryItem[] {
       itemCount: variant.label,
       gallonQty: variant.qty,
       itemType: variant.type,
-      progressPercent: progress,
-      progressText:
-        status === 'selesai'
-          ? '100% Terkirim'
-          : status === 'diantar'
-          ? `${progress}% Selesai`
-          : 'Sedang Muat',
-      etaText: status === 'diantar' ? `${eta} mnt lagi` : '',
       etaMinutes: status === 'selesai' ? 999 : eta,
-      distanceText:
-        status === 'selesai'
-          ? 'Tiba di lokasi tujuan'
-          : status === 'diantar'
-          ? `Jarak: ${(0.5 + (i % 4) * 0.6).toFixed(1)} KM ke titik kirim`
-          : 'Persiapan berangkat',
       status,
       depoInfo: i % 2 === 0 ? 'Depo JKT-04' : 'Depo JKT-05',
     });
@@ -304,7 +252,6 @@ function generateExtendedDeliveries(): DeliveryItem[] {
   return [...baseDeliveries, ...extra];
 }
 
-// Helper membuat daftar nomor halaman dengan ellipsis (contoh: 1 ... 4 5 6 ... 11)
 function getPaginationRange(current: number, total: number): (number | 'ellipsis')[] {
   if (total <= 7) {
     return Array.from({ length: total }, (_, i) => i + 1);
@@ -319,7 +266,19 @@ function getPaginationRange(current: number, total: number): (number | 'ellipsis
 }
 
 export default function MonitoringPage() {
-  const [deliveries, setDeliveries] = useState<DeliveryItem[]>(() => generateExtendedDeliveries());
+  const [deliveries, setDeliveries] = useState<DeliveryItem[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem(MONITORING_DELIVERIES_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch {}
+    }
+    return generateExtendedDeliveries();
+  });
+
   const [activeTab, setActiveTab] = useState<'semua' | 'jalan' | 'standby' | 'riwayat'>('semua');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'sla' | 'terbaru' | 'muatan'>('sla');
@@ -336,7 +295,7 @@ export default function MonitoringPage() {
     depoInfo: 'Depo JKT-04',
   });
 
-  // Modal Detail & Update Progress Pengantaran
+  // Modal Detail Pengantaran
   const [selectedDelivery, setSelectedDelivery] = useState<DeliveryItem | null>(null);
 
   // Toast Feedback
@@ -346,7 +305,37 @@ export default function MonitoringPage() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  // Ambil data pengiriman & kurir dari backend (/api/couriers/orders)
+  // Simpan & sinkronkan antrean pengantaran ke localStorage agar bisa diambil oleh Kurir Lapangan
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(MONITORING_DELIVERIES_KEY, JSON.stringify(deliveries));
+      window.dispatchEvent(new CustomEvent('galonku-monitoring-updated', { detail: deliveries }));
+    } catch {}
+  }, [deliveries]);
+
+  // Dengarkan pembaruan status dari halaman Kurir Lapangan
+  useEffect(() => {
+    const syncFromCourierPage = () => {
+      try {
+        const saved = localStorage.getItem(MONITORING_DELIVERIES_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            setDeliveries(parsed);
+          }
+        }
+      } catch {}
+    };
+
+    window.addEventListener('storage', syncFromCourierPage);
+    window.addEventListener('galonku-courier-assigned', syncFromCourierPage);
+    return () => {
+      window.removeEventListener('storage', syncFromCourierPage);
+      window.removeEventListener('galonku-courier-assigned', syncFromCourierPage);
+    };
+  }, []);
+
   const fetchDeliveriesFromBackend = async (showNotif = false) => {
     setRefreshing(true);
     try {
@@ -369,9 +358,6 @@ export default function MonitoringPage() {
                 ? 'diantar'
                 : 'diproses';
 
-            const progress =
-              mappedStatus === 'selesai' ? 100 : mappedStatus === 'diantar' ? 60 : 20;
-
             const createdDate = row.createdAt ? new Date(row.createdAt) : new Date();
             const timeStr =
               createdDate.toLocaleTimeString('id-ID', {
@@ -393,21 +379,7 @@ export default function MonitoringPage() {
               itemCount: `${row.totalItems || 2} Galon`,
               gallonQty: Number(row.totalItems || 2),
               itemType: 'aqua',
-              progressPercent: progress,
-              progressText:
-                mappedStatus === 'selesai'
-                  ? '100% Terkirim'
-                  : mappedStatus === 'diantar'
-                  ? `${progress}% Selesai`
-                  : 'Sedang Muat',
-              etaText: mappedStatus === 'diantar' ? '10 mnt lagi' : '',
               etaMinutes: mappedStatus === 'selesai' ? 999 : mappedStatus === 'diantar' ? 10 : 25,
-              distanceText:
-                mappedStatus === 'selesai'
-                  ? 'Pesanan selesai diterima pelanggan'
-                  : mappedStatus === 'diantar'
-                  ? 'Kurir dalam perjalanan ke tujuan'
-                  : 'Persiapan berangkat',
               status: mappedStatus,
               depoInfo: 'Depo JKT-04',
             };
@@ -439,7 +411,6 @@ export default function MonitoringPage() {
     fetchDeliveriesFromBackend(true);
   };
 
-  // Hitung Statistik Tab & KPI Secara Dinamis
   const stats = useMemo(() => {
     const activeOrders = deliveries.filter((d) => d.status !== 'selesai');
     const onTheWay = deliveries.filter((d) => d.status === 'diantar');
@@ -463,7 +434,6 @@ export default function MonitoringPage() {
     };
   }, [deliveries]);
 
-  // 1. Filter Berdasarkan Tab & Pencarian
   const filteredData = useMemo(() => {
     return deliveries.filter((item) => {
       let matchTab = true;
@@ -490,7 +460,6 @@ export default function MonitoringPage() {
     });
   }, [deliveries, activeTab, searchQuery]);
 
-  // 2. Urutkan Data Sesuai Dropdown
   const sortedData = useMemo(() => {
     const copy = [...filteredData];
     if (sortBy === 'sla') {
@@ -503,7 +472,6 @@ export default function MonitoringPage() {
     return copy;
   }, [filteredData, sortBy]);
 
-  // 3. Hitung Pagination
   const totalItems = sortedData.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -520,49 +488,19 @@ export default function MonitoringPage() {
     [safeCurrentPage, totalPages]
   );
 
-  // Reset halaman ke 1 saat filter/search/sort/perPage berubah
   useEffect(() => {
     setCurrentPage(1);
   }, [activeTab, searchQuery, sortBy, itemsPerPage]);
 
-  // Ubah Status Pengantaran (Diproses -> Diantar -> Selesai) & Sinkron ke Backend
-  const handleUpdateDelivery = async (
-    id: string,
-    newStatus: DeliveryStatus,
-    customProgress?: number
-  ) => {
+  const handleUpdateDelivery = async (id: string, newStatus: DeliveryStatus) => {
     setDeliveries((prev) =>
       prev.map((item) => {
         if (item.id !== id) return item;
-        const progress =
-          customProgress !== undefined
-            ? customProgress
-            : newStatus === 'selesai'
-            ? 100
-            : newStatus === 'diantar'
-            ? Math.max(40, item.progressPercent)
-            : 20;
-
         const updated: DeliveryItem = {
           ...item,
           status: newStatus,
-          progressPercent: progress,
-          progressText:
-            newStatus === 'selesai'
-              ? '100% Terkirim'
-              : newStatus === 'diantar'
-              ? `${progress}% Selesai`
-              : 'Sedang Muat',
-          etaText: newStatus === 'diantar' ? item.etaText || '10 mnt lagi' : '',
           etaMinutes: newStatus === 'selesai' ? 999 : newStatus === 'diantar' ? 10 : 25,
-          distanceText:
-            newStatus === 'selesai'
-              ? 'Pesanan selesai diterima pelanggan'
-              : newStatus === 'diantar'
-              ? 'Kurir dalam perjalanan ke tujuan'
-              : 'Persiapan berangkat',
         };
-
         if (selectedDelivery?.id === id) {
           setSelectedDelivery(updated);
         }
@@ -583,16 +521,13 @@ export default function MonitoringPage() {
         },
         body: JSON.stringify({ status: backendStatus }),
       });
-    } catch {
-      // Tetap lanjut jika item berasal dari data simulasi lokal
-    }
+    } catch {}
 
     const statusLabel =
       newStatus === 'diantar' ? 'Diantar' : newStatus === 'selesai' ? 'Selesai' : 'Diproses';
     showToast(`Status pengantaran diperbarui menjadi "${statusLabel}"`);
   };
 
-  // Tambah Armada Kurir Baru
   const handleAddCourierSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCourierForm.courierName.trim() || !newCourierForm.vehicle.trim()) return;
@@ -614,11 +549,7 @@ export default function MonitoringPage() {
       itemCount: '3 Galon Aqua',
       gallonQty: 3,
       itemType: 'aqua',
-      progressPercent: 15,
-      progressText: 'Sedang Muat',
-      etaText: '',
       etaMinutes: 20,
-      distanceText: 'Persiapan berangkat',
       status: 'diproses',
       depoInfo: newCourierForm.depoInfo,
     };
@@ -637,8 +568,7 @@ export default function MonitoringPage() {
   };
 
   return (
-    <main className="w-full min-h-screen bg-[#F8FAFC] p-6 pt-4 text-[#131B2E] antialiased">
-      {/* Toast Notifikasi */}
+    <main className="min-h-screen w-full bg-[#F8FAFC] p-6 pt-4 text-[#131B2E] antialiased">
       {toast && (
         <div className="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-xl bg-[#131B2E] px-4 py-3 text-xs font-bold text-white shadow-xl">
           <CheckCircle2 size={16} className="text-[#28A745]" />
@@ -681,9 +611,8 @@ export default function MonitoringPage() {
         </div>
       </div>
 
-      {/* KPI CARDS (4 CARD SUMMARY DINAMIS) */}
+      {/* KPI CARDS */}
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Card 1 */}
         <div className="flex items-center justify-between rounded-2xl border border-[#EEF0F5] bg-white p-4 shadow-xs">
           <div>
             <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#8A91A3]">
@@ -704,7 +633,6 @@ export default function MonitoringPage() {
           </div>
         </div>
 
-        {/* Card 2 */}
         <div className="flex items-center justify-between rounded-2xl border border-[#EEF0F5] bg-white p-4 shadow-xs">
           <div>
             <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#8A91A3]">
@@ -725,7 +653,6 @@ export default function MonitoringPage() {
           </div>
         </div>
 
-        {/* Card 3 */}
         <div className="flex items-center justify-between rounded-2xl border border-[#EEF0F5] bg-white p-4 shadow-xs">
           <div>
             <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#8A91A3]">
@@ -746,7 +673,6 @@ export default function MonitoringPage() {
           </div>
         </div>
 
-        {/* Card 4 */}
         <div className="flex items-center justify-between rounded-2xl border border-[#EEF0F5] bg-white p-4 shadow-xs">
           <div>
             <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#8A91A3]">
@@ -828,7 +754,6 @@ export default function MonitoringPage() {
           </button>
         </div>
 
-        {/* Search Input */}
         <div className="relative w-full md:w-80">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8A91A3]" />
           <input
@@ -850,9 +775,8 @@ export default function MonitoringPage() {
         </div>
       </div>
 
-      {/* TABEL DAFTAR PENGANTARAN AKTIF & PAGINATION */}
+      {/* TABEL DAFTAR PENGANTARAN AKTIF (TANPA PROGRESS BAR) */}
       <div className="overflow-hidden rounded-2xl border border-[#EEF0F5] bg-white shadow-xs">
-        {/* Table Top Bar */}
         <div className="flex flex-col justify-between gap-2 border-b border-[#EEF0F5] p-4 sm:flex-row sm:items-center">
           <div className="flex items-center gap-2">
             <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[#28A745]" />
@@ -880,7 +804,6 @@ export default function MonitoringPage() {
           </div>
         </div>
 
-        {/* Table Content */}
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-left">
             <thead>
@@ -889,7 +812,6 @@ export default function MonitoringPage() {
                 <th className="whitespace-nowrap px-4 py-3.5">Kurir &amp; Armada</th>
                 <th className="whitespace-nowrap px-4 py-3.5">Tujuan Pengiriman</th>
                 <th className="whitespace-nowrap px-4 py-3.5">Muatan</th>
-                <th className="whitespace-nowrap px-4 py-3.5">Progress &amp; ETA</th>
                 <th className="whitespace-nowrap px-4 py-3.5">Status</th>
                 <th className="whitespace-nowrap px-4 py-3.5 text-center">Aksi</th>
               </tr>
@@ -897,26 +819,23 @@ export default function MonitoringPage() {
             <tbody className="divide-y divide-[#EEF0F5] text-xs">
               {paginatedData.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center font-medium text-[#69738A]">
+                  <td colSpan={6} className="px-4 py-10 text-center font-medium text-[#69738A]">
                     Tidak ada data pengiriman yang sesuai dengan filter atau pencarian.
                   </td>
                 </tr>
               ) : (
                 paginatedData.map((item) => (
                   <tr key={item.id} className="transition hover:bg-[#F8FAFF]">
-                    {/* No. Pesanan */}
                     <td className="whitespace-nowrap px-4 py-4">
                       <p className="font-extrabold text-[#131B2E]">{item.orderNo}</p>
                       <p className="mt-0.5 text-[11px] text-[#69738A]">{item.time}</p>
                     </td>
 
-                    {/* Kurir & Armada */}
                     <td className="whitespace-nowrap px-4 py-4">
                       <p className="font-bold text-[#131B2E]">{item.courierName}</p>
                       <p className="mt-0.5 text-[11px] text-[#69738A]">{item.vehicle}</p>
                     </td>
 
-                    {/* Tujuan Pengiriman */}
                     <td className="px-4 py-4">
                       <p className="font-bold text-[#131B2E]">{item.addressTitle}</p>
                       <p className="mt-0.5 text-[11px] text-[#69738A]">{item.customerInfo}</p>
@@ -925,7 +844,6 @@ export default function MonitoringPage() {
                       </span>
                     </td>
 
-                    {/* Muatan */}
                     <td className="whitespace-nowrap px-4 py-4">
                       <span
                         className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold ${
@@ -943,40 +861,6 @@ export default function MonitoringPage() {
                       </span>
                     </td>
 
-                    {/* Progress & ETA */}
-                    <td className="w-56 px-4 py-4">
-                      <div className="mb-1 flex items-center justify-between text-[11px] font-bold">
-                        <span
-                          className={
-                            item.status === 'selesai'
-                              ? 'text-[#16752C]'
-                              : item.status === 'diantar'
-                              ? 'text-[#0052FF]'
-                              : 'text-[#69738A]'
-                          }
-                        >
-                          {item.progressText}
-                        </span>
-                        {item.etaText && (
-                          <span className="text-[#131B2E]">{item.etaText}</span>
-                        )}
-                      </div>
-                      <div className="h-2 w-full overflow-hidden rounded-full bg-[#EEF0F5]">
-                        <div
-                          className={`h-full rounded-full transition-all duration-500 ${
-                            item.status === 'selesai'
-                              ? 'bg-[#28A745]'
-                              : item.status === 'diantar'
-                              ? 'bg-[#0052FF]'
-                              : 'bg-[#F59E0B]'
-                          }`}
-                          style={{ width: `${item.progressPercent}%` }}
-                        />
-                      </div>
-                      <p className="mt-1 text-[10px] text-[#69738A]">{item.distanceText}</p>
-                    </td>
-
-                    {/* Status */}
                     <td className="whitespace-nowrap px-4 py-4">
                       <span
                         className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ${
@@ -1007,7 +891,6 @@ export default function MonitoringPage() {
                       </p>
                     </td>
 
-                    {/* Aksi */}
                     <td className="whitespace-nowrap px-4 py-4 text-center">
                       <div className="flex items-center justify-center gap-1.5">
                         <button
@@ -1021,7 +904,7 @@ export default function MonitoringPage() {
                         {item.status === 'diproses' && (
                           <button
                             type="button"
-                            onClick={() => handleUpdateDelivery(item.id, 'diantar', 40)}
+                            onClick={() => handleUpdateDelivery(item.id, 'diantar')}
                             className="cursor-pointer rounded-lg bg-[#0052FF] px-2.5 py-1.5 text-[11px] font-bold text-white transition hover:bg-[#0047DE]"
                           >
                             Kirim
@@ -1031,7 +914,7 @@ export default function MonitoringPage() {
                         {item.status === 'diantar' && (
                           <button
                             type="button"
-                            onClick={() => handleUpdateDelivery(item.id, 'selesai', 100)}
+                            onClick={() => handleUpdateDelivery(item.id, 'selesai')}
                             className="cursor-pointer rounded-lg bg-[#28A745] px-2.5 py-1.5 text-[11px] font-bold text-white transition hover:bg-[#218838]"
                           >
                             Selesai
@@ -1278,7 +1161,7 @@ export default function MonitoringPage() {
                 <div className="grid grid-cols-3 gap-2">
                   <button
                     type="button"
-                    onClick={() => handleUpdateDelivery(selectedDelivery.id, 'diproses', 20)}
+                    onClick={() => handleUpdateDelivery(selectedDelivery.id, 'diproses')}
                     className={`cursor-pointer rounded-xl py-2.5 font-bold transition ${
                       selectedDelivery.status === 'diproses'
                         ? 'bg-[#F59E0B] text-white'
@@ -1289,7 +1172,7 @@ export default function MonitoringPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleUpdateDelivery(selectedDelivery.id, 'diantar', 65)}
+                    onClick={() => handleUpdateDelivery(selectedDelivery.id, 'diantar')}
                     className={`cursor-pointer rounded-xl py-2.5 font-bold transition ${
                       selectedDelivery.status === 'diantar'
                         ? 'bg-[#0052FF] text-white'
@@ -1300,7 +1183,7 @@ export default function MonitoringPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleUpdateDelivery(selectedDelivery.id, 'selesai', 100)}
+                    onClick={() => handleUpdateDelivery(selectedDelivery.id, 'selesai')}
                     className={`cursor-pointer rounded-xl py-2.5 font-bold transition ${
                       selectedDelivery.status === 'selesai'
                         ? 'bg-[#28A745] text-white'

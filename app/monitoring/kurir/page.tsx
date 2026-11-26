@@ -3,28 +3,37 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
   Plus,
-  RotateCw,
   Search,
   Users,
   Zap,
   Building2,
-  Clock,
   Phone,
-  Navigation,
   CheckCircle2,
   X,
   MessageSquare,
   Send,
-  MapPin,
   ChevronLeft,
   ChevronRight,
-  Radio,
+  PackageCheck,
 } from 'lucide-react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const MONITORING_DELIVERIES_KEY = 'galonku_monitoring_deliveries';
 
 type CourierStatus = 'jalan' | 'standby';
 type CourierSubType = 'di_jalan' | 'muat_barang' | 'standby';
+
+interface MonitoringOrderOption {
+  id: string;
+  orderNo: string;
+  customerInfo: string;
+  addressTitle: string;
+  itemCount: string;
+  gallonQty: number;
+  note: string;
+  status: 'diantar' | 'diproses' | 'selesai';
+  courierName?: string;
+}
 
 interface CourierItem {
   id: string;
@@ -37,27 +46,16 @@ interface CourierItem {
   status: CourierStatus;
   statusBadge: string;
   statusBadgeStyle: string;
+  assignedDeliveryId?: string;
   orderId?: string;
-  eta?: string;
   desc: string;
-  progress?: number;
-  progressLabel?: string;
   gallonCount: number;
   finishedCount: number;
   departTime?: string;
   location?: string;
   idleTime?: string;
-  battery?: string;
   kloter?: string;
   type: CourierSubType;
-}
-
-interface ActivityLog {
-  id: string;
-  actor: string;
-  action: string;
-  time: string;
-  dotColor: string;
 }
 
 const initialCouriers: CourierItem[] = [
@@ -72,11 +70,9 @@ const initialCouriers: CourierItem[] = [
     status: 'jalan',
     statusBadge: 'Di Jalan',
     statusBadgeStyle: 'text-emerald-600 bg-emerald-50',
+    assignedDeliveryId: '1',
     orderId: '#ORD-8821',
-    eta: 'Tiba ~6 mnt lagi',
     desc: 'Membawa 3 Galon Aqua ke Jl. Mawar No. 12 (Ibu Fitriani)',
-    progress: 75,
-    progressLabel: '75% Selesai (600m)',
     gallonCount: 3,
     finishedCount: 7,
     departTime: '10:42 WIB',
@@ -94,11 +90,9 @@ const initialCouriers: CourierItem[] = [
     status: 'jalan',
     statusBadge: 'Di Jalan',
     statusBadgeStyle: 'text-emerald-600 bg-emerald-50',
+    assignedDeliveryId: '2',
     orderId: '#ORD-8822',
-    eta: 'Tiba ~12 mnt lagi',
     desc: 'Membawa 2 Galon Le Minerale ke Gandaria Heights Lt. 08',
-    progress: 45,
-    progressLabel: '45% Selesai (1.8 KM)',
     gallonCount: 2,
     finishedCount: 5,
     departTime: '10:51 WIB',
@@ -116,11 +110,9 @@ const initialCouriers: CourierItem[] = [
     status: 'jalan',
     statusBadge: 'Di Jalan',
     statusBadgeStyle: 'text-emerald-600 bg-emerald-50',
+    assignedDeliveryId: '3',
     orderId: '#ORD-8824',
-    eta: 'Tiba ~15 mnt lagi',
     desc: 'Membawa 4 Galon Campur ke 1Park Residences Lt. 14',
-    progress: 25,
-    progressLabel: '25% Selesai (2.7 KM)',
     gallonCount: 4,
     finishedCount: 6,
     departTime: '11:02 WIB',
@@ -138,11 +130,9 @@ const initialCouriers: CourierItem[] = [
     status: 'jalan',
     statusBadge: 'Muat Barang',
     statusBadgeStyle: 'text-amber-700 bg-amber-50',
+    assignedDeliveryId: '4',
     orderId: '#ORD-8825',
-    eta: 'Persiapan Jalan',
     desc: 'Sedang muat 3 Galon Aqua (COD Rp 54.000) di Depo JKT-04',
-    progress: 90,
-    progressLabel: '90% Loading Muat',
     gallonCount: 3,
     finishedCount: 4,
     departTime: 'Jadwal: 11:15 WIB',
@@ -161,9 +151,8 @@ const initialCouriers: CourierItem[] = [
     statusBadge: 'Standby Depo',
     statusBadgeStyle: 'text-emerald-700 bg-emerald-50',
     location: 'Posisi: Depo Utama JKT',
-    idleTime: 'Idle 4 menit',
+    idleTime: 'Siaga Depo',
     desc: 'Armada kosong, siap menerima alokasi antrean pengantaran baru ke radius 4 KM.',
-    battery: '⚡ Baterai HP 92%',
     gallonCount: 0,
     finishedCount: 8,
     kloter: 'Kloter Timur & Depo Siaga',
@@ -181,9 +170,8 @@ const initialCouriers: CourierItem[] = [
     statusBadge: 'Standby Depo',
     statusBadgeStyle: 'text-emerald-700 bg-emerald-50',
     location: 'Posisi: Depo Cabang Mhg-03',
-    idleTime: 'Idle 2 menit',
-    desc: 'Baru saja menyelesaikan trip order #ORD-8820. Siap menerima jadwal pengantaran kloter siang.',
-    battery: '⚡ Baterai HP 88%',
+    idleTime: 'Siaga Depo',
+    desc: 'Baru saja menyelesaikan trip order #ORD-8820. Siap menerima jadwal pengantaran berikutnya.',
     gallonCount: 0,
     finishedCount: 5,
     kloter: 'Kloter Timur & Depo Siaga',
@@ -191,54 +179,46 @@ const initialCouriers: CourierItem[] = [
   },
 ];
 
-const initialLogs: ActivityLog[] = [
+const fallbackMonitoringOrders: MonitoringOrderOption[] = [
   {
-    id: 'log-1',
-    actor: 'Pak Budi',
-    action: 'mendekati titik kirim (600m)',
-    time: '1 menit yang lalu',
-    dotColor: 'bg-emerald-500',
+    id: '5',
+    orderNo: '#ORD-8826',
+    customerInfo: 'Ibu Susi (0811-9481-xxxx)',
+    addressTitle: 'Jl. Indah Megah (Araya)',
+    itemCount: '5 Galon Aqua',
+    gallonQty: 5,
+    note: 'Taruh di pos satpam',
+    status: 'diproses',
   },
   {
-    id: 'log-2',
-    actor: 'Mas Doni',
-    action: 'menyelesaikan trip #ORD-8820',
-    time: '4 menit yang lalu',
-    dotColor: 'bg-blue-500',
+    id: '6',
+    orderNo: '#ORD-8827',
+    customerInfo: 'Ibu Fitriani (0812-9988-xxxx)',
+    addressTitle: 'Jl. Mawar No. 12',
+    itemCount: '3 Galon Aqua',
+    gallonQty: 3,
+    note: 'Patokan: Sebelah Pos RW 03',
+    status: 'diproses',
   },
   {
-    id: 'log-3',
-    actor: 'Hendra K.',
-    action: 'mulai memuat 3 galon di Depo 04',
-    time: '6 menit yang lalu',
-    dotColor: 'bg-amber-500',
-  },
-];
-
-const pendingOrdersPool = [
-  {
-    orderId: '#ORD-8830',
-    customer: 'Ibu Ratna',
-    address: 'Jl. Radio Dalam Raya No. 45',
-    item: '3 Galon Aqua',
-    qty: 3,
-    kloter: 'Kloter Selatan (Kebayoran)',
+    id: '7',
+    orderNo: '#ORD-8828',
+    customerInfo: 'Bpk. Ronald (0817-2345-xxxx)',
+    addressTitle: 'Gandaria Heights Lt. 08 #8B',
+    itemCount: '2 Galon Le Minerale',
+    gallonQty: 2,
+    note: 'Titip di Lobby Resepsionis',
+    status: 'diproses',
   },
   {
-    orderId: '#ORD-8831',
-    customer: 'Bpk. Gunawan',
-    address: 'Perum. Pondok Indah Blok C2',
-    item: '2 Galon Le Minerale',
-    qty: 2,
-    kloter: 'Kloter Barat (Gandaria)',
-  },
-  {
-    orderId: '#ORD-8832',
-    customer: 'Klinik Sehat Sentosa',
-    address: 'Jl. Kebayoran Lama No. 102',
-    item: '4 Galon Vit',
-    qty: 4,
-    kloter: 'Kloter Timur & Depo Siaga',
+    id: '8',
+    orderNo: '#ORD-8829',
+    customerInfo: 'Sdr. Jonathan C. (0852-1100-xxxx)',
+    addressTitle: 'Apartemen 1Park Residences Lt. 14',
+    itemCount: '4 Galon Vit',
+    gallonQty: 4,
+    note: 'Bawa Troli Depo',
+    status: 'diproses',
   },
 ];
 
@@ -259,20 +239,19 @@ function getInitials(name: string): string {
 
 export default function KurirLapanganPage() {
   const [couriers, setCouriers] = useState<CourierItem[]>(initialCouriers);
-  const [logs, setLogs] = useState<ActivityLog[]>(initialLogs);
+  const [monitoringQueue, setMonitoringQueue] = useState<MonitoringOrderOption[]>(
+    fallbackMonitoringOrders
+  );
   const [activeTab, setActiveTab] = useState<'semua' | 'jalan' | 'standby'>('semua');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 9;
-  const [refreshing, setRefreshing] = useState(false);
 
   // Modals State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [contactCourier, setContactCourier] = useState<CourierItem | null>(null);
-  const [gpsCourier, setGpsCourier] = useState<CourierItem | null>(null);
   const [assignCourier, setAssignCourier] = useState<CourierItem | null>(null);
   const [detailCourier, setDetailCourier] = useState<CourierItem | null>(null);
-  const [isAllLogsOpen, setIsAllLogsOpen] = useState(false);
 
   // Form Tambah Armada Kurir
   const [newCourierForm, setNewCourierForm] = useState({
@@ -287,15 +266,8 @@ export default function KurirLapanganPage() {
   // Form Kirim Pesan ke Kurir
   const [dispatchMessage, setDispatchMessage] = useState('');
 
-  // Form Tugaskan Pesanan
-  const [selectedPresetOrder, setSelectedPresetOrder] = useState(pendingOrdersPool[0].orderId);
-  const [customOrderForm, setCustomOrderForm] = useState({
-    useCustom: false,
-    customer: '',
-    address: '',
-    item: '3 Galon Aqua',
-    qty: 3,
-  });
+  // Pilihan antrean dari Monitoring Pengantaran
+  const [selectedMonitoringOrderId, setSelectedMonitoringOrderId] = useState<string>('');
 
   // Toast Notification
   const [toast, setToast] = useState<string | null>(null);
@@ -304,22 +276,69 @@ export default function KurirLapanganPage() {
     setTimeout(() => setToast(null), 3200);
   };
 
-  const prependLog = (actor: string, action: string, dotColor = 'bg-blue-500') => {
-    setLogs((prev) => [
-      {
-        id: `log-${Date.now()}-${Math.random()}`,
-        actor,
-        action,
-        time: 'Baru saja',
-        dotColor,
-      },
-      ...prev,
-    ]);
+  // Ambil daftar antrean pengantaran yang siap kirim (status === 'diproses') dari Monitoring Pengantaran
+  const loadMonitoringQueue = () => {
+    if (typeof window === 'undefined') return;
+    try {
+      const saved = localStorage.getItem(MONITORING_DELIVERIES_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const readyToShip = parsed.filter((item: any) => item.status === 'diproses');
+          setMonitoringQueue(readyToShip);
+          return;
+        }
+      }
+    } catch {}
+    setMonitoringQueue(fallbackMonitoringOrders);
+  };
+
+  useEffect(() => {
+    loadMonitoringQueue();
+    window.addEventListener('storage', loadMonitoringQueue);
+    window.addEventListener('galonku-monitoring-updated', loadMonitoringQueue);
+    return () => {
+      window.removeEventListener('storage', loadMonitoringQueue);
+      window.removeEventListener('galonku-monitoring-updated', loadMonitoringQueue);
+    };
+  }, []);
+
+  // Sinkronkan penugasan & status selesai kembali ke Monitoring Pengantaran
+  const syncOrderBackToMonitoring = (
+    deliveryId: string | undefined,
+    orderNo: string | undefined,
+    newStatus: 'diproses' | 'diantar' | 'selesai',
+    courier?: CourierItem
+  ) => {
+    if (typeof window === 'undefined') return;
+    try {
+      const saved = localStorage.getItem(MONITORING_DELIVERIES_KEY);
+      if (!saved) return;
+      const parsed = JSON.parse(saved);
+      if (!Array.isArray(parsed)) return;
+
+      const updatedList = parsed.map((item: any) => {
+        const isMatch =
+          (deliveryId && String(item.id) === String(deliveryId)) ||
+          (orderNo && item.orderNo === orderNo);
+        if (!isMatch) return item;
+        return {
+          ...item,
+          status: newStatus,
+          courierName: courier ? courier.name : item.courierName,
+          courierPhone: courier ? courier.phone : item.courierPhone,
+          vehicle: courier ? `${courier.motor} • ${courier.plat}` : item.vehicle,
+        };
+      });
+
+      localStorage.setItem(MONITORING_DELIVERIES_KEY, JSON.stringify(updatedList));
+      window.dispatchEvent(new CustomEvent('galonku-courier-assigned', { detail: updatedList }));
+      loadMonitoringQueue();
+    } catch {}
   };
 
   // Sinkronisasi data kurir dengan backend (/api/couriers)
-  const fetchCouriersFromBackend = async (showNotif = false) => {
-    setRefreshing(true);
+  const fetchCouriersFromBackend = async () => {
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       const res = await fetch(`${API_URL}/couriers`, {
@@ -352,15 +371,11 @@ export default function KurirLapanganPage() {
                 ? 'text-emerald-600 bg-emerald-50'
                 : 'text-emerald-700 bg-emerald-50',
               orderId: isOnRoad ? `#ORD-${8820 + Number(row.id)}` : undefined,
-              eta: isOnRoad ? 'Tiba ~10 mnt lagi' : undefined,
               desc: isOnRoad
                 ? `Sedang mengantar ${row.activeOrders || 1} pesanan aktif dari Depo JKT-04`
-                : 'Armada siaga di Depo Utama, siap menerima alokasi pengantaran.',
-              progress: isOnRoad ? 65 : undefined,
-              progressLabel: isOnRoad ? '65% Selesai' : undefined,
+                : 'Armada siaga di Depo Utama, siap menerima penugasan pengantaran.',
               location: !isOnRoad ? 'Posisi: Depo Utama JKT' : undefined,
-              idleTime: !isOnRoad ? 'Siaga Aktif' : undefined,
-              battery: !isOnRoad ? '⚡ Baterai HP 95%' : undefined,
+              idleTime: !isOnRoad ? 'Siaga Depo' : undefined,
               gallonCount: isOnRoad ? Number(row.activeOrders || 1) * 3 : 0,
               finishedCount: Number(row.completedOrders || 5 + idx),
               departTime: isOnRoad ? 'Aktif Hari Ini' : undefined,
@@ -371,27 +386,14 @@ export default function KurirLapanganPage() {
 
           setCouriers([...mappedCouriers, ...initialCouriers]);
         }
-
-        if (showNotif) {
-          showToast('Posisi GPS & data kurir berhasil disinkronkan dengan server');
-        }
-      } else if (showNotif) {
-        showToast('Posisi GPS & status kurir diperbarui');
       }
-    } catch {
-      if (showNotif) {
-        showToast('Posisi GPS & status kurir diperbarui');
-      }
-    } finally {
-      setTimeout(() => setRefreshing(false), 400);
-    }
+    } catch {}
   };
 
   useEffect(() => {
-    fetchCouriersFromBackend(false);
+    fetchCouriersFromBackend();
   }, []);
 
-  // Helper sync status kurir ke backend
   const syncCourierStatus = async (courierId: string, status: 'aktif' | 'mengantar' | 'offline') => {
     try {
       const cleanId = courierId.replace(/^db-/, '');
@@ -404,12 +406,10 @@ export default function KurirLapanganPage() {
         },
         body: JSON.stringify({ status }),
       });
-    } catch {
-      // Tetap lanjut jika ID berasal dari data simulasi lokal
-    }
+    } catch {}
   };
 
-  // KPI Dinamis
+  // 3 KPI Dinamis & Responsif
   const kpi = useMemo(() => {
     const total = couriers.length;
     const onRoadList = couriers.filter((c) => c.status === 'jalan');
@@ -423,6 +423,27 @@ export default function KurirLapanganPage() {
       totalGallons,
     };
   }, [couriers]);
+
+  // Filter daftar antrean: HANYA yang statusnya 'diproses' (siap kirim) dan belum ditugaskan ke kurir manapun
+  const availableQueueOrders = useMemo(() => {
+    const activeAssignedIds = new Set(
+      couriers
+        .filter((c) => c.status === 'jalan' && c.assignedDeliveryId)
+        .map((c) => String(c.assignedDeliveryId))
+    );
+    const activeAssignedOrderNos = new Set(
+      couriers
+        .filter((c) => c.status === 'jalan' && c.orderId)
+        .map((c) => c.orderId)
+    );
+
+    return monitoringQueue.filter(
+      (o) =>
+        o.status === 'diproses' &&
+        !activeAssignedIds.has(String(o.id)) &&
+        !activeAssignedOrderNos.has(o.orderNo)
+    );
+  }, [monitoringQueue, couriers]);
 
   // Filter Kurir
   const filteredCouriers = useMemo(() => {
@@ -451,26 +472,6 @@ export default function KurirLapanganPage() {
     return filteredCouriers.slice(start, start + itemsPerPage);
   }, [filteredCouriers, safePage]);
 
-  // Refresh Telemetry & Backend Sync
-  const handleRefresh = () => {
-    setCouriers((prev) =>
-      prev.map((c) => {
-        if (c.type === 'di_jalan' && (c.progress ?? 0) < 95) {
-          const nextProg = Math.min(95, (c.progress ?? 50) + 5);
-          const sisaMenit = Math.max(2, Math.round((100 - nextProg) / 5));
-          return {
-            ...c,
-            progress: nextProg,
-            progressLabel: `${nextProg}% Selesai`,
-            eta: `Tiba ~${sisaMenit} mnt lagi`,
-          };
-        }
-        return c;
-      })
-    );
-    fetchCouriersFromBackend(true);
-  };
-
   // Aksi 1: Tambah Armada Kurir Baru
   const handleAddCourier = (e: React.FormEvent) => {
     e.preventDefault();
@@ -490,7 +491,6 @@ export default function KurirLapanganPage() {
       location: newCourierForm.location,
       idleTime: 'Baru Siaga',
       desc: 'Armada baru terdaftar dan siap menerima alokasi pengantaran galon hari ini.',
-      battery: '⚡ Baterai HP 100%',
       gallonCount: 0,
       finishedCount: 0,
       kloter: newCourierForm.kloter,
@@ -498,11 +498,6 @@ export default function KurirLapanganPage() {
     };
 
     setCouriers((prev) => [newCourier, ...prev]);
-    prependLog(
-      newCourier.name,
-      `bergabung siaga di ${(newCourier.location ?? 'Depo Utama').replace('Posisi: ', '')}`,
-      'bg-emerald-500'
-    );
     setNewCourierForm({
       name: '',
       phone: '',
@@ -517,143 +512,135 @@ export default function KurirLapanganPage() {
     showToast(`Armada "${newCourier.name}" berhasil ditambahkan!`);
   };
 
-  // Aksi 2: Konfirmasi Berangkat (Muat Barang -> Di Jalan)
-  const handleConfirmDepart = async (courier: CourierItem) => {
-    const nowTime =
-      new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
-    setCouriers((prev) =>
-      prev.map((c) =>
-        c.id === courier.id
-          ? {
-              ...c,
-              status: 'jalan',
-              type: 'di_jalan',
-              statusBadge: 'Di Jalan',
-              statusBadgeStyle: 'text-emerald-600 bg-emerald-50',
-              eta: 'Tiba ~15 mnt lagi',
-              progress: 15,
-              progressLabel: '15% Selesai (Baru Berangkat)',
-              departTime: nowTime,
-              desc: c.desc.replace('Sedang muat', 'Mengantar'),
-            }
-          : c
-      )
+  // Aksi 2: Buka Modal Tugaskan Pesanan (Hanya menampilkan order yang siap dikirim)
+  const handleOpenAssignModal = (courier: CourierItem) => {
+    loadMonitoringQueue();
+    setAssignCourier(courier);
+
+    const activeAssignedIds = new Set(
+      couriers
+        .filter((c) => c.status === 'jalan' && c.assignedDeliveryId)
+        .map((c) => String(c.assignedDeliveryId))
     );
-    await syncCourierStatus(courier.id, 'mengantar');
-    prependLog(courier.name, `berangkat mengantar ${courier.orderId || 'pesanan'}`, 'bg-blue-500');
-    showToast(`${courier.name} dikonfirmasi berangkat ke lokasi tujuan!`);
+    const activeAssignedOrderNos = new Set(
+      couriers
+        .filter((c) => c.status === 'jalan' && c.orderId)
+        .map((c) => c.orderId)
+    );
+
+    const readyOrders = monitoringQueue.filter(
+      (o) =>
+        o.status === 'diproses' &&
+        !activeAssignedIds.has(String(o.id)) &&
+        !activeAssignedOrderNos.has(o.orderNo)
+    );
+
+    setSelectedMonitoringOrderId(readyOrders.length > 0 ? String(readyOrders[0].id) : '');
   };
 
-  // Aksi 3: Update Progres GPS / Selesaikan Pengantaran
-  const handleUpdateProgress = async (courier: CourierItem, nextProgress: number) => {
-    if (nextProgress >= 100) {
-      const updatedCourier: CourierItem = {
-        ...courier,
-        status: 'standby',
-        type: 'standby',
-        statusBadge: 'Standby Depo',
-        statusBadgeStyle: 'text-emerald-700 bg-emerald-50',
-        location: 'Posisi: Depo Utama JKT',
-        idleTime: 'Idle 0 menit',
-        desc: `Baru saja menyelesaikan trip order ${
-          courier.orderId || '#ORD-8820'
-        }. Siap menerima antrean baru.`,
-        battery: '⚡ Baterai HP 90%',
-        gallonCount: 0,
-        finishedCount: courier.finishedCount + 1,
-        orderId: undefined,
-        eta: undefined,
-        progress: undefined,
-        progressLabel: undefined,
-      };
-      setCouriers((prev) => prev.map((c) => (c.id === courier.id ? updatedCourier : c)));
-      setGpsCourier(null);
-      await syncCourierStatus(courier.id, 'aktif');
-      prependLog(
-        courier.name,
-        `menyelesaikan pengantaran ${courier.orderId || ''}`,
-        'bg-emerald-500'
-      );
-      showToast(`Pengantaran ${courier.orderId} selesai! ${courier.name} kembali Standby.`);
-      return;
-    }
-
-    const sisaMenit = Math.max(2, Math.round((100 - nextProgress) / 5));
-    const updated: CourierItem = {
-      ...courier,
-      progress: nextProgress,
-      progressLabel: `${nextProgress}% Selesai`,
-      eta: `Tiba ~${sisaMenit} mnt lagi`,
-    };
-    setCouriers((prev) => prev.map((c) => (c.id === courier.id ? updated : c)));
-    setGpsCourier(updated);
-  };
-
-  // Aksi 4: Tugaskan Pesanan ke Kurir Standby
+  // Aksi 3: Tugaskan Sekarang -> Masuk status Muat Barang & muncul tombol Konfirmasi Berangkat
   const handleAssignOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!assignCourier) return;
+    if (!assignCourier || !selectedMonitoringOrderId) return;
 
-    const preset =
-      pendingOrdersPool.find((o) => o.orderId === selectedPresetOrder) || pendingOrdersPool[0];
-    const orderCode = customOrderForm.useCustom
-      ? `#ORD-${Math.floor(8835 + Math.random() * 60)}`
-      : preset.orderId;
-    const customerName = customOrderForm.useCustom
-      ? customOrderForm.customer || 'Pelanggan Baru'
-      : preset.customer;
-    const targetAddr = customOrderForm.useCustom
-      ? customOrderForm.address || 'Jl. Kebayoran Baru No. 10'
-      : preset.address;
-    const itemDesc = customOrderForm.useCustom ? customOrderForm.item : preset.item;
-    const qty = customOrderForm.useCustom ? customOrderForm.qty : preset.qty;
+    const selectedOrder = availableQueueOrders.find(
+      (o) => String(o.id) === String(selectedMonitoringOrderId)
+    );
+    if (!selectedOrder) return;
+
+    const nowTime =
+      new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+
+    const updatedCourier: CourierItem = {
+      ...assignCourier,
+      status: 'jalan',
+      type: 'muat_barang',
+      statusBadge: 'Muat Barang',
+      statusBadgeStyle: 'text-amber-700 bg-amber-50',
+      assignedDeliveryId: selectedOrder.id,
+      orderId: selectedOrder.orderNo,
+      desc: `Sedang muat ${selectedOrder.itemCount} untuk ${selectedOrder.addressTitle} (${selectedOrder.customerInfo})`,
+      gallonCount: selectedOrder.gallonQty,
+      departTime: `Jadwal: ${nowTime}`,
+    };
 
     setCouriers((prev) =>
-      prev.map((c) =>
-        c.id === assignCourier.id
-          ? {
-              ...c,
-              status: 'jalan',
-              type: 'muat_barang',
-              statusBadge: 'Muat Barang',
-              statusBadgeStyle: 'text-amber-700 bg-amber-50',
-              orderId: orderCode,
-              eta: 'Persiapan Jalan',
-              desc: `Sedang muat ${itemDesc} untuk ${targetAddr} (${customerName})`,
-              progress: 50,
-              progressLabel: '50% Loading Muat',
-              gallonCount: qty,
-              departTime:
-                'Jadwal: ' +
-                new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) +
-                ' WIB',
-            }
-          : c
-      )
+      prev.map((c) => (c.id === assignCourier.id ? updatedCourier : c))
     );
 
     await syncCourierStatus(assignCourier.id, 'mengantar');
-    prependLog(assignCourier.name, `ditugaskan memuat ${itemDesc} (${orderCode})`, 'bg-amber-500');
-    showToast(`Order ${orderCode} berhasil ditugaskan ke ${assignCourier.name}!`);
+    syncOrderBackToMonitoring(
+      selectedOrder.id,
+      selectedOrder.orderNo,
+      'diproses',
+      updatedCourier
+    );
+
+    showToast(`Order ${selectedOrder.orderNo} ditugaskan ke ${assignCourier.name}!`);
     setAssignCourier(null);
-    setCustomOrderForm({
-      useCustom: false,
-      customer: '',
-      address: '',
-      item: '3 Galon Aqua',
-      qty: 3,
-    });
   };
 
-  // Aksi 5: Kirim Instruksi ke Kurir
+  // Aksi 4: Konfirmasi Berangkat (Muat Barang -> Di Jalan & tombol berubah jadi Selesai)
+  const handleConfirmDepart = async (courier: CourierItem) => {
+    const nowTime =
+      new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+
+    const updatedCourier: CourierItem = {
+      ...courier,
+      status: 'jalan',
+      type: 'di_jalan',
+      statusBadge: 'Di Jalan',
+      statusBadgeStyle: 'text-emerald-600 bg-emerald-50',
+      departTime: nowTime,
+      desc: courier.desc.replace('Sedang muat', 'Mengantar'),
+    };
+
+    setCouriers((prev) => prev.map((c) => (c.id === courier.id ? updatedCourier : c)));
+    await syncCourierStatus(courier.id, 'mengantar');
+    syncOrderBackToMonitoring(
+      courier.assignedDeliveryId,
+      courier.orderId,
+      'diantar',
+      updatedCourier
+    );
+
+    showToast(`${courier.name} dikonfirmasi berangkat mengantar pesanan!`);
+  };
+
+  // Aksi 5: Klik Selesai -> Pengantaran Selesai bertambah +1 & kembali menjadi Tugaskan Pesanan
+  const handleCompleteDelivery = async (courier: CourierItem) => {
+    const doneOrderNo = courier.orderId;
+    const doneDeliveryId = courier.assignedDeliveryId;
+
+    const updatedCourier: CourierItem = {
+      ...courier,
+      status: 'standby',
+      type: 'standby',
+      statusBadge: 'Standby Depo',
+      statusBadgeStyle: 'text-emerald-700 bg-emerald-50',
+      location: 'Posisi: Depo Utama JKT',
+      idleTime: 'Siaga Depo',
+      desc: `Baru saja menyelesaikan pengantaran ${
+        doneOrderNo || ''
+      }. Siap menerima antrean baru.`,
+      gallonCount: 0,
+      finishedCount: courier.finishedCount + 1,
+      assignedDeliveryId: undefined,
+      orderId: undefined,
+      departTime: undefined,
+    };
+
+    setCouriers((prev) => prev.map((c) => (c.id === courier.id ? updatedCourier : c)));
+    await syncCourierStatus(courier.id, 'aktif');
+    syncOrderBackToMonitoring(doneDeliveryId, doneOrderNo, 'selesai');
+
+    showToast(`Pengantaran ${doneOrderNo || ''} selesai! ${courier.name} siap ditugaskan kembali.`);
+  };
+
+  // Aksi 6: Kirim Instruksi ke Kurir
   const handleSendInstruction = (e: React.FormEvent) => {
     e.preventDefault();
     if (!contactCourier || !dispatchMessage.trim()) return;
-    prependLog(
-      'Admin Depo',
-      `mengirim instruksi ke ${contactCourier.name}: "${dispatchMessage.trim()}"`,
-      'bg-blue-500'
-    );
     showToast(`Instruksi terkirim ke perangkat ${contactCourier.name}`);
     setDispatchMessage('');
   };
@@ -692,7 +679,7 @@ export default function KurirLapanganPage() {
             Kurir Lapangan
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Manajemen armada kurir, status operasional kurir di lapangan, penugasan antrean, dan pantauan rute pengantaran.
+            Manajemen armada kurir, status operasional kurir di lapangan, dan penugasan dari antrean Monitoring Pengantaran.
           </p>
         </div>
 
@@ -705,19 +692,11 @@ export default function KurirLapanganPage() {
             <Plus className="w-4 h-4" />
             <span>Tambah Armada Kurir</span>
           </button>
-          <button
-            type="button"
-            onClick={handleRefresh}
-            title="Sinkronkan Posisi GPS & Status"
-            className="p-2.5 border border-slate-200 bg-white rounded-xl hover:bg-slate-50 text-slate-600 transition active:scale-95 shadow-sm cursor-pointer"
-          >
-            <RotateCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-blue-600' : ''}`} />
-          </button>
         </div>
       </div>
 
-      {/* 2. RINGKASAN STATISTIK (KPI CARDS DINAMIS) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      {/* 2. RINGKASAN STATISTIK (3 KOTAK RESPONSIF & DINAMIS) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
           <div>
             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Kurir</p>
@@ -758,27 +737,11 @@ export default function KurirLapanganPage() {
               <span className="text-xs font-semibold text-slate-600">Siap Antar Segera</span>
             </div>
             <span className="inline-block mt-2 text-[10px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
-              Idle &lt; 5 Menit
+              Siap Ditugaskan
             </span>
           </div>
           <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600">
             <Building2 className="w-5 h-5" />
-          </div>
-        </div>
-
-        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Performa Rata-rata</p>
-            <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-2xl font-extrabold text-slate-900">98.4%</span>
-              <span className="text-xs font-semibold text-slate-600">Tepat Waktu</span>
-            </div>
-            <span className="inline-block mt-2 text-[10px] font-medium text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md">
-              ⚡ SLA 17.4 Menit / Trip
-            </span>
-          </div>
-          <div className="p-3 bg-purple-50 rounded-xl text-purple-600">
-            <Clock className="w-5 h-5" />
           </div>
         </div>
       </div>
@@ -908,25 +871,10 @@ export default function KurirLapanganPage() {
                         <span className="text-slate-500">
                           Order: <strong className="text-blue-600">{courier.orderId}</strong>
                         </span>
-                        <span className="text-slate-400">{courier.eta}</span>
                       </div>
                       <p className="text-xs font-semibold text-slate-800 line-clamp-2">
                         {courier.desc}
                       </p>
-                      <div className="mt-3">
-                        <div className="flex justify-between text-[10px] font-semibold text-blue-600 mb-1">
-                          <span>Progres</span>
-                          <span>{courier.progressLabel}</span>
-                        </div>
-                        <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all ${
-                              courier.type === 'muat_barang' ? 'bg-amber-500' : 'bg-blue-600'
-                            }`}
-                            style={{ width: `${courier.progress ?? 0}%` }}
-                          ></div>
-                        </div>
-                      </div>
                     </div>
                   )}
 
@@ -938,11 +886,6 @@ export default function KurirLapanganPage() {
                         <span className="text-slate-400">{courier.idleTime}</span>
                       </div>
                       <p className="text-xs text-slate-600 leading-relaxed">{courier.desc}</p>
-                      <div className="mt-3 flex items-center gap-2 text-[10px] font-medium text-emerald-700">
-                        <span>{courier.battery}</span>
-                        <span>•</span>
-                        <span>GPS Aktif</span>
-                      </div>
                     </div>
                   )}
 
@@ -970,11 +913,11 @@ export default function KurirLapanganPage() {
                       ) : (
                         <button
                           type="button"
-                          onClick={() => setGpsCourier(courier)}
-                          className="bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs font-semibold py-2 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+                          onClick={() => handleCompleteDelivery(courier)}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold py-2 rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
                         >
-                          <Navigation className="w-3.5 h-3.5" />
-                          <span>Lacak GPS</span>
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Selesai</span>
                         </button>
                       )}
                       <button
@@ -990,10 +933,11 @@ export default function KurirLapanganPage() {
                     <>
                       <button
                         type="button"
-                        onClick={() => setAssignCourier(courier)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 rounded-xl transition shadow-sm cursor-pointer"
+                        onClick={() => handleOpenAssignModal(courier)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
                       >
-                        Tugaskan Pesanan
+                        <PackageCheck className="w-3.5 h-3.5" />
+                        <span>Tugaskan Pesanan</span>
                       </button>
                       <button
                         type="button"
@@ -1014,7 +958,8 @@ export default function KurirLapanganPage() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between bg-white px-4 py-3 rounded-2xl border border-slate-100 shadow-sm mb-6">
               <span className="text-xs text-slate-500">
-                Halaman <strong>{safePage}</strong> dari <strong>{totalPages}</strong> ({filteredCouriers.length} Kurir)
+                Halaman <strong>{safePage}</strong> dari <strong>{totalPages}</strong> (
+                {filteredCouriers.length} Kurir)
               </span>
               <div className="flex items-center gap-1.5">
                 <button
@@ -1045,40 +990,6 @@ export default function KurirLapanganPage() {
           </p>
         </div>
       )}
-
-      {/* 5. LOG AKTIVITAS TERKINI */}
-      <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Radio className="w-4 h-4 text-blue-600 animate-pulse" />
-            <h2 className="text-sm font-bold text-slate-900">Log Aktivitas Kurir Terkini</h2>
-          </div>
-          <button
-            type="button"
-            onClick={() => setIsAllLogsOpen(!isAllLogsOpen)}
-            className="text-xs font-semibold text-blue-600 hover:underline cursor-pointer"
-          >
-            {isAllLogsOpen ? 'Sembunyikan' : `Lihat Semua (${logs.length})`}
-          </button>
-        </div>
-
-        <div className="space-y-3">
-          {(isAllLogsOpen ? logs : logs.slice(0, 4)).map((log) => (
-            <div
-              key={log.id}
-              className="flex items-center justify-between text-xs border-b border-slate-50 pb-2.5 last:border-0 last:pb-0"
-            >
-              <div className="flex items-center gap-2.5">
-                <span className={`w-2 h-2 rounded-full ${log.dotColor}`} />
-                <p className="text-slate-600">
-                  <strong className="text-slate-900">{log.actor}</strong> {log.action}
-                </p>
-              </div>
-              <span className="text-[11px] text-slate-400">{log.time}</span>
-            </div>
-          ))}
-        </div>
-      </div>
 
       {/* ==================== MODALS ==================== */}
 
@@ -1115,7 +1026,9 @@ export default function KurirLapanganPage() {
                     type="text"
                     required
                     value={newCourierForm.motor}
-                    onChange={(e) => setNewCourierForm({ ...newCourierForm, motor: e.target.value })}
+                    onChange={(e) =>
+                      setNewCourierForm({ ...newCourierForm, motor: e.target.value })
+                    }
                     className="w-full rounded-xl border border-slate-200 px-3 py-2.5 focus:border-blue-500 focus:outline-none"
                   />
                 </div>
@@ -1161,75 +1074,16 @@ export default function KurirLapanganPage() {
         </div>
       )}
 
-      {/* MODAL 2: LACAK GPS & UPDATE PROGRES */}
-      {gpsCourier && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
-              <div>
-                <h3 className="text-base font-bold text-slate-900">Live GPS: {gpsCourier.name}</h3>
-                <p className="text-[11px] text-slate-400">
-                  {gpsCourier.motor} • {gpsCourier.plat} • {gpsCourier.orderId}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setGpsCourier(null)}
-                className="text-slate-400 hover:text-slate-700 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="bg-slate-50 rounded-xl p-4 mb-4 text-xs space-y-2 border border-slate-100">
-              <div className="flex items-center gap-2 text-blue-600 font-bold">
-                <MapPin className="w-4 h-4" />
-                <span>{gpsCourier.eta}</span>
-              </div>
-              <p className="text-slate-700">{gpsCourier.desc}</p>
-              <div className="pt-2">
-                <div className="flex justify-between text-[11px] font-bold mb-1">
-                  <span>Progres Perjalanan</span>
-                  <span>{gpsCourier.progress ?? 50}%</span>
-                </div>
-                <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-blue-600 rounded-full transition-all"
-                    style={{ width: `${gpsCourier.progress ?? 50}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() =>
-                  handleUpdateProgress(gpsCourier, Math.min(95, (gpsCourier.progress ?? 50) + 15))
-                }
-                className="py-2.5 rounded-xl bg-blue-50 text-blue-600 font-bold hover:bg-blue-100 cursor-pointer"
-              >
-                +15% Simulasi Maju
-              </button>
-              <button
-                type="button"
-                onClick={() => handleUpdateProgress(gpsCourier, 100)}
-                className="py-2.5 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 cursor-pointer"
-              >
-                Tandai Tiba (100%)
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL 3: TUGASKAN PESANAN KE KURIR STANDBY */}
+      {/* MODAL 2: TUGASKAN PESANAN (HANYA YANG SIAP KIRIM / BELUM DIANTAR) */}
       {assignCourier && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
               <div>
                 <h3 className="text-base font-bold text-slate-900">Tugaskan Pengantaran</h3>
                 <p className="text-[11px] text-slate-400">
-                  Kurir: <strong>{assignCourier.name}</strong> ({assignCourier.plat})
+                  Kurir: <strong>{assignCourier.name}</strong> ({assignCourier.plat}) • Hanya
+                  menampilkan order siap kirim
                 </p>
               </div>
               <button
@@ -1242,20 +1096,46 @@ export default function KurirLapanganPage() {
             </div>
             <form onSubmit={handleAssignOrder} className="space-y-3 text-xs">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Pilih Antrean Order Siap Kirim</label>
-                <select
-                  value={selectedPresetOrder}
-                  onChange={(e) => setSelectedPresetOrder(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 font-semibold focus:border-blue-500 focus:outline-none"
-                >
-                  {pendingOrdersPool.map((o) => (
-                    <option key={o.orderId} value={o.orderId}>
-                      {o.orderId} • {o.item} — {o.address}
-                    </option>
-                  ))}
-                </select>
+                <label className="block font-bold text-slate-700 mb-2">
+                  Pilih Antrean Order Siap Kirim
+                </label>
+                {availableQueueOrders.length === 0 ? (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center text-slate-500">
+                    Tidak ada antrean baru yang menunggu pengiriman saat ini.
+                  </div>
+                ) : (
+                  <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+                    {availableQueueOrders.map((o) => {
+                      const isSelected = String(selectedMonitoringOrderId) === String(o.id);
+                      return (
+                        <div
+                          key={o.id}
+                          onClick={() => setSelectedMonitoringOrderId(String(o.id))}
+                          className={`cursor-pointer rounded-xl border p-3 transition ${
+                            isSelected
+                              ? 'border-blue-600 bg-blue-50/70'
+                              : 'border-slate-200 bg-white hover:border-blue-300'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-slate-900">
+                              {o.orderNo} • {o.itemCount}
+                            </span>
+                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                              Siap Kirim
+                            </span>
+                          </div>
+                          <p className="mt-1 font-semibold text-slate-700">{o.addressTitle}</p>
+                          <p className="text-[11px] text-slate-500">
+                            {o.customerInfo} • {o.note}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-              <div className="flex justify-end gap-2 pt-3">
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setAssignCourier(null)}
@@ -1265,7 +1145,8 @@ export default function KurirLapanganPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-blue-600 font-semibold text-white hover:bg-blue-700 cursor-pointer"
+                  disabled={availableQueueOrders.length === 0 || !selectedMonitoringOrderId}
+                  className="px-4 py-2 rounded-xl bg-blue-600 font-semibold text-white hover:bg-blue-700 disabled:opacity-50 cursor-pointer"
                 >
                   Tugaskan Sekarang
                 </button>
@@ -1275,7 +1156,7 @@ export default function KurirLapanganPage() {
         </div>
       )}
 
-      {/* MODAL 4: HUBUNGI KURIR */}
+      {/* MODAL 3: HUBUNGI KURIR */}
       {contactCourier && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
@@ -1327,7 +1208,7 @@ export default function KurirLapanganPage() {
         </div>
       )}
 
-      {/* MODAL 5: DETAIL PROFIL KURIR */}
+      {/* MODAL 4: DETAIL PROFIL KURIR */}
       {detailCourier && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
